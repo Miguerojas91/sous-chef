@@ -1,14 +1,9 @@
-import { GoogleGenAI } from '@google/genai';
-
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
-export const ai = new GoogleGenAI({ apiKey: API_KEY });
-
-export const MODEL = 'gemini-2.5-flash';
-export const VOICE_MODEL = 'gemini-3.1-flash-live-preview';
-export const NANO_MODEL = 'nano-banana-pro-preview';
+// ── URL base del proxy (nunca la IA directamente) ─────────────────────────────
+// En desarrollo: vacío → Vite proxea /api → localhost:3001
+// En producción: VITE_API_URL=https://tu-proxy.railway.app
+export const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
 
 // ── Instrucción base de seguridad (se añade a TODOS los prompts) ──────────────
-// Limita el scope a cocina, acota las respuestas y maneja ruido de STT.
 const BASE_SAFETY = `Eres un asistente de cocina breve. Responde solo temas culinarios. Si el usuario divaga o hay ruido de fondo mal traducido, pide amablemente retomar la receta. Máximo 60 palabras por respuesta.`;
 
 // ── Prompts de sistema ─────────────────────────────────────────────────────────
@@ -82,26 +77,7 @@ El usuario está preparando sus comidas para la semana. Tu rol es:
 - Motivarlo durante el proceso
 Tus respuestas son concisas y directas. Usa el contexto de las recetas y lista de mercado que se te proporciona.`;
 
-// ── Tipo del objeto chat ───────────────────────────────────────────────────────
-
-export type ChefChat = ReturnType<typeof ai.chats.create>;
-
-// ── Función para crear una sesión de chat ──────────────────────────────────────
-
-export function createChefChat(systemPrompt: string, initialContext?: string): ChefChat {
-  return ai.chats.create({
-    model: MODEL,
-    config: { systemInstruction: systemPrompt },
-    history: initialContext
-      ? [
-          { role: 'user',  parts: [{ text: `Contexto de la sesión:\n${initialContext}` }] },
-          { role: 'model', parts: [{ text: '¡Listo! Tengo todo el contexto. Cuando quieras empezamos. 👨‍🍳' }] },
-        ]
-      : [],
-  });
-}
-
-// ── Función para evaluar imágenes con Gemini Vision ───────────────────────────
+// ── Evaluación de imágenes (via proxy — la IA nunca se llama directamente) ─────
 
 export interface EvaluationResult {
   stars: number;
@@ -113,44 +89,14 @@ export async function evaluateImage(
   levelName: string,
   criteria: { stars: string; label: string }[]
 ): Promise<EvaluationResult> {
-  const criteriaText = criteria.length > 0
-    ? criteria.map(c => `${c.stars}: ${c.label}`).join('\n')
-    : '⭐⭐⭐: Técnica impecable\n⭐⭐: Buena ejecución\n⭐: Primer intento válido';
-
-  const prompt = `Eres un chef evaluador experto. Analiza esta imagen de la técnica culinaria: "${levelName}".
-
-Criterios de evaluación:
-${criteriaText}
-
-Responde ÚNICAMENTE con este JSON (sin markdown, sin texto extra):
-{"stars": <1, 2 o 3>, "feedback": "<frase motivadora en español, máximo 2 oraciones>"}`;
-
-  const mimeType = (imageBase64.split(';')[0].split(':')[1] || 'image/jpeg') as string;
-  const base64Data = imageBase64.split(',')[1];
-
   try {
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      contents: [
-        {
-          parts: [
-            { inlineData: { mimeType, data: base64Data } },
-            { text: prompt },
-          ],
-        },
-      ],
+    const res = await fetch(`${API_URL}/api/evaluate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64, levelName, criteria }),
     });
-
-    const text = (response.text ?? '').trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        stars: Math.min(3, Math.max(1, Number(parsed.stars) || 2)),
-        feedback: parsed.feedback || '¡Buen trabajo! Sigue practicando la técnica.',
-      };
-    }
-    throw new Error('No JSON found');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json() as EvaluationResult;
   } catch {
     return { stars: 2, feedback: '¡Buena técnica! Con más práctica llegarás a la perfección.' };
   }

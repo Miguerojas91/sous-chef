@@ -2,6 +2,7 @@
 .env
 *.env
 backend/.env
+proxy/.env
 
 # Certificados SSL (no subir claves privadas)
 frontend/key.pem
@@ -20,6 +21,7 @@ __pycache__/
 node_modules/
 dist/
 .cache/
+proxy/node_modules/
 
 # Logs
 *.log

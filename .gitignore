@@ -1,0 +1,33 @@
+# Secrets
+.env
+*.env
+backend/.env
+
+# Certificados SSL (no subir claves privadas)
+frontend/key.pem
+frontend/cert.pem
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+dist/
+.cache/
+
+# Logs
+*.log
+lint.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/

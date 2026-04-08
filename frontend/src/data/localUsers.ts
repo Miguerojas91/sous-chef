@@ -36,4 +36,11 @@ export const LOCAL_USERS: LocalUser[] = [
     rank: 'Iniciado',
     is_admin: false,
   },
+  {
+    username: 'Olga',
+    password: 'Valeria',
+    xp: 0,
+    rank: 'Iniciado',
+    is_admin: false,
+  },
 ];

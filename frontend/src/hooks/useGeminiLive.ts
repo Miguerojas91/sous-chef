@@ -83,7 +83,7 @@ type ProxyMsg =
 // ── VAD Constants ─────────────────────────────────────────────────────────────
 
 const VOICE_RMS_THRESHOLD = 0.05;
-const SILENCE_TIMEOUT_MS  = 30_000;
+const SILENCE_TIMEOUT_MS  = 15_000;   // 15 s — antes 30 s
 const WAKE_RMS_THRESHOLD  = 0.06;
 const WAKE_FRAMES_NEEDED  = 6;
 
@@ -93,6 +93,11 @@ const INPUT_SAMPLE_RATE       = 16000;
 const OUTPUT_SAMPLE_RATE      = 24000;
 const BUFFER_SIZE             = 4096;
 const RECONNECT_CONTEXT_TURNS = 8;
+
+/** Duración máxima de una sesión de voz antes de dormir automáticamente (20 min). */
+const MAX_SESSION_MS = 20 * 60_000;
+/** Cuánto tiempo seguir enviando audio después de que baja el RMS (evita cortar palabras). */
+const VOICE_TAIL_MS  = 400;
 
 // ── URL del proxy WebSocket ───────────────────────────────────────────────────
 
@@ -138,6 +143,8 @@ export function useGeminiLive(customSystemPrompt?: string) {
   const wakeFrameCountRef   = useRef(0);
   const nativeRateRef       = useRef(44100);
   const silenceIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voiceTailUntilRef   = useRef(0);        // timestamp hasta el que seguimos enviando audio
+  const sessionStartRef     = useRef(0);        // cuando empezó la sesión activa
   // Refs para romper dependencias circulares
   const reconnectSessionRef = useRef<() => void>(() => {});
 
@@ -401,6 +408,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
         history,
         () => {
           isReconnectingRef.current = false;
+          voiceTailUntilRef.current = 0;
           setVoiceStateSync('listening');
           startSilenceCountdown();
         },
@@ -494,6 +502,8 @@ export function useGeminiLive(customSystemPrompt?: string) {
         customSystemPrompt ?? CHEF_SYSTEM_PROMPT,
         [],
         () => {
+          sessionStartRef.current   = Date.now();
+          voiceTailUntilRef.current = 0;
           setVoiceStateSync('listening');
           startSilenceCountdown();
         },
@@ -525,15 +535,28 @@ export function useGeminiLive(customSystemPrompt?: string) {
         }
 
         // Modo activo: VAD silencio → dormir
+        const now = Date.now();
         if (rms > VOICE_RMS_THRESHOLD) {
-          lastVoiceTimeRef.current  = Date.now();
+          lastVoiceTimeRef.current  = now;
           wakeFrameCountRef.current = 0;
-        } else if (Date.now() - lastVoiceTimeRef.current > SILENCE_TIMEOUT_MS) {
+          voiceTailUntilRef.current = now + VOICE_TAIL_MS;
+        } else if (now - lastVoiceTimeRef.current > SILENCE_TIMEOUT_MS) {
+          goToSleep();
+          return;
+        }
+
+        // Límite de sesión: dormir automáticamente a los 20 min
+        if (sessionStartRef.current > 0 && now - sessionStartRef.current > MAX_SESSION_MS) {
           goToSleep();
           return;
         }
 
         if (!sessionRef.current) return;
+
+        // ── Gate de costo: solo enviar audio cuando hay voz o cola post-voz ──
+        // Ahorra ~70 % del audio facturado en sesiones con silencios largos.
+        if (now > voiceTailUntilRef.current) return;
+
         const resampled = downsample(new Float32Array(raw), nativeRateRef.current, INPUT_SAMPLE_RATE);
         sessionRef.current.sendRealtimeInput({ audio: { data: float32ToPCM16Base64(resampled), mimeType: 'audio/pcm;rate=16000' } });
       };

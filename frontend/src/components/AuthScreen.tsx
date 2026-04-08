@@ -1,7 +1,30 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChefHat, AlertTriangle, ArrowRight, UserPlus, LogIn, Check, Eye, EyeOff } from 'lucide-react';
-import { LOCAL_USERS } from '../data/localUsers';
+import { LOCAL_USERS, type LocalUser } from '../data/localUsers';
+
+// ── Usuarios registrados localmente (guardados en localStorage) ───────────────
+function getStoredUsers(): LocalUser[] {
+  try { return JSON.parse(localStorage.getItem('sous_registered_users') ?? '[]'); }
+  catch { return []; }
+}
+
+function saveStoredUsers(users: LocalUser[]) {
+  localStorage.setItem('sous_registered_users', JSON.stringify(users));
+}
+
+function findUser(username: string, password: string): LocalUser | undefined {
+  const all = [...LOCAL_USERS, ...getStoredUsers()];
+  return all.find(
+    u => u.username.toLowerCase() === username.trim().toLowerCase()
+      && u.password === password.trim()
+  );
+}
+
+function usernameExists(username: string): boolean {
+  const all = [...LOCAL_USERS, ...getStoredUsers()];
+  return all.some(u => u.username.toLowerCase() === username.trim().toLowerCase());
+}
 
 export const AuthScreen = () => {
     const [isLogin, setIsLogin] = useState(true);
@@ -20,6 +43,7 @@ export const AuthScreen = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [currentTag, setCurrentTag] = useState('');
     const [tagType, setTagType] = useState<'allergies' | 'dislikes'>('allergies');
+    const [error, setError] = useState('');
 
     const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && currentTag.trim() !== '') {
@@ -42,45 +66,39 @@ export const AuthScreen = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!isLogin && step === 1) {
+        setError('');
+
+        if (isLogin) {
+            // ── Login ──────────────────────────────────────────────────────
+            const match = findUser(formData.username, formData.password);
+            if (match) {
+                loginWithData({ ...match });
+            } else {
+                setError('Usuario o contraseña incorrectos.');
+            }
+            return;
+        }
+
+        // ── Registro ───────────────────────────────────────────────────────
+        if (step === 1) {
+            if (formData.username.trim().length < 3) { setError('El usuario debe tener al menos 3 caracteres.'); return; }
+            if (formData.password.trim().length < 4)  { setError('La contraseña debe tener al menos 4 caracteres.'); return; }
+            if (usernameExists(formData.username))     { setError('Ese nombre de usuario ya está en uso.'); return; }
             setStep(2);
             return;
         }
 
-        // Verificar usuarios locales primero
-        const localMatch = LOCAL_USERS.find(
-            u => u.username.toLowerCase() === formData.username.trim().toLowerCase()
-               && u.password === formData.password.trim()
-        );
-
-        if (localMatch) {
-            loginWithData({ ...localMatch });
-            return;
-        }
-
-        // Si no coincide con ningún usuario local, intentar backend
-        try {
-            const endpoint = isLogin ? '/api/v1/auth/login' : '/api/v1/auth/register';
-            const body = isLogin
-                ? { username: formData.username.trim(), password: formData.password.trim() }
-                : formData;
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                loginWithData(data);
-            } else {
-                alert('Usuario o contraseña incorrectos.');
-            }
-        } catch {
-            // Backend no disponible — las credenciales no coinciden con ningún usuario local
-            alert('Usuario o contraseña incorrectos. (sin conexión al servidor)');
-        }
+        // Step 2: guardar nuevo usuario
+        const newUser: LocalUser = {
+            username: formData.username.trim(),
+            password: formData.password.trim(),
+            xp: 0,
+            rank: 'Iniciado',
+            is_admin: false,
+        };
+        const stored = getStoredUsers();
+        saveStoredUsers([...stored, newUser]);
+        loginWithData({ ...newUser });
     };
 
     return (
@@ -102,6 +120,11 @@ export const AuthScreen = () => {
                 <div className="bg-white py-8 px-4 shadow-2xl sm:rounded-3xl sm:px-10 border border-neutral-100">
 
                     <form className="space-y-6" onSubmit={handleSubmit}>
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 text-red-700 text-sm font-medium px-4 py-3 rounded-xl">
+                                {error}
+                            </div>
+                        )}
                         {step === 1 && (
                             <div className="animate-in fade-in zoom-in-95 duration-300">
                                 <div>
@@ -257,7 +280,7 @@ export const AuthScreen = () => {
                             </div>
 
                             <button
-                                onClick={() => setIsLogin(!isLogin)}
+                                onClick={() => { setIsLogin(!isLogin); setError(''); setStep(1); }}
                                 className="w-full flex justify-center items-center gap-2 py-3 px-4 border shadow-sm rounded-xl text-sm font-bold text-neutral-700 bg-white hover:bg-neutral-50 transition-colors border-neutral-200"
                             >
                                 {isLogin ? <><UserPlus size={18} /> Registrarse</> : <><LogIn size={18} /> Iniciar Sesión</>}

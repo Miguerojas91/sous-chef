@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Globe, ChevronDown, ChevronUp, ArrowLeft, ShoppingCart, MessageSquare, Check, Send, Clock, ChefHat, XCircle, RefreshCw, HelpCircle, Mic, X, Users, Minus, Plus } from 'lucide-react';
+import { Globe, ChevronDown, ChevronUp, ArrowLeft, ShoppingCart, Check, Send, Clock, ChefHat, XCircle, RefreshCw, HelpCircle, Mic, X, Users, Minus, Plus } from 'lucide-react';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 
@@ -59,10 +59,8 @@ function getSuggestedSubstitutes(item: string): string[] {
 type Difficulty = 'Básico' | 'Intermedio' | 'Difícil';
 type RegionName = 'América' | 'Europa' | 'Asia';
 
-interface Ingredient {
-  name: string;
-  qty: string; // cantidad para 2 personas
-}
+// Los ingredientes se manejan como strings en los datos y la UI
+type Ingredient = string;
 
 interface Recipe {
   name: string;

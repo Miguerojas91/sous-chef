@@ -326,10 +326,10 @@ export function useGeminiLive(customSystemPrompt?: string) {
   useEffect(() => { handleProxyMsgRef.current = handleProxyMsg; }, [handleProxyMsg]);
 
   // ── Contexto FIFO para reconexión ────────────────────────────────────────
-  const buildReconnectHistory = useCallback(() => {
+  const buildReconnectHistory = useCallback((): Array<{ role: string; parts: [{ text: string }] }> => {
     const recent = transcriptRef.current.slice(-(RECONNECT_CONTEXT_TURNS * 2));
     if (recent.length === 0) return [];
-    return recent.map(e => ({ role: e.agent === 'user' ? 'user' : 'model', parts: [{ text: e.text }] }));
+    return recent.map(e => ({ role: e.agent === 'user' ? 'user' : 'model', parts: [{ text: e.text }] as [{ text: string }] }));
   }, []);
 
   // ── Crear sesión proxy (WebSocket al proxy) ───────────────────────────────

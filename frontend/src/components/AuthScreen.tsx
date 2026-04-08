@@ -40,10 +40,6 @@ export const AuthScreen = () => {
         navigate('/');
     };
 
-    const handleGuestAccess = () => {
-        loginWithData({ username: 'Invitado', xp: 0, rank: 'Iniciado', is_admin: false });
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isLogin && step === 1) {

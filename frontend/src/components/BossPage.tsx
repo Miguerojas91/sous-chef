@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { evaluateImage } from '../services/gemini';
 import type { EvaluationResult } from '../services/gemini';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { getLevelStars, saveLevelStars, addXP } from '../utils/progress';
 import {
   ArrowLeft, CheckCircle, ChevronRight, Shield, Swords, Zap, Upload, Clock, Users, ChefHat
 } from 'lucide-react';
@@ -83,12 +84,23 @@ export const BossPage = ({
   backPath = '/mapa',
 }: BossPageProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const xpAwardedRef = useRef(false);
   const [completedChallenges, setCompletedChallenges] = useState<Set<number>>(new Set());
   const [uploadedImages, setUploadedImages] = useState<Record<number, string>>({});
   const [reviewingId, setReviewingId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(challenges[0]?.id ?? null);
   const [bossDefeated, setBossDefeated] = useState(false);
   const [challengeResults, setChallengeResults] = useState<Record<number, EvaluationResult>>({});
+
+  // Guardar progreso cuando el boss es derrotado
+  useEffect(() => {
+    if (!bossDefeated || xpAwardedRef.current) return;
+    xpAwardedRef.current = true;
+    const isFirstCompletion = getLevelStars(location.pathname) === 0;
+    saveLevelStars(location.pathname, 3);
+    if (isFirstCompletion) addXP(xpReward);
+  }, [bossDefeated, location.pathname, xpReward]);
 
   const allDone = completedChallenges.size === challenges.length;
   const hpPercent = 100 - (completedChallenges.size / challenges.length) * 100;

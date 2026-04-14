@@ -110,11 +110,15 @@ const WCOLS = [
 
 const ALL_LEVELS = WORLDS.flatMap(w => w.levels);
 
-function getLevelStatus(level: GameLevel): 'completed' | 'active' | 'locked' {
-  if ((level.stars ?? 0) > 0) return 'completed';
+function getLevelStatus(
+  level: GameLevel,
+  starsMap: Record<string, number>,
+): 'completed' | 'active' | 'locked' {
+  if ((starsMap[level.path ?? ''] ?? 0) > 0) return 'completed';
   const idx = ALL_LEVELS.findIndex(l => l.id === level.id);
   const prev = ALL_LEVELS[idx - 1];
-  if (!prev || (prev.stars ?? 0) > 0) return 'active';
+  if (!prev) return 'active';
+  if ((starsMap[prev.path ?? ''] ?? 0) > 0) return 'active';
   return 'locked';
 }
 
@@ -148,10 +152,14 @@ const LevelModal = ({
   onClose: () => void;
   onNavigate: (path: string) => void;
 }) => {
-  const status = getLevelStatus(level);
+  const starsMap = (() => {
+    try { return JSON.parse(localStorage.getItem('sous_level_stars') || '{}') as Record<string, number>; }
+    catch { return {} as Record<string, number>; }
+  })();
+  const status = getLevelStatus(level, starsMap);
   const isBoss = level.type === 'boss';
   const world = WORLDS[wi];
-  const stars = level.stars ?? 0;
+  const stars = starsMap[level.path ?? ''] ?? 0;
 
   return (
     <div
@@ -232,10 +240,17 @@ export const SkillTreeMap = () => {
   const [selected, setSelected] = useState<{ level: GameLevel; wi: number } | null>(null);
   const navigate = useNavigate();
 
+  // Leer estrellas desde localStorage (se actualiza al montar el componente)
+  const starsMap = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('sous_level_stars') || '{}') as Record<string, number>;
+    } catch { return {} as Record<string, number>; }
+  })();
+
   const pts = ALL_LEVELS.map((_, i) => getPos(i));
   const pathD = buildPath(pts);
 
-  const completed = ALL_LEVELS.filter(l => (l.stars ?? 0) > 0).length;
+  const completed = ALL_LEVELS.filter(l => (starsMap[l.path ?? ''] ?? 0) > 0).length;
   const user = (() => {
     try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
   })();
@@ -322,7 +337,7 @@ export const SkillTreeMap = () => {
               const by = PAD_TOP + w * WORLD_H + 10;
               const bh = BANNER_H - 20;
               const bw = SVG_W - 20;
-              const done = world.levels.filter(l => (l.stars ?? 0) > 0).length;
+              const done = world.levels.filter(l => (starsMap[l.path ?? ''] ?? 0) > 0).length;
               const pBarW = bw - 66;
               const pBarFill = pBarW * (done / world.levels.length);
 
@@ -372,9 +387,9 @@ export const SkillTreeMap = () => {
               const wi = Math.floor(i / 4);
               const wc = WCOLS[wi];
               const isBoss = level.type === 'boss';
-              const status = getLevelStatus(level);
+              const status = getLevelStatus(level, starsMap);
               const r = isBoss ? 33 : 26;
-              const stars = level.stars ?? 0;
+              const stars = starsMap[level.path ?? ''] ?? 0;
 
               // Visual state
               const fill   = status === 'completed' ? wc.nodeMain

@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { evaluateImage } from '../services/gemini';
 import type { EvaluationResult } from '../services/gemini';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { getLevelStars, saveLevelStars, addXP } from '../utils/progress';
 import {
   ArrowLeft, BookOpen, Upload, CheckCircle, Star,
   ChevronRight, Lightbulb, AlertTriangle, Camera, Trophy, Play,
@@ -83,6 +84,7 @@ export const LevelPage = ({
   backPath = '/mapa',
 }: LevelPageProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [activeStep, setActiveStep] = useState(0);
@@ -112,12 +114,17 @@ export const LevelPage = ({
       const imageData = e.target?.result as string;
       setUploadedImage(imageData);
       setUploadState('reviewing');
+      let result: EvaluationResult;
       try {
-        const result = await evaluateImage(imageData, levelName, evaluationCriteria || []);
-        setEvaluationResult(result);
+        result = await evaluateImage(imageData, levelName, evaluationCriteria || []);
       } catch {
-        setEvaluationResult({ stars: 3, feedback: '¡Excelente trabajo! Técnica bien ejecutada.' });
+        result = { stars: 3, feedback: '¡Excelente trabajo! Técnica bien ejecutada.' };
       }
+      setEvaluationResult(result);
+      // Guardar progreso: XP solo si es la primera vez que se completa este nivel
+      const isFirstCompletion = getLevelStars(location.pathname) === 0;
+      saveLevelStars(location.pathname, result.stars);
+      if (isFirstCompletion) addXP(xpReward);
       setUploadState('approved');
     };
     reader.readAsDataURL(file);

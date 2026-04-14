@@ -2,6 +2,7 @@
 export interface LocalUser {
   username: string;
   password: string;
+  email?: string;
   xp: number;
   rank: string;
   is_admin: boolean;

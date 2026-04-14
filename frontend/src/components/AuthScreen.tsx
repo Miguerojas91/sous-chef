@@ -92,6 +92,7 @@ export const AuthScreen = () => {
         const newUser: LocalUser = {
             username: formData.username.trim(),
             password: formData.password.trim(),
+            email: formData.email.trim() || undefined,
             xp: 0,
             rank: 'Iniciado',
             is_admin: false,

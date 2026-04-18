@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChefHat, AlertTriangle, ArrowRight, UserPlus, LogIn, Check, Eye, EyeOff } from 'lucide-react';
 import { LOCAL_USERS, type LocalUser } from '../data/localUsers';
+import { checkMembership } from '../utils/membership';
 
 // ── Usuarios registrados localmente (guardados en localStorage) ───────────────
 function getStoredUsers(): LocalUser[] {
@@ -58,8 +59,16 @@ export const AuthScreen = () => {
 
     const currentList = tagType === 'allergies' ? formData.allergies : formData.dislikes;
 
-    const loginWithData = (data: object) => {
-        localStorage.setItem('user', JSON.stringify(data));
+    const loginWithData = async (data: LocalUser) => {
+        // Verificar membresía premium si el usuario tiene email
+        let userData: LocalUser & { isPremium?: boolean } = { ...data };
+        if (data.email) {
+            try {
+                const isPremium = await checkMembership(data.email);
+                userData = { ...userData, isPremium };
+            } catch { /* continuar sin premium */ }
+        }
+        localStorage.setItem('user', JSON.stringify(userData));
         window.dispatchEvent(new Event('userStateChange'));
         navigate('/');
     };
@@ -72,7 +81,7 @@ export const AuthScreen = () => {
             // ── Login ──────────────────────────────────────────────────────
             const match = findUser(formData.username, formData.password);
             if (match) {
-                loginWithData({ ...match });
+                await loginWithData({ ...match });
             } else {
                 setError('Usuario o contraseña incorrectos.');
             }
@@ -99,7 +108,7 @@ export const AuthScreen = () => {
         };
         const stored = getStoredUsers();
         saveStoredUsers([...stored, newUser]);
-        loginWithData({ ...newUser });
+        await loginWithData({ ...newUser });
     };
 
     return (

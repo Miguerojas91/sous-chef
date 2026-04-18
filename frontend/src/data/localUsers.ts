@@ -6,6 +6,7 @@ export interface LocalUser {
   xp: number;
   rank: string;
   is_admin: boolean;
+  isPremium?: boolean;
 }
 
 export const LOCAL_USERS: LocalUser[] = [

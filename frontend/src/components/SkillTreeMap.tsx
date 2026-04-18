@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Flame, Trophy, ChefHat, Star } from 'lucide-react';
+import { isPremiumUser } from '../utils/membership';
+
+// Índices de mundos que requieren suscripción premium (0-based)
+const PREMIUM_WORLDS = new Set([2, 3, 4]); // Mar de Sabores, Pico del Maestro, Castillo del Chef
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -239,6 +243,7 @@ const LevelModal = ({
 export const SkillTreeMap = () => {
   const [selected, setSelected] = useState<{ level: GameLevel; wi: number } | null>(null);
   const navigate = useNavigate();
+  const isPremium = isPremiumUser();
 
   // Leer estrellas desde localStorage (se actualiza al montar el componente)
   const starsMap = (() => {
@@ -487,6 +492,41 @@ export const SkillTreeMap = () => {
                     fill={status === 'locked' ? '#9ca3af' : wc.label}
                     fontFamily="Plus Jakarta Sans, sans-serif">
                     {level.name}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* ── Premium lock overlays (worlds 3-5 when not premium) ── */}
+            {!isPremium && WORLDS.map((world, w) => {
+              if (!PREMIUM_WORLDS.has(w)) return null;
+              const oy = PAD_TOP + w * WORLD_H;
+              return (
+                <g key={`plock-${w}`}
+                  onClick={() => navigate('/membresia')}
+                  style={{ cursor: 'pointer' }}>
+                  {/* Semi-transparent overlay over entire world zone */}
+                  <rect x={0} y={oy} width={SVG_W} height={WORLD_H}
+                    fill="rgba(0,0,0,0.55)" />
+                  {/* Pill badge */}
+                  <rect x={SVG_W / 2 - 52} y={oy + WORLD_H / 2 - 22}
+                    width={104} height={44} rx={22}
+                    fill="#f97316" filter="url(#nodeShadow)" />
+                  <text x={SVG_W / 2} y={oy + WORLD_H / 2 - 5}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fontSize={18}>👑🔒</text>
+                  <text x={SVG_W / 2} y={oy + WORLD_H / 2 + 12}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fontSize={8} fontWeight="800" fill="white"
+                    fontFamily="Plus Jakarta Sans, sans-serif">
+                    Premium — Suscribirme
+                  </text>
+                  {/* World name faded above */}
+                  <text x={SVG_W / 2} y={oy + WORLD_H / 2 - 38}
+                    textAnchor="middle" dominantBaseline="middle"
+                    fontSize={9} fill="rgba(255,255,255,0.6)"
+                    fontFamily="Plus Jakarta Sans, sans-serif">
+                    {world.name}
                   </text>
                 </g>
               );

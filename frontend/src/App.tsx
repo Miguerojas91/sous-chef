@@ -11,6 +11,8 @@ import { FlavorsModule } from './components/FlavorsModule';
 import { AuthScreen } from './components/AuthScreen';
 import { HomeMenu } from './components/HomeMenu';
 import { MilprepModule } from './components/MilprepModule';
+import { MembresiaPage } from './components/MembresiaPage';
+import { isPremiumUser } from './utils/membership';
 
 // ── Mundo 1: Isla del Cuchillo ─────────────────────────────────────────────
 import { JulianaLevel } from './components/JulianaLevel';
@@ -248,6 +250,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Premium Route Wrapper – redirige a /membresia si no tiene suscripción activa
+const PremiumRoute = ({ children }: { children: React.ReactNode }) => {
+  if (!isPremiumUser()) {
+    return <Navigate to="/membresia" replace />;
+  }
+  return <>{children}</>;
+};
+
 function App() {
   return (
     <EditorProvider>
@@ -264,6 +274,7 @@ function App() {
                 {/* CMS Routes */}
                 <Route path="/cms-test" element={<CMSTestPage />} />
                 <Route path="/home" element={<HomeMenu />} />
+                <Route path="/membresia" element={<MembresiaPage />} />
                 <Route path="/cocinar" element={<CookingSession />} />
                 <Route path="/mapa" element={<SkillTreeMap />} />
 
@@ -279,23 +290,23 @@ function App() {
                 <Route path="/mapa/emulsion" element={<EmulsionLevel />} />
                 <Route path="/mapa/flambeador" element={<FlambeadorBoss />} />
 
-                {/* ── Mundo 3: Mar de Sabores ── */}
-                <Route path="/mapa/fondo-blanco" element={<FondoBlancoLevel />} />
-                <Route path="/mapa/fondo-oscuro" element={<FondoOscuroLevel />} />
-                <Route path="/mapa/fumet" element={<FumetLevel />} />
-                <Route path="/mapa/maestro-salsas" element={<MaestroDeSalsasBoss />} />
+                {/* ── Mundo 3: Mar de Sabores ── PREMIUM ── */}
+                <Route path="/mapa/fondo-blanco"   element={<PremiumRoute><FondoBlancoLevel /></PremiumRoute>} />
+                <Route path="/mapa/fondo-oscuro"   element={<PremiumRoute><FondoOscuroLevel /></PremiumRoute>} />
+                <Route path="/mapa/fumet"          element={<PremiumRoute><FumetLevel /></PremiumRoute>} />
+                <Route path="/mapa/maestro-salsas" element={<PremiumRoute><MaestroDeSalsasBoss /></PremiumRoute>} />
 
-                {/* ── Mundo 4: Pico del Maestro ── */}
-                <Route path="/mapa/sous-vide" element={<SousVideLevel />} />
-                <Route path="/mapa/esferificacion" element={<EsferificacionLevel />} />
-                <Route path="/mapa/fermentacion" element={<FermentacionLevel />} />
-                <Route path="/mapa/alquimista" element={<AlquimistaBoss />} />
+                {/* ── Mundo 4: Pico del Maestro ── PREMIUM ── */}
+                <Route path="/mapa/sous-vide"       element={<PremiumRoute><SousVideLevel /></PremiumRoute>} />
+                <Route path="/mapa/esferificacion"  element={<PremiumRoute><EsferificacionLevel /></PremiumRoute>} />
+                <Route path="/mapa/fermentacion"    element={<PremiumRoute><FermentacionLevel /></PremiumRoute>} />
+                <Route path="/mapa/alquimista"      element={<PremiumRoute><AlquimistaBoss /></PremiumRoute>} />
 
-                {/* ── Mundo 5: Castillo del Chef ── */}
-                <Route path="/mapa/menu-degustacion" element={<MenuDegustacionLevel />} />
-                <Route path="/mapa/maridaje" element={<MarinajeLevel />} />
-                <Route path="/mapa/alta-cocina" element={<AltaCocinaLevel />} />
-                <Route path="/mapa/gran-chef" element={<GranChefBoss />} />
+                {/* ── Mundo 5: Castillo del Chef ── PREMIUM ── */}
+                <Route path="/mapa/menu-degustacion" element={<PremiumRoute><MenuDegustacionLevel /></PremiumRoute>} />
+                <Route path="/mapa/maridaje"         element={<PremiumRoute><MarinajeLevel /></PremiumRoute>} />
+                <Route path="/mapa/alta-cocina"      element={<PremiumRoute><AltaCocinaLevel /></PremiumRoute>} />
+                <Route path="/mapa/gran-chef"        element={<PremiumRoute><GranChefBoss /></PremiumRoute>} />
 
                 <Route path="/sabores" element={<FlavorsModule />} />
                 <Route path="/academia" element={<AcademyModule />} />

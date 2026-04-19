@@ -696,7 +696,7 @@ Tu rol: guiar en orden de preparación eficiente (batch cooking), dar tips de co
                   {/* ── Quick replies ── */}
                   <QuickReplies
                     onSend={(msg) => { sendMessage(msg); }}
-                    disabled={isLoading}
+                    loading={isLoading}
                   />
 
                   {/* ── Input ── */}

@@ -343,7 +343,7 @@ const CookingChat: React.FC<{
       {/* Quick replies */}
       <QuickReplies
         onSend={(msg) => { sendMessage(msg); }}
-        disabled={isLoading}
+        loading={isLoading}
       />
 
       {/* Input */}

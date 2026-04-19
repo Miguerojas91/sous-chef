@@ -4,6 +4,7 @@ import { useGeminiLive } from '../hooks/useGeminiLive';
 import { buildCookingSystemPrompt } from '../services/gemini';
 import type { CookingIntent } from '../services/gemini';
 import { Mic, ChefHat, Send, X, ArrowLeft, Clock, Utensils, Sparkles, RefreshCw } from 'lucide-react';
+import { QuickReplies } from './QuickReplies';
 
 // ── Persistencia de la sesión activa ─────────────────────────────────────────
 
@@ -338,6 +339,12 @@ const CookingChat: React.FC<{
         ))}
         <div ref={textBottomRef} />
       </div>
+
+      {/* Quick replies */}
+      <QuickReplies
+        onSend={(msg) => { sendMessage(msg); }}
+        disabled={isLoading || messages.length === 0}
+      />
 
       {/* Input */}
       <div className="flex-shrink-0 px-3 py-2.5 bg-white border-t border-neutral-100">

@@ -5,6 +5,7 @@ import { EditableText } from './cms/EditableText';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 
 import { MILPREP_RECIPES, type Recipe } from '../data/milprepRecipes';
+import { QuickReplies } from './QuickReplies';
 
 // ── Mapa de sustitutos por palabras clave ──────────────────────────────────
 const SUBSTITUTES_MAP: { keywords: string[]; options: string[] }[] = [
@@ -691,6 +692,12 @@ Tu rol: guiar en orden de preparación eficiente (batch cooking), dar tips de co
                     ))}
                     <div ref={chatBottomRef} />
                   </div>
+
+                  {/* ── Quick replies ── */}
+                  <QuickReplies
+                    onSend={(msg) => { sendMessage(msg); }}
+                    disabled={isLoading || messages.length === 0}
+                  />
 
                   {/* ── Input ── */}
                   <div className="flex-shrink-0 px-3 py-2.5 bg-white border-t border-neutral-100">

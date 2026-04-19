@@ -14,6 +14,62 @@ export type Recipe = {
 };
 
 export const MILPREP_RECIPES: Recipe[] = [
+    // --- RECETAS PERSONALIZADAS (primero para fácil acceso) ---
+    {
+        id: 'custom1', title: 'Gyozas de Cerdo con Ensalada de Mango', time: '50 min', img: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&q=80&w=400&h=250',
+        ingredients: [
+            { name: 'Carne de cerdo molida', category: 'Proteínas', baseAmount: 150, unit: 'g' },
+            { name: 'Masa wonton/gyoza', category: 'Despensa', baseAmount: 12, unit: ' ud' },
+            { name: 'Lechuga', category: 'Verduras y Frutas', baseAmount: 60, unit: 'g' },
+            { name: 'Mango', category: 'Verduras y Frutas', baseAmount: 0.5, unit: ' ud' },
+            { name: 'Pimentón rojo/verde', category: 'Verduras y Frutas', baseAmount: 0.5, unit: ' ud' },
+            { name: 'Salsa de soya', category: 'Despensa', baseAmount: 20, unit: 'ml' },
+        ]
+    },
+    {
+        id: 'custom2', title: 'Costillas de Cerdo Picantes con Arroz', time: '90 min', img: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=400&h=250',
+        ingredients: [
+            { name: 'Costillas de cerdo', category: 'Proteínas', baseAmount: 250, unit: 'g' },
+            { name: 'Arroz blanco', category: 'Despensa', baseAmount: 80, unit: 'g' },
+            { name: 'Zanahoria', category: 'Verduras y Frutas', baseAmount: 1, unit: ' ud' },
+            { name: 'Pimentón rojo', category: 'Verduras y Frutas', baseAmount: 0.5, unit: ' ud' },
+            { name: 'Ají picante o chile', category: 'Despensa', baseAmount: 5, unit: 'g' },
+            { name: 'Salsa BBQ picante', category: 'Despensa', baseAmount: 40, unit: 'ml' },
+        ]
+    },
+    {
+        id: 'custom3', title: 'Sobrebarriga en Bistec con Papa Chorreada', time: '60 min', img: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&q=80&w=400&h=250',
+        ingredients: [
+            { name: 'Sobrebarriga de res (bistec)', category: 'Proteínas', baseAmount: 180, unit: 'g' },
+            { name: 'Papa pastusa', category: 'Verduras y Frutas', baseAmount: 2, unit: ' ud' },
+            { name: 'Espárragos', category: 'Verduras y Frutas', baseAmount: 80, unit: 'g' },
+            { name: 'Crema de leche', category: 'Lácteos y Refrigerados', baseAmount: 40, unit: 'ml' },
+            { name: 'Ajo', category: 'Verduras y Frutas', baseAmount: 2, unit: ' diente(s)' },
+        ]
+    },
+    {
+        id: 'custom4', title: 'Trucha con Sofrito y Ensalada de Remolacha', time: '35 min', img: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&q=80&w=400&h=250',
+        ingredients: [
+            { name: 'Trucha entera o filete', category: 'Proteínas', baseAmount: 200, unit: 'g' },
+            { name: 'Tomate chonto', category: 'Verduras y Frutas', baseAmount: 2, unit: ' ud' },
+            { name: 'Remolacha', category: 'Verduras y Frutas', baseAmount: 1, unit: ' ud' },
+            { name: 'Zanahoria', category: 'Verduras y Frutas', baseAmount: 1, unit: ' ud' },
+            { name: 'Cebolla cabezona', category: 'Verduras y Frutas', baseAmount: 0.5, unit: ' ud' },
+            { name: 'Ajo', category: 'Verduras y Frutas', baseAmount: 2, unit: ' diente(s)' },
+        ]
+    },
+    {
+        id: 'custom5', title: 'Pernil a la Naranja con Ensalada Tabule', time: '180 min', img: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3?auto=format&fit=crop&q=80&w=400&h=250',
+        ingredients: [
+            { name: 'Pernil de cerdo', category: 'Proteínas', baseAmount: 250, unit: 'g' },
+            { name: 'Naranja', category: 'Verduras y Frutas', baseAmount: 2, unit: ' ud' },
+            { name: 'Bulgur o cuscús (tabule)', category: 'Despensa', baseAmount: 80, unit: 'g' },
+            { name: 'Tomate chonto', category: 'Verduras y Frutas', baseAmount: 1, unit: ' ud' },
+            { name: 'Pepino', category: 'Verduras y Frutas', baseAmount: 0.5, unit: ' ud' },
+            { name: 'Perejil fresco', category: 'Verduras y Frutas', baseAmount: 20, unit: 'g' },
+        ]
+    },
+
     // --- 6 RECETAS DE POLLO (CHICKEN) ---
     {
         id: 'p1', title: 'Pollo Teriyaki con Brócoli', time: '30 min', img: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&q=80&w=400&h=250',
@@ -123,62 +179,6 @@ export const MILPREP_RECIPES: Recipe[] = [
             { name: 'Papa criolla o pastusa', category: 'Verduras y Frutas', baseAmount: 100, unit: 'g' },
             { name: 'Zanahoria', category: 'Verduras y Frutas', baseAmount: 0.5, unit: ' ud' },
             { name: 'Cebolla Larga', category: 'Verduras y Frutas', baseAmount: 1, unit: ' ud' },
-        ]
-    },
-
-    // --- RECETAS PERSONALIZADAS ---
-    {
-        id: 'custom1', title: 'Gyozas de Cerdo con Ensalada de Mango', time: '50 min', img: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&q=80&w=400&h=250',
-        ingredients: [
-            { name: 'Carne de cerdo molida', category: 'Proteínas', baseAmount: 150, unit: 'g' },
-            { name: 'Masa wonton/gyoza', category: 'Despensa', baseAmount: 12, unit: ' ud' },
-            { name: 'Lechuga', category: 'Verduras y Frutas', baseAmount: 60, unit: 'g' },
-            { name: 'Mango', category: 'Verduras y Frutas', baseAmount: 0.5, unit: ' ud' },
-            { name: 'Pimentón rojo/verde', category: 'Verduras y Frutas', baseAmount: 0.5, unit: ' ud' },
-            { name: 'Salsa de soya', category: 'Despensa', baseAmount: 20, unit: 'ml' },
-        ]
-    },
-    {
-        id: 'custom2', title: 'Costillas de Cerdo Picantes con Arroz', time: '90 min', img: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=400&h=250',
-        ingredients: [
-            { name: 'Costillas de cerdo', category: 'Proteínas', baseAmount: 250, unit: 'g' },
-            { name: 'Arroz blanco', category: 'Despensa', baseAmount: 80, unit: 'g' },
-            { name: 'Zanahoria', category: 'Verduras y Frutas', baseAmount: 1, unit: ' ud' },
-            { name: 'Pimentón rojo', category: 'Verduras y Frutas', baseAmount: 0.5, unit: ' ud' },
-            { name: 'Ají picante o chile', category: 'Despensa', baseAmount: 5, unit: 'g' },
-            { name: 'Salsa BBQ picante', category: 'Despensa', baseAmount: 40, unit: 'ml' },
-        ]
-    },
-    {
-        id: 'custom3', title: 'Sobrebarriga en Bistec con Papa Chorreada', time: '60 min', img: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&q=80&w=400&h=250',
-        ingredients: [
-            { name: 'Sobrebarriga de res (bistec)', category: 'Proteínas', baseAmount: 180, unit: 'g' },
-            { name: 'Papa pastusa', category: 'Verduras y Frutas', baseAmount: 2, unit: ' ud' },
-            { name: 'Espárragos', category: 'Verduras y Frutas', baseAmount: 80, unit: 'g' },
-            { name: 'Crema de leche', category: 'Lácteos y Refrigerados', baseAmount: 40, unit: 'ml' },
-            { name: 'Ajo', category: 'Verduras y Frutas', baseAmount: 2, unit: ' diente(s)' },
-        ]
-    },
-    {
-        id: 'custom4', title: 'Trucha con Sofrito y Ensalada de Remolacha', time: '35 min', img: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&q=80&w=400&h=250',
-        ingredients: [
-            { name: 'Trucha entera o filete', category: 'Proteínas', baseAmount: 200, unit: 'g' },
-            { name: 'Tomate chonto', category: 'Verduras y Frutas', baseAmount: 2, unit: ' ud' },
-            { name: 'Remolacha', category: 'Verduras y Frutas', baseAmount: 1, unit: ' ud' },
-            { name: 'Zanahoria', category: 'Verduras y Frutas', baseAmount: 1, unit: ' ud' },
-            { name: 'Cebolla cabezona', category: 'Verduras y Frutas', baseAmount: 0.5, unit: ' ud' },
-            { name: 'Ajo', category: 'Verduras y Frutas', baseAmount: 2, unit: ' diente(s)' },
-        ]
-    },
-    {
-        id: 'custom5', title: 'Pernil a la Naranja con Ensalada Tabule', time: '180 min', img: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3?auto=format&fit=crop&q=80&w=400&h=250',
-        ingredients: [
-            { name: 'Pernil de cerdo', category: 'Proteínas', baseAmount: 250, unit: 'g' },
-            { name: 'Naranja', category: 'Verduras y Frutas', baseAmount: 2, unit: ' ud' },
-            { name: 'Bulgur o cuscús (tabule)', category: 'Despensa', baseAmount: 80, unit: 'g' },
-            { name: 'Tomate chonto', category: 'Verduras y Frutas', baseAmount: 1, unit: ' ud' },
-            { name: 'Pepino', category: 'Verduras y Frutas', baseAmount: 0.5, unit: ' ud' },
-            { name: 'Perejil fresco', category: 'Verduras y Frutas', baseAmount: 20, unit: 'g' },
         ]
     },
 

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Globe, ChevronDown, ChevronUp, ArrowLeft, ShoppingCart, Check, Send, Clock, ChefHat, XCircle, RefreshCw, HelpCircle, Mic, X, Users, Minus, Plus } from 'lucide-react';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 import { useGeminiLive } from '../hooks/useGeminiLive';
+import { ChatMessage } from './ChatMessage';
 
 // ─────────────────────────────────────────────
 // SUBSTITUTES (igual que MilprepModule)
@@ -1002,18 +1003,12 @@ Adapta la receta a los ingredientes disponibles y sus sustitutos. Guía paso a p
         )}
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.agent === 'chef' ? 'justify-start' : 'justify-end'}`}>
-            <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed shadow-sm ${
+            <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl shadow-sm ${
               msg.agent === 'chef'
                 ? 'bg-white border border-neutral-100 text-neutral-800 rounded-tl-none'
                 : 'bg-orange-500 text-white rounded-tr-none'
             }`}>
-              {msg.text || (
-                <span className="flex gap-1 items-center h-4">
-                  <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce [animation-delay:0ms]" />
-                  <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                  <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce [animation-delay:300ms]" />
-                </span>
-              )}
+              <ChatMessage text={msg.text} isChef={msg.agent === 'chef'} />
             </div>
           </div>
         ))}

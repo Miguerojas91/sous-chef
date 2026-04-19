@@ -6,6 +6,30 @@ import { useGeminiLive } from '../hooks/useGeminiLive';
 
 import { MILPREP_RECIPES, type Recipe } from '../data/milprepRecipes';
 import { QuickReplies } from './QuickReplies';
+import { ChatMessage } from './ChatMessage';
+
+// ── Persistencia de sesión mealprep ───────────────────────────────────────────
+const MILPREP_SESSION_KEY = 'sous_milprep_session';
+const MILPREP_CHAT_KEY    = 'sous_chat_milprep';
+
+interface MilprepSession {
+  selectedRecipeIds: string[];
+  peopleCount: number;
+  chatStarted: boolean;
+  activeTab: 'mercado' | 'recetas' | 'chat';
+}
+
+function loadMilprepSession(): MilprepSession | null {
+  try { return JSON.parse(localStorage.getItem(MILPREP_SESSION_KEY) ?? 'null'); }
+  catch { return null; }
+}
+function saveMilprepSession(s: MilprepSession) {
+  localStorage.setItem(MILPREP_SESSION_KEY, JSON.stringify(s));
+}
+function clearMilprepSession() {
+  localStorage.removeItem(MILPREP_SESSION_KEY);
+  localStorage.removeItem(MILPREP_CHAT_KEY);
+}
 
 // ── Mapa de sustitutos por palabras clave ──────────────────────────────────
 const SUBSTITUTES_MAP: { keywords: string[]; options: string[] }[] = [
@@ -86,9 +110,12 @@ const getGroceryList = (selectedRecipes: Recipe[], people: number) => {
 };
 
 export const MilprepModule: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'mercado' | 'recetas' | 'chat'>('recetas');
-  const [peopleCount, setPeopleCount] = useState(1);
-  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
+  // Carga la sesión guardada UNA sola vez al montar
+  const [_savedSession] = useState<MilprepSession | null>(loadMilprepSession);
+
+  const [activeTab, setActiveTab] = useState<'mercado' | 'recetas' | 'chat'>(_savedSession?.activeTab ?? 'recetas');
+  const [peopleCount, setPeopleCount] = useState(_savedSession?.peopleCount ?? 1);
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>(_savedSession?.selectedRecipeIds ?? []);
   const [showReadyBanner, setShowReadyBanner] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<string[]>([]);
   const [unavailableIngredients, setUnavailableIngredients] = useState<string[]>([]);
@@ -98,35 +125,85 @@ export const MilprepModule: React.FC = () => {
   
   const selectedRecipes = MILPREP_RECIPES.filter(r => selectedRecipeIds.includes(r.id));
 
+  // Solo mostrar el banner cuando el usuario ACABA de llegar a 7 (transición 6→7, no al restaurar)
+  const prevRecipeCount = useRef(selectedRecipeIds.length);
   useEffect(() => {
-    if (selectedRecipeIds.length === 7) {
+    if (selectedRecipeIds.length === 7 && prevRecipeCount.current < 7) {
       setShowReadyBanner(true);
     }
+    prevRecipeCount.current = selectedRecipeIds.length;
   }, [selectedRecipeIds.length]);
 
   // Construye el system prompt con contexto real de la sesión
   const buildMilprepSystemPrompt = () => {
-    const recetasList = selectedRecipes.map(r => `- ${r.title} (${r.time})`).join('\n') || '- Sin recetas seleccionadas';
-    const swaps = Object.entries(swappedIngredients).map(([o, s]) => `- ${o} → ${s}`).join('\n');
+    const recetasList = selectedRecipes.map(r => `  • ${r.title} (${r.time})`).join('\n') || '  • Sin recetas seleccionadas';
+    const swaps = Object.entries(swappedIngredients).map(([o, s]) => `  • ${o} → usar en su lugar: ${s}`).join('\n');
     const pending = unavailableIngredients.filter(i => !(i in swappedIngredients));
 
-    return `Eres Sous, sous chef experto en meal prep semanal. Siempre hablas en español. Eres práctico, motivador y organizado.
+    return `Eres Sous, un sous chef personal que acompaña al usuario durante su mealprep semanal. Siempre hablas en español. Eres paciente, motivador y muy claro.
 
-SESIÓN DE MEALPREP — ${peopleCount} persona${peopleCount !== 1 ? 's' : ''}:
+═══════════════════════════════
+SESIÓN DE MEALPREP — ${peopleCount} persona${peopleCount !== 1 ? 's' : ''}
+RECETAS DE ESTA SEMANA:
 ${recetasList}
-${swaps ? `\nSUSTITUTOS DE INGREDIENTES:\n${swaps}` : ''}
-${pending.length > 0 ? `\nINGREDIENTES NO DISPONIBLES: ${pending.join(', ')}` : ''}
+${swaps ? `\nCAMBIOS DE INGREDIENTES CONFIRMADOS:\n${swaps}` : ''}
+${pending.length > 0 ? `\nINGREDIENTES SIN SUSTITUTO (el usuario no los consiguió): ${pending.join(', ')}` : ''}
+═══════════════════════════════
 
-Tu rol: guiar en orden de preparación eficiente (batch cooking), dar tips de conservación y almacenamiento, motivar al usuario. Adapta la guía a los ingredientes disponibles y sus sustitutos. Responde solo temas de cocina. Máximo 60 palabras por respuesta.`;
+REGLAS OBLIGATORIAS DE COMUNICACIÓN:
+1. Explica TODO como si le hablaras a alguien que nunca ha cocinado. No asumas ningún conocimiento previo.
+2. NUNCA uses términos técnicos sin explicarlos al mismo tiempo. Ejemplos:
+   - MAL: "Sofríe la cebolla"  →  BIEN: "Calienta un poco de aceite en la sartén y pon la cebolla picada. Revuelve cada 30 segundos con una cuchara de madera hasta que se vea transparente y suave (aprox. 5 minutos)."
+   - MAL: "Corta en brunoise"  →  BIEN: "Corta en cubos muy pequeños de aprox. 5 mm — como si fueran granitos de arroz grandes."
+   - MAL: "Estofar la carne"   →  BIEN: "Cocinar la carne tapada a fuego bajo con un poco de líquido (agua, caldo o salsa) durante mucho tiempo, para que quede muy suave y jugosa."
+3. Cada respuesta DEBE estar organizada con saltos de línea claros. USA:
+   - Listas numeradas (1. 2. 3.) para pasos de cocina en orden.
+   - Viñetas (•) para ingredientes o tips adicionales.
+   - Líneas en blanco entre secciones.
+   - NUNCA escribas todo en un solo párrafo pegado.
+4. SIEMPRE divide las preparaciones en estas 3 etapas y nómbralas claramente:
+   🔪 MISE EN PLACE — Todo lo que se alista antes de cocinar (picar, medir, marinar, etc.)
+   🍳 PREPARACIÓN — Los pasos de cocción en orden.
+   🍽️ MONTAJE — Cómo servir o guardar el resultado.
+5. Sé eficiente: guía al usuario para lograr el resultado en el menor tiempo posible, aprovechando tiempos de cocción para preparar otras cosas en paralelo.
+6. Máximo 120 palabras por respuesta. Si hay más pasos, dívide en partes y pregunta si está listo para continuar.
+7. Responde únicamente temas de cocina relacionados con esta sesión.`;
+  };
+
+  // Construye el mensaje inicial con resumen completo de la sesión
+  const buildInitialMessage = () => {
+    const recetasList = selectedRecipes.length > 0
+      ? selectedRecipes.map(r => `  • ${r.title} (${r.time})`).join('\n')
+      : '  • Sin recetas seleccionadas aún';
+    const swapsList = Object.entries(swappedIngredients)
+      .map(([o, s]) => `  • ${o} → ${s}`)
+      .join('\n');
+    const pending = unavailableIngredients.filter(i => !(i in swappedIngredients));
+
+    let msg = `¡Hola Sous! Estoy listo para empezar mi mealprep de esta semana.\n\n`;
+    msg += `👥 Voy a cocinar para ${peopleCount} persona${peopleCount !== 1 ? 's' : ''}.\n\n`;
+    msg += `📋 Mis recetas de esta semana:\n${recetasList}`;
+    if (swapsList) {
+      msg += `\n\n🔄 Cambié estos ingredientes:\n${swapsList}`;
+    }
+    if (pending.length > 0) {
+      msg += `\n\n⚠️ No conseguí estos ingredientes: ${pending.join(', ')}`;
+    }
+    msg += `\n\n¿Por dónde empezamos?`;
+    return msg;
   };
 
   // Chat state
   const [systemPrompt, setSystemPrompt] = useState<string | undefined>(undefined);
-  const { isConnected, isLoading, messages, sendMessage } = useGeminiChat({ mode: 'milprep', systemPrompt });
+  const { isConnected, isLoading, messages, sendMessage, clearMessages } = useGeminiChat({ mode: 'milprep', systemPrompt, storageKey: MILPREP_CHAT_KEY });
   const [inputText, setInputText] = useState("");
-  const [chatStarted, setChatStarted] = useState(false);
+  const [chatStarted, setChatStarted] = useState(_savedSession?.chatStarted ?? false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const pendingMsgRef = useRef('');
+
+  // Ref con los valores más recientes — se actualiza en cada render (antes de cualquier efecto)
+  const latestSession = useRef<MilprepSession>({ selectedRecipeIds, peopleCount, chatStarted, activeTab });
+  latestSession.current = { selectedRecipeIds, peopleCount, chatStarted, activeTab };
 
   // ── Modo voz (Gemini Live) ───────────────────────────────────────────────
   const [voiceMode, setVoiceMode] = useState(false);
@@ -137,6 +214,17 @@ Tu rol: guiar en orden de preparación eficiente (batch cooking), dar tips de co
     setVoiceMode(true);
     await startListening();
   };
+
+  // Persistir sesión cuando cambian las partes clave
+  useEffect(() => {
+    saveMilprepSession(latestSession.current);
+  }, [selectedRecipeIds, peopleCount, chatStarted, activeTab]);
+
+  // Guardar también al desmontar (cuando el usuario navega a otra ruta)
+  useEffect(() => {
+    return () => { saveMilprepSession(latestSession.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-scroll en chat
   useEffect(() => {
@@ -612,13 +700,34 @@ Tu rol: guiar en orden de preparación eficiente (batch cooking), dar tips de co
                   </div>
                 </div>
                 <button
-                  onClick={() => setChatStarted(false)}
+                  onClick={() => {
+                    clearMilprepSession();
+                    clearMessages();
+                    setChatStarted(false);
+                    setSelectedRecipeIds([]);
+                    setPeopleCount(1);
+                    setActiveTab('recetas');
+                  }}
                   className="flex items-center gap-1 text-xs text-neutral-400 hover:text-red-500 transition-colors px-2 py-1 rounded-full hover:bg-red-50"
                 >
                   <RefreshCw className="w-3 h-3" />
                   Terminar sesión
                 </button>
               </div>
+
+              {/* ── Panel compacto de recetas seleccionadas (siempre visible en chat) ── */}
+              {selectedRecipes.length > 0 && (
+                <div className="flex-shrink-0 px-3 py-2 bg-orange-50 border-b border-orange-100 overflow-x-auto">
+                  <div className="flex gap-2 items-center">
+                    <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wide whitespace-nowrap">Esta semana:</span>
+                    {selectedRecipes.map(r => (
+                      <span key={r.id} className="whitespace-nowrap text-[11px] font-semibold bg-white border border-orange-200 text-orange-700 px-2.5 py-1 rounded-full shadow-sm flex-shrink-0">
+                        {r.title}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* ── Pantalla de inicio antes del chat ── */}
               {!chatStarted ? (
@@ -645,16 +754,7 @@ Tu rol: guiar en orden de preparación eficiente (batch cooking), dar tips de co
                   <button
                     onClick={() => {
                       setSystemPrompt(buildMilprepSystemPrompt());
-                      const recetasList = selectedRecipes.length > 0
-                        ? selectedRecipes.map(r => r.title).join(', ')
-                        : 'mis recetas de la semana';
-                      const swaps = Object.entries(swappedIngredients).map(([o, s]) => `${o} → ${s}`);
-                      const pending = unavailableIngredients.filter(i => !(i in swappedIngredients));
-                      let msg = `¡Hola Sous! Estoy listo para mealprep. Esta semana: ${recetasList}. Somos ${peopleCount} persona${peopleCount !== 1 ? 's' : ''}.`;
-                      if (swaps.length > 0) msg += ` Cambié ingredientes: ${swaps.join(', ')}.`;
-                      if (pending.length > 0) msg += ` No conseguí: ${pending.join(', ')}.`;
-                      msg += ` ¿Por dónde empezamos?`;
-                      pendingMsgRef.current = msg;
+                      pendingMsgRef.current = buildInitialMessage();
                       setChatStarted(true);
                     }}
                     className="px-8 py-4 rounded-2xl font-black text-white text-base bg-gradient-to-r from-orange-500 to-rose-500 shadow-xl shadow-orange-400/30 active:scale-95 transition-all"
@@ -675,18 +775,12 @@ Tu rol: guiar en orden de preparación eficiente (batch cooking), dar tips de co
                     )}
                     {messages.map((msg: {agent: string; text: string}, idx: number) => (
                       <div key={idx} className={`flex ${msg.agent === 'chef' ? 'justify-start' : 'justify-end'}`}>
-                        <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                        <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl shadow-sm ${
                           msg.agent === 'chef'
                             ? 'bg-white border border-neutral-100 text-neutral-800 rounded-tl-none'
                             : 'bg-orange-500 text-white rounded-tr-none'
                         }`}>
-                          {msg.text || (
-                            <span className="flex gap-1 items-center h-4">
-                              <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce [animation-delay:0ms]" />
-                              <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                              <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce [animation-delay:300ms]" />
-                            </span>
-                          )}
+                          <ChatMessage text={msg.text} isChef={msg.agent === 'chef'} />
                         </div>
                       </div>
                     ))}

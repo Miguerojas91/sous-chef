@@ -90,7 +90,7 @@ export const LevelPage = ({
   const [activeStep, setActiveStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [uploadState, setUploadState] = useState<'idle' | 'reviewing' | 'approved'>('idle');
+  const [uploadState, setUploadState] = useState<'idle' | 'reviewing' | 'approved' | 'rejected'>('idle');
   const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [showRecipe, setShowRecipe] = useState(false);
@@ -121,11 +121,16 @@ export const LevelPage = ({
         result = { stars: 3, feedback: '¡Excelente trabajo! Técnica bien ejecutada.' };
       }
       setEvaluationResult(result);
-      // Guardar progreso: XP solo si es la primera vez que se completa este nivel
-      const isFirstCompletion = getLevelStars(location.pathname) === 0;
-      saveLevelStars(location.pathname, result.stars);
-      if (isFirstCompletion) addXP(xpReward);
-      setUploadState('approved');
+      if (result.stars === 0) {
+        // Imagen inválida — no guardar progreso ni XP
+        setUploadState('rejected');
+      } else {
+        // Guardar progreso: XP solo si es la primera vez que se completa este nivel
+        const isFirstCompletion = getLevelStars(location.pathname) === 0;
+        saveLevelStars(location.pathname, result.stars);
+        if (isFirstCompletion) addXP(xpReward);
+        setUploadState('approved');
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -493,6 +498,13 @@ export const LevelPage = ({
                       </div>
                     </div>
                   )}
+                  {uploadState === 'rejected' && (
+                    <div className="absolute inset-0 bg-red-500/60 flex items-center justify-center">
+                      <div className="bg-red-600 rounded-full p-4 shadow-2xl shadow-red-900/30">
+                        <AlertTriangle size={40} className="text-white" />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {uploadState === 'approved' && evaluationResult && (
@@ -507,12 +519,25 @@ export const LevelPage = ({
                   </div>
                 )}
 
+                {uploadState === 'rejected' && evaluationResult && (
+                  <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-5 text-center">
+                    <AlertTriangle size={32} className="mx-auto mb-2 text-red-500" />
+                    <p className="font-black text-lg text-red-700">Foto no válida ❌</p>
+                    <p className="text-red-600 text-sm mt-2 leading-relaxed">{evaluationResult.feedback}</p>
+                    <p className="text-red-400 text-xs mt-3">La foto debe mostrar claramente el resultado de la tarea para completar el nivel.</p>
+                  </div>
+                )}
+
                 {uploadState !== 'reviewing' && (
                   <button
-                    onClick={() => { setUploadedImage(null); setUploadState('idle'); }}
-                    className="w-full py-2 text-sm font-bold text-neutral-400 hover:text-red-500 transition-colors"
+                    onClick={() => { setUploadedImage(null); setUploadState('idle'); setEvaluationResult(null); }}
+                    className={`w-full py-2 text-sm font-bold transition-colors ${
+                      uploadState === 'rejected'
+                        ? 'text-red-500 hover:text-red-700'
+                        : 'text-neutral-400 hover:text-red-500'
+                    }`}
                   >
-                    Cambiar foto
+                    {uploadState === 'rejected' ? '📷 Volver a intentar con otra foto' : 'Cambiar foto'}
                   </button>
                 )}
               </div>

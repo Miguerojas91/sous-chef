@@ -154,13 +154,26 @@ app.post('/api/evaluate', async (req, res) => {
     ? criteria.map(c => `${c.stars}: ${c.label}`).join('\n')
     : '⭐⭐⭐: Técnica impecable\n⭐⭐: Buena ejecución\n⭐: Primer intento válido';
 
-  const prompt = `Eres un chef evaluador experto. Analiza esta imagen de la técnica culinaria: "${levelName}".
+  const prompt = `Eres un evaluador culinario estricto y honesto. Tu trabajo es verificar si una imagen muestra el resultado de una tarea de cocina específica.
 
-Criterios de evaluación:
+TAREA A EVALUAR: "${levelName}"
+
+═══ PASO 1: VERIFICACIÓN DE CONTENIDO (OBLIGATORIO) ═══
+Antes de calificar, determina si la imagen muestra claramente el resultado de la tarea culinaria descrita.
+
+Si la imagen NO muestra la tarea (por ejemplo: es un escritorio, un objeto random, una persona, una habitación, o cualquier cosa que no sea el resultado culinario requerido), responde EXACTAMENTE:
+{"stars": 0, "feedback": "La imagen no muestra la tarea requerida. Fotografía tu resultado culinario y vuelve a intentarlo."}
+
+═══ PASO 2: EVALUACIÓN (solo si SÍ muestra la tarea) ═══
+Criterios de calificación:
 ${criteriaText}
 
-Responde ÚNICAMENTE con este JSON (sin markdown, sin texto extra):
-{"stars": <1, 2 o 3>, "feedback": "<frase motivadora en español, máximo 2 oraciones>"}`;
+Sé estricto: si la técnica es incorrecta o el resultado es claramente inadecuado, da 1 estrella.
+
+Responde ÚNICAMENTE con JSON válido (sin markdown, sin texto extra):
+{"stars": <0, 1, 2 o 3>, "feedback": "<retroalimentación honesta en español, máximo 2 oraciones>"}
+
+REGLA CRÍTICA: stars = 0 si la imagen no muestra la tarea culinaria requerida. Nunca des estrellas a fotos de objetos, escritorios, personas o cualquier cosa que no sea el resultado culinario solicitado.`;
 
   try {
     const ai = getAI();
@@ -181,15 +194,18 @@ Responde ÚNICAMENTE con este JSON (sin markdown, sin texto extra):
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
+      const stars = Math.min(3, Math.max(0, Math.round(Number(parsed.stars) ?? 0)));
       res.json({
-        stars: Math.min(3, Math.max(1, Number(parsed.stars) || 2)),
-        feedback: parsed.feedback || '¡Buen trabajo! Sigue practicando la técnica.',
+        stars,
+        feedback: parsed.feedback || (stars === 0
+          ? 'La imagen no muestra la tarea requerida. Fotografía tu resultado y vuelve a intentarlo.'
+          : '¡Buen trabajo! Sigue practicando la técnica.'),
       });
     } else {
       throw new Error('No JSON en respuesta');
     }
   } catch {
-    res.json({ stars: 2, feedback: '¡Buena técnica! Con más práctica llegarás a la perfección.' });
+    res.json({ stars: 0, feedback: 'No pudimos analizar la imagen. Asegúrate de que muestre claramente tu resultado culinario.' });
   }
 });
 

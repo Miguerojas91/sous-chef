@@ -3,6 +3,7 @@ import { Globe, ChevronDown, ChevronUp, ArrowLeft, ShoppingCart, Check, Send, Cl
 import { useGeminiChat } from '../hooks/useGeminiChat';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 import { ChatMessage } from './ChatMessage';
+import { useWakeLock } from '../hooks/useWakeLock';
 
 // ─────────────────────────────────────────────
 // SUBSTITUTES (igual que MilprepModule)
@@ -391,6 +392,7 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
 
   // ── Modo voz (Gemini Live) ───────────────────────────────────────────────
   const [voiceMode, setVoiceMode] = useState(false);
+  useWakeLock(chatStarted || voiceMode);
   const [voiceSystemPrompt, setVoiceSystemPrompt] = useState('');
   const { voiceState, transcript, currentChefText, voiceError, silenceSeconds, startListening, disconnect, sendTextToVoice, wakeUp } = useGeminiLive(voiceSystemPrompt);
 

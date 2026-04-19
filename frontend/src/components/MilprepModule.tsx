@@ -7,6 +7,7 @@ import { useGeminiLive } from '../hooks/useGeminiLive';
 import { MILPREP_RECIPES, type Recipe } from '../data/milprepRecipes';
 import { QuickReplies } from './QuickReplies';
 import { ChatMessage } from './ChatMessage';
+import { useWakeLock } from '../hooks/useWakeLock';
 
 // ── Persistencia de sesión mealprep ───────────────────────────────────────────
 const MILPREP_SESSION_KEY = 'sous_milprep_session';
@@ -207,6 +208,7 @@ REGLAS OBLIGATORIAS DE COMUNICACIÓN:
 
   // ── Modo voz (Gemini Live) ───────────────────────────────────────────────
   const [voiceMode, setVoiceMode] = useState(false);
+  useWakeLock(chatStarted || voiceMode);
   const MILPREP_VOICE_PROMPT = `Eres Sous, chef experto en meal prep semanal. Siempre hablas en español. Eres práctico y motivador.\nMODO VOZ: Habla naturalmente, sin listas ni markdown. Frases cortas. No interrumpas el silencio del usuario. Espera que te hable.`;
   const { voiceState, transcript, currentChefText, voiceError, silenceSeconds, startListening, disconnect, sendTextToVoice, wakeUp } = useGeminiLive(MILPREP_VOICE_PROMPT);
 

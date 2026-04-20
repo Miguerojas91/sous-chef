@@ -42,6 +42,7 @@ export const AuthScreen = () => {
     });
 
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [currentTag, setCurrentTag] = useState('');
     const [tagType, setTagType] = useState<'allergies' | 'dislikes'>('allergies');
     const [error, setError] = useState('');
@@ -73,6 +74,14 @@ export const AuthScreen = () => {
         navigate('/');
     };
 
+    const finishRegister = async (data: LocalUser) => {
+        setIsLoading(true);
+        const stored = getStoredUsers();
+        saveStoredUsers([...stored, data]);
+        await loginWithData({ ...data });
+        setIsLoading(false);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -81,7 +90,9 @@ export const AuthScreen = () => {
             // ── Login ──────────────────────────────────────────────────────
             const match = findUser(formData.username, formData.password);
             if (match) {
+                setIsLoading(true);
                 await loginWithData({ ...match });
+                setIsLoading(false);
             } else {
                 setError('Usuario o contraseña incorrectos.');
             }
@@ -106,9 +117,7 @@ export const AuthScreen = () => {
             rank: 'Iniciado',
             is_admin: false,
         };
-        const stored = getStoredUsers();
-        saveStoredUsers([...stored, newUser]);
-        await loginWithData({ ...newUser });
+        await finishRegister(newUser);
     };
 
     return (
@@ -197,9 +206,13 @@ export const AuthScreen = () => {
                                 <div className="mt-8">
                                     <button
                                         type="submit"
-                                        className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors"
+                                        disabled={isLoading}
+                                        className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
-                                        {isLogin ? <><LogIn size={18} /> Entrar</> : <><ArrowRight size={18} /> Continuar</>}
+                                        {isLoading
+                                            ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> {isLogin ? 'Entrando…' : 'Continuando…'}</>
+                                            : isLogin ? <><LogIn size={18} /> Entrar</> : <><ArrowRight size={18} /> Continuar</>
+                                        }
                                     </button>
                                 </div>
                             </div>
@@ -267,11 +280,31 @@ export const AuthScreen = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-neutral-900 hover:bg-black transition-colors"
+                                        disabled={isLoading}
+                                        className="flex-1 flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-neutral-900 hover:bg-black transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
-                                        <Check size={18} /> Crear Cuenta
+                                        {isLoading
+                                            ? <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Creando…</>
+                                            : <><Check size={18} /> Crear Cuenta</>
+                                        }
                                     </button>
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        const newUser: LocalUser = {
+                                            username: formData.username.trim(),
+                                            password: formData.password.trim(),
+                                            email: formData.email.trim() || undefined,
+                                            xp: 0, rank: 'Iniciado', is_admin: false,
+                                        };
+                                        await finishRegister(newUser);
+                                    }}
+                                    disabled={isLoading}
+                                    className="w-full mt-2 text-xs text-neutral-400 hover:text-neutral-600 transition-colors py-1 disabled:opacity-40"
+                                >
+                                    Saltar este paso →
+                                </button>
                             </div>
                         )}
                     </form>

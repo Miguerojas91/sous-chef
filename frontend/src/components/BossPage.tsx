@@ -114,23 +114,33 @@ export const BossPage = ({
       setReviewingId(id);
 
       const challenge = challenges.find(c => c.id === id);
+      let evalResult: EvaluationResult;
       try {
         const criteria = challenge
           ? [{ stars: '⭐⭐⭐', label: challenge.eval }]
           : [];
-        const result = await evaluateImage(imageData, challenge?.name || 'Reto culinario', criteria);
-        setChallengeResults(prev => ({ ...prev, [id]: result }));
+        evalResult = await evaluateImage(imageData, challenge?.name || 'Reto culinario', criteria);
       } catch {
-        setChallengeResults(prev => ({ ...prev, [id]: { stars: 3, feedback: '¡Reto superado con éxito!' } }));
+        evalResult = { stars: 0, feedback: 'No pudimos conectar con el evaluador. Revisa tu conexión e intenta de nuevo.' };
       }
 
+      setChallengeResults(prev => ({ ...prev, [id]: evalResult }));
       setReviewingId(null);
-      setCompletedChallenges(prev => {
-        const next = new Set(prev);
-        next.add(id);
-        if (next.size === challenges.length) setTimeout(() => setBossDefeated(true), 600);
-        return next;
-      });
+
+      // Solo marcar como completado si la imagen es válida (stars > 0)
+      if (evalResult.stars > 0) {
+        setCompletedChallenges(prev => {
+          const next = new Set(prev);
+          next.add(id);
+          if (next.size === challenges.length) setTimeout(() => setBossDefeated(true), 600);
+          return next;
+        });
+      } else {
+        // Imagen inválida o error — limpiar imagen para que pueda reintentar
+        setTimeout(() => {
+          setUploadedImages(prev => { const n = { ...prev }; delete n[id]; return n; });
+        }, 2500);
+      }
     };
     reader.readAsDataURL(file);
   };

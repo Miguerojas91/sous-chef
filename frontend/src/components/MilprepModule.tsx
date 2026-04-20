@@ -8,6 +8,7 @@ import { MILPREP_RECIPES, type Recipe } from '../data/milprepRecipes';
 import { QuickReplies } from './QuickReplies';
 import { ChatMessage } from './ChatMessage';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { friendlyVoiceError } from '../utils/friendlyError';
 
 // ── Persistencia de sesión mealprep ───────────────────────────────────────────
 const MILPREP_SESSION_KEY = 'sous_milprep_session';
@@ -118,6 +119,7 @@ export const MilprepModule: React.FC = () => {
   const [peopleCount, setPeopleCount] = useState(_savedSession?.peopleCount ?? 1);
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>(_savedSession?.selectedRecipeIds ?? []);
   const [showReadyBanner, setShowReadyBanner] = useState(false);
+  const [showConfirmEnd, setShowConfirmEnd] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<string[]>([]);
   const [unavailableIngredients, setUnavailableIngredients] = useState<string[]>([]);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
@@ -213,6 +215,13 @@ REGLAS OBLIGATORIAS DE COMUNICACIÓN:
   const { voiceState, transcript, currentChefText, voiceError, silenceSeconds, startListening, disconnect, sendTextToVoice, wakeUp } = useGeminiLive(MILPREP_VOICE_PROMPT);
 
   const handleStartVoice = async () => {
+    if (!localStorage.getItem('sous_voice_onboarding_seen')) {
+      localStorage.setItem('sous_voice_onboarding_seen', '1');
+      window.dispatchEvent(new CustomEvent('sous:toast', { detail: {
+        msg: '🎙️ Modo manos libres: habla cuando quieras, Sous te escucha. Si hay silencio por 30s entrará en reposo — di algo para despertarlo.',
+        type: 'info',
+      }}));
+    }
     setVoiceMode(true);
     await startListening();
   };
@@ -320,6 +329,8 @@ REGLAS OBLIGATORIAS DE COMUNICACIÓN:
                         setSelectedRecipeIds(prev => prev.filter(id => id !== recipe.id));
                     } else if (selectedRecipeIds.length < 7) {
                         setSelectedRecipeIds(prev => [...prev, recipe.id]);
+                    } else {
+                        window.dispatchEvent(new CustomEvent('sous:toast', { detail: { msg: '¡Límite de 7 recetas alcanzado! Quita una para agregar otra.', type: 'warning' } }));
                     }
                   };
 
@@ -359,8 +370,17 @@ REGLAS OBLIGATORIAS DE COMUNICACIÓN:
                   <span className="text-sm font-semibold text-gray-600">Porciones/Personas:</span>
                   <div className="flex items-center gap-3">
                     <button onClick={() => setPeopleCount(Math.max(1, peopleCount - 1))} className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm border border-gray-200 text-gray-600 hover:text-orange-600 hover:border-orange-300 transition-colors">-</button>
-                    <span className="font-bold w-4 text-center">{peopleCount}</span>
-                    <button onClick={() => setPeopleCount(peopleCount + 1)} className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm border border-gray-200 text-gray-600 hover:text-orange-600 hover:border-orange-300 transition-colors">+</button>
+                    <span className="font-bold w-6 text-center">{peopleCount}</span>
+                    <button
+                      onClick={() => {
+                        if (peopleCount >= 20) {
+                          window.dispatchEvent(new CustomEvent('sous:toast', { detail: { msg: 'Máximo 20 personas permitidas', type: 'warning' } }));
+                        } else {
+                          setPeopleCount(peopleCount + 1);
+                        }
+                      }}
+                      className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm border border-gray-200 text-gray-600 hover:text-orange-600 hover:border-orange-300 transition-colors"
+                    >+</button>
                   </div>
                 </div>
               </div>
@@ -408,6 +428,14 @@ REGLAS OBLIGATORIAS DE COMUNICACIÓN:
                   </div>
                 );
               })()}
+
+              {selectedRecipes.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-400">
+                  <ShoppingCart className="w-12 h-12 mb-3 text-neutral-200" />
+                  <p className="font-bold text-neutral-600 mb-1">Lista vacía</p>
+                  <p className="text-sm">Primero selecciona tus recetas en la pestaña <span className="font-semibold text-orange-500">Recetas</span> para generar la lista de compras.</p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {Object.entries(getGroceryList(selectedRecipes, peopleCount)).map(([category, items]) => (
@@ -576,6 +604,38 @@ REGLAS OBLIGATORIAS DE COMUNICACIÓN:
           {activeTab === 'chat' && (
             <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500 bg-neutral-50 rounded-2xl border border-neutral-100 shadow-sm overflow-hidden relative">
 
+              {/* ── Modal confirmar fin de sesión ── */}
+              {showConfirmEnd && (
+                <div className="absolute inset-0 z-20 bg-black/50 flex items-center justify-center p-6">
+                  <div className="bg-white rounded-2xl p-6 max-w-xs w-full shadow-2xl">
+                    <p className="text-lg font-black text-neutral-800 mb-1 text-center">¿Terminar sesión?</p>
+                    <p className="text-sm text-neutral-500 text-center mb-5">Se borrará el chat y la planificación de esta semana. ¿Estás seguro?</p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowConfirmEnd(false)}
+                        className="flex-1 py-2.5 rounded-xl border border-neutral-200 font-bold text-neutral-700 text-sm hover:bg-neutral-50 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowConfirmEnd(false);
+                          clearMilprepSession();
+                          clearMessages();
+                          setChatStarted(false);
+                          setSelectedRecipeIds([]);
+                          setPeopleCount(1);
+                          setActiveTab('recetas');
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-red-500 font-bold text-white text-sm hover:bg-red-600 transition-colors"
+                      >
+                        Sí, terminar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ── Overlay de modo voz ── */}
               {voiceMode && (() => {
                 const isConnecting   = voiceState === 'connecting';
@@ -611,7 +671,7 @@ REGLAS OBLIGATORIAS DE COMUNICACIÓN:
 
                       {voiceError && (
                         <div className="mb-3 px-4 py-2.5 bg-red-500/20 border border-red-500/40 rounded-2xl max-w-xs text-center">
-                          <p className="text-red-300 text-sm font-medium">{voiceError}</p>
+                          <p className="text-red-300 text-sm font-medium">{friendlyVoiceError(voiceError)}</p>
                           <button onClick={handleStartVoice} className="mt-2 text-xs text-red-400 underline">Intentar de nuevo</button>
                         </div>
                       )}
@@ -702,14 +762,7 @@ REGLAS OBLIGATORIAS DE COMUNICACIÓN:
                   </div>
                 </div>
                 <button
-                  onClick={() => {
-                    clearMilprepSession();
-                    clearMessages();
-                    setChatStarted(false);
-                    setSelectedRecipeIds([]);
-                    setPeopleCount(1);
-                    setActiveTab('recetas');
-                  }}
+                  onClick={() => setShowConfirmEnd(true)}
                   className="flex items-center gap-1 text-xs text-neutral-400 hover:text-red-500 transition-colors px-2 py-1 rounded-full hover:bg-red-50"
                 >
                   <RefreshCw className="w-3 h-3" />
@@ -755,13 +808,22 @@ REGLAS OBLIGATORIAS DE COMUNICACIÓN:
 
                   <button
                     onClick={() => {
+                      if (selectedRecipes.length === 0) {
+                        window.dispatchEvent(new CustomEvent('sous:toast', { detail: { msg: 'Selecciona al menos 1 receta antes de empezar 🍽️', type: 'warning' } }));
+                        setActiveTab('recetas');
+                        return;
+                      }
                       setSystemPrompt(buildMilprepSystemPrompt());
                       pendingMsgRef.current = buildInitialMessage();
                       setChatStarted(true);
                     }}
-                    className="px-8 py-4 rounded-2xl font-black text-white text-base bg-gradient-to-r from-orange-500 to-rose-500 shadow-xl shadow-orange-400/30 active:scale-95 transition-all"
+                    className={`px-8 py-4 rounded-2xl font-black text-white text-base transition-all ${
+                      selectedRecipes.length === 0
+                        ? 'bg-neutral-300 cursor-not-allowed shadow-none'
+                        : 'bg-gradient-to-r from-orange-500 to-rose-500 shadow-xl shadow-orange-400/30 active:scale-95'
+                    }`}
                   >
-                    ¡Estoy listo! 🚀
+                    {selectedRecipes.length === 0 ? 'Primero elige recetas →' : '¡Estoy listo! 🚀'}
                   </button>
                 </div>
               ) : (
@@ -801,7 +863,7 @@ REGLAS OBLIGATORIAS DE COMUNICACIÓN:
                       <button
                         onClick={handleStartVoice}
                         title="Hablar con Sous (manos libres)"
-                        className="p-1.5 bg-red-500 hover:bg-red-600 transition-colors rounded-full text-white flex-shrink-0"
+                        className="p-1.5 bg-violet-600 hover:bg-violet-700 transition-colors rounded-full text-white flex-shrink-0"
                       >
                         <Mic className="w-4 h-4" />
                       </button>

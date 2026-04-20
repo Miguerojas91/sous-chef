@@ -87,8 +87,14 @@ export const LevelPage = ({
   const location = useLocation();
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const stepsKey = `sous_steps_${location.pathname}`;
   const [activeStep, setActiveStep] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(() => {
+    try {
+      const raw = localStorage.getItem(stepsKey);
+      return raw ? new Set<number>(JSON.parse(raw) as number[]) : new Set();
+    } catch { return new Set(); }
+  });
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [uploadState, setUploadState] = useState<'idle' | 'reviewing' | 'approved' | 'rejected'>('idle');
   const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
@@ -103,6 +109,7 @@ export const LevelPage = ({
       const next = new Set(prev);
       if (next.has(idx)) next.delete(idx);
       else next.add(idx);
+      try { localStorage.setItem(stepsKey, JSON.stringify([...next])); } catch { /* ok */ }
       return next;
     });
   };
@@ -118,7 +125,7 @@ export const LevelPage = ({
       try {
         result = await evaluateImage(imageData, levelName, evaluationCriteria || []);
       } catch {
-        result = { stars: 3, feedback: '¡Excelente trabajo! Técnica bien ejecutada.' };
+        result = { stars: 0, feedback: 'No pudimos conectar con el evaluador. Revisa tu conexión e intenta de nuevo.' };
       }
       setEvaluationResult(result);
       if (result.stars === 0) {

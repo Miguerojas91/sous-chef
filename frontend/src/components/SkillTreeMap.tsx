@@ -242,6 +242,9 @@ const LevelModal = ({
 
 export const SkillTreeMap = () => {
   const [selected, setSelected] = useState<{ level: GameLevel; wi: number } | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return !localStorage.getItem('sous_map_onboarding_seen');
+  });
   const navigate = useNavigate();
   const isPremium = isPremiumUser();
 
@@ -280,6 +283,25 @@ export const SkillTreeMap = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Onboarding banner (primera visita) ── */}
+      {showOnboarding && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-start gap-3 flex-shrink-0">
+          <span className="text-2xl flex-shrink-0">🗺️</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-black text-amber-800">¡Bienvenido al Modo Aventura!</p>
+            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+              Toca un nivel activo <strong>(🟠 con borde naranja)</strong>, aprende la técnica, sube tu foto y gana ⭐ y XP. ¡Completa cada nivel para desbloquear el siguiente!
+            </p>
+          </div>
+          <button
+            onClick={() => { setShowOnboarding(false); localStorage.setItem('sous_map_onboarding_seen', '1'); }}
+            className="flex-shrink-0 text-amber-500 hover:text-amber-700 transition-colors text-lg leading-none"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* ── Scrollable map ── */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -488,7 +510,7 @@ export const SkillTreeMap = () => {
                   {/* Level name label */}
                   <text x={x} y={labelY}
                     textAnchor="middle" dominantBaseline="middle"
-                    fontSize={8} fontWeight="700"
+                    fontSize={10} fontWeight="700"
                     fill={status === 'locked' ? '#9ca3af' : wc.label}
                     fontFamily="Plus Jakarta Sans, sans-serif">
                     {level.name}

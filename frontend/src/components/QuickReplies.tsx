@@ -22,7 +22,8 @@ export const QuickReplies = ({ onSend, loading = false, replies = DEFAULT_REPLIE
       {replies.map(({ label, msg }) => (
         <button
           key={label}
-          onClick={() => !loading && onSend(msg)}
+          disabled={loading}
+          onClick={() => onSend(msg)}
           className={`flex-1 min-w-[calc(50%-4px)] px-3 py-2.5 border text-sm font-bold rounded-2xl transition-all text-center shadow-sm
             ${loading
               ? 'bg-neutral-100 border-neutral-200 text-neutral-400 cursor-not-allowed'

@@ -4,8 +4,10 @@ import { useGeminiLive } from '../hooks/useGeminiLive';
 import { buildCookingSystemPrompt } from '../services/gemini';
 import type { CookingIntent } from '../services/gemini';
 import { Mic, ChefHat, Send, X, ArrowLeft, Clock, Utensils, Sparkles, RefreshCw } from 'lucide-react';
+import { friendlyVoiceError } from '../utils/friendlyError';
 import { QuickReplies } from './QuickReplies';
 import { ChatMessage } from './ChatMessage';
+import { useWakeLock } from '../hooks/useWakeLock';
 
 // ── Persistencia de la sesión activa ─────────────────────────────────────────
 
@@ -64,7 +66,11 @@ const CookingChat: React.FC<{
 
   const [inputText, setInputText] = useState('');
   const [voiceMode, setVoiceMode] = useState(false);
+  const [showConfirmEnd, setShowConfirmEnd] = useState(false);
   const textBottomRef = useRef<HTMLDivElement>(null);
+
+  // Mantiene la pantalla encendida mientras el chat o la voz estén activos
+  useWakeLock(true);
 
   useEffect(() => { textBottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -99,7 +105,16 @@ const CookingChat: React.FC<{
     onReset();
   };
 
+  const handleConfirmReset = () => setShowConfirmEnd(true);
+
   const handleStartVoice = async () => {
+    if (!localStorage.getItem('sous_voice_onboarding_seen')) {
+      localStorage.setItem('sous_voice_onboarding_seen', '1');
+      window.dispatchEvent(new CustomEvent('sous:toast', { detail: {
+        msg: '🎙️ Modo manos libres: habla cuando quieras, Sous te escucha. Si hay silencio por 30s entrará en reposo — di algo para despertarlo.',
+        type: 'info',
+      }}));
+    }
     setVoiceMode(true);
     // startListening usa voiceStateRef internamente — no hay stale closure
     await startListening();
@@ -166,7 +181,7 @@ const CookingChat: React.FC<{
           {/* Error de micrófono */}
           {voiceError && (
             <div className="mb-3 px-4 py-2.5 bg-red-500/20 border border-red-500/40 rounded-2xl max-w-xs text-center">
-              <p className="text-red-300 text-sm font-medium">{voiceError}</p>
+              <p className="text-red-300 text-sm font-medium">{friendlyVoiceError(voiceError)}</p>
               <button
                 onClick={handleStartVoice}
                 className="mt-2 text-xs text-red-400 underline"
@@ -262,7 +277,7 @@ const CookingChat: React.FC<{
           {/* Acciones */}
           <div className="flex items-center justify-between">
             <button
-              onClick={handleReset}
+              onClick={handleConfirmReset}
               className="text-xs text-neutral-500 hover:text-red-400 transition-colors px-3 py-2 rounded-xl hover:bg-neutral-800"
             >
               Terminar sesión
@@ -294,7 +309,31 @@ const CookingChat: React.FC<{
 
   // ── Modo texto ──
   return (
-    <div className="flex flex-col h-full bg-neutral-50">
+    <div className="flex flex-col h-full bg-neutral-50 relative">
+      {/* Modal confirmar fin de sesión */}
+      {showConfirmEnd && (
+        <div className="absolute inset-0 z-20 bg-black/50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-2xl p-6 max-w-xs w-full shadow-2xl">
+            <p className="text-lg font-black text-neutral-800 mb-1 text-center">¿Terminar sesión?</p>
+            <p className="text-sm text-neutral-500 text-center mb-5">Se borrará todo el historial de esta conversación. ¿Estás seguro?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmEnd(false)}
+                className="flex-1 py-2.5 rounded-xl border border-neutral-200 font-bold text-neutral-700 text-sm hover:bg-neutral-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { setShowConfirmEnd(false); handleReset(); }}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 font-bold text-white text-sm hover:bg-red-600 transition-colors"
+              >
+                Sí, terminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-neutral-100 flex-shrink-0">
         <div className="flex items-center gap-2">
@@ -303,9 +342,13 @@ const CookingChat: React.FC<{
             <span className="text-sm font-bold text-neutral-700 block leading-tight">Chef Sous</span>
             <span className="text-[10px] text-neutral-400 leading-tight">{intentLabel[intent]} · {timeAvailable}</span>
           </div>
+          <span className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ml-1 ${isLoading ? 'bg-yellow-100 text-yellow-600' : 'bg-emerald-100 text-emerald-600'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-emerald-500'}`} />
+            {isLoading ? 'Respondiendo…' : 'Conectado'}
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <button onClick={handleReset} title="Terminar sesión" className="flex items-center gap-1 text-xs text-neutral-400 hover:text-red-500 transition-colors px-2 py-1 rounded-full hover:bg-red-50">
+          <button onClick={handleConfirmReset} title="Terminar sesión" className="flex items-center gap-1 text-xs text-neutral-400 hover:text-red-500 transition-colors px-2 py-1 rounded-full hover:bg-red-50">
             <RefreshCw className="w-3 h-3" />
             Terminar sesión
           </button>
@@ -344,7 +387,7 @@ const CookingChat: React.FC<{
       {/* Input */}
       <div className="flex-shrink-0 px-3 py-2.5 bg-white border-t border-neutral-100">
         <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-2xl px-2 py-1.5">
-          <button onClick={handleStartVoice} title="Hablar con Sous (manos libres)" className="p-1.5 bg-red-500 hover:bg-red-600 transition-colors rounded-full text-white flex-shrink-0">
+          <button onClick={handleStartVoice} title="Hablar con Sous (manos libres)" className="p-1.5 bg-violet-600 hover:bg-violet-700 transition-colors rounded-full text-white flex-shrink-0">
             <Mic className="w-4 h-4" />
           </button>
           <input

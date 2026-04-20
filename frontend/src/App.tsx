@@ -1,6 +1,6 @@
-import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { CookingSession } from './components/CookingSession';
-import { ChefHat, Home, Compass, Map as MapIcon, Globe, BookOpen, LogOut, CalendarDays, ShieldAlert } from 'lucide-react';
+import { ChefHat, Home, Compass, Map as MapIcon, Globe, BookOpen, LogOut, CalendarDays, ShieldAlert, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { EditorProvider, useEditor } from './context/EditorContext';
 
@@ -55,9 +55,47 @@ const navLinks = [
   { to: '/milprep',  icon: CalendarDays,label: 'Mealprep',         shortLabel: 'Mealprep',  exact: false },
 ];
 
+// ── Toast system ──────────────────────────────────────────────────────────────
+interface ToastData { msg: string; type: 'info' | 'warning' | 'success' | 'error' }
+
+// Dispatch helper — usable from anywhere
+export function showToast(msg: string, type: ToastData['type'] = 'info') {
+  window.dispatchEvent(new CustomEvent('sous:toast', { detail: { msg, type } }));
+}
+
+const Toast = ({ data, onClose }: { data: ToastData; onClose: () => void }) => {
+  const colors: Record<ToastData['type'], string> = {
+    info:    'bg-blue-600 text-white',
+    warning: 'bg-amber-500 text-white',
+    success: 'bg-emerald-600 text-white',
+    error:   'bg-red-600 text-white',
+  };
+  return (
+    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl max-w-sm w-[92vw] animate-in fade-in slide-in-from-top-4 duration-300 ${colors[data.type]}`}>
+      <span className="flex-1 text-sm font-semibold leading-snug">{data.msg}</span>
+      <button onClick={onClose} className="flex-shrink-0 opacity-70 hover:opacity-100">
+        <X size={16} />
+      </button>
+    </div>
+  );
+};
+
+// Redirect with toast (for locked level / premium routes)
+const ToastRedirect = ({ to, msg, type }: { to: string; msg: string; type: ToastData['type'] }) => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    showToast(msg, type);
+    navigate(to, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+};
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin, isEditMode, toggleEditMode } = useEditor();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [toast, setToast] = useState<ToastData | null>(null);
   const [userData, setUserData] = useState({
     username: "Cargando...",
     rank: "Iniciado",
@@ -100,15 +138,31 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     return () => window.removeEventListener('userStateChange', loadUserData);
   }, []);
 
+  // Toast listener
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const handler = (e: Event) => {
+      const { msg, type = 'info' } = (e as CustomEvent<ToastData>).detail;
+      setToast({ msg, type });
+      clearTimeout(timer);
+      timer = setTimeout(() => setToast(null), 3500);
+    };
+    window.addEventListener('sous:toast', handler);
+    return () => { window.removeEventListener('sous:toast', handler); clearTimeout(timer); };
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('user');
-    window.location.href = '/login';
+    navigate('/login');
   };
 
   const userInitial = userData.username?.[0]?.toUpperCase() ?? '?';
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
+      {/* Toast */}
+      {toast && <Toast data={toast} onClose={() => setToast(null)} />}
+
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-neutral-100 sticky top-0 z-50 shadow-[0_1px_12px_rgba(0,0,0,0.06)]">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -254,7 +308,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 // Premium Route Wrapper – redirige a /membresia si no tiene suscripción activa
 const PremiumRoute = ({ children }: { children: React.ReactNode }) => {
   if (!isPremiumUser()) {
-    return <Navigate to="/membresia" replace />;
+    return (
+      <ToastRedirect
+        to="/membresia"
+        msg="🔒 Este contenido es exclusivo para miembros Premium. ¡Desbloquéalo aquí!"
+        type="warning"
+      />
+    );
   }
   return <>{children}</>;
 };
@@ -262,7 +322,13 @@ const PremiumRoute = ({ children }: { children: React.ReactNode }) => {
 // Level Route Wrapper – redirige al mapa si el nivel anterior no ha sido completado
 const LevelRoute = ({ children, path }: { children: React.ReactNode; path: string }) => {
   if (!isLevelUnlocked(path)) {
-    return <Navigate to="/mapa" replace />;
+    return (
+      <ToastRedirect
+        to="/mapa"
+        msg="🔒 Completa el nivel anterior para desbloquear éste"
+        type="warning"
+      />
+    );
   }
   return <>{children}</>;
 };

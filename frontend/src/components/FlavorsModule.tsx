@@ -4,6 +4,7 @@ import { useGeminiChat } from '../hooks/useGeminiChat';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 import { ChatMessage } from './ChatMessage';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { friendlyVoiceError } from '../utils/friendlyError';
 
 // ─────────────────────────────────────────────
 // SUBSTITUTES (igual que MilprepModule)
@@ -392,11 +393,19 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
 
   // ── Modo voz (Gemini Live) ───────────────────────────────────────────────
   const [voiceMode, setVoiceMode] = useState(false);
+  const [showConfirmEnd, setShowConfirmEnd] = useState(false);
   useWakeLock(chatStarted || voiceMode);
   const [voiceSystemPrompt, setVoiceSystemPrompt] = useState('');
   const { voiceState, transcript, currentChefText, voiceError, silenceSeconds, startListening, disconnect, sendTextToVoice, wakeUp } = useGeminiLive(voiceSystemPrompt);
 
   const handleStartVoice = async () => {
+    if (!localStorage.getItem('sous_voice_onboarding_seen')) {
+      localStorage.setItem('sous_voice_onboarding_seen', '1');
+      window.dispatchEvent(new CustomEvent('sous:toast', { detail: {
+        msg: '🎙️ Modo manos libres: habla cuando quieras, Sous te escucha. Si hay silencio por 30s entrará en reposo — di algo para despertarlo.',
+        type: 'info',
+      }}));
+    }
     setVoiceMode(true);
     await startListening();
   };
@@ -886,7 +895,7 @@ Adapta la receta a los ingredientes disponibles y sus sustitutos. Guía paso a p
 
           {voiceError && (
             <div className="mb-3 px-4 py-2.5 bg-red-500/20 border border-red-500/40 rounded-2xl max-w-xs text-center">
-              <p className="text-red-300 text-sm font-medium">{voiceError}</p>
+              <p className="text-red-300 text-sm font-medium">{friendlyVoiceError(voiceError)}</p>
               <button onClick={handleStartVoice} className="mt-2 text-xs text-red-400 underline">Intentar de nuevo</button>
             </div>
           )}
@@ -973,7 +982,31 @@ Adapta la receta a los ingredientes disponibles y sus sustitutos. Guía paso a p
 
   // ── PASO 2: Chat (modo texto) ─────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full bg-neutral-50">
+    <div className="flex flex-col h-full bg-neutral-50 relative">
+      {/* Modal confirmar fin de sesión */}
+      {showConfirmEnd && (
+        <div className="absolute inset-0 z-20 bg-black/50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-2xl p-6 max-w-xs w-full shadow-2xl">
+            <p className="text-lg font-black text-neutral-800 mb-1 text-center">¿Terminar sesión?</p>
+            <p className="text-sm text-neutral-500 text-center mb-5">Se borrará el chat de esta receta. ¿Estás seguro?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmEnd(false)}
+                className="flex-1 py-2.5 rounded-xl border border-neutral-200 font-bold text-neutral-700 text-sm hover:bg-neutral-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { setShowConfirmEnd(false); clearMessages(); setChatStarted(false); setStep('intro'); }}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 font-bold text-white text-sm hover:bg-red-600 transition-colors"
+              >
+                Sí, terminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Header />
 
       {/* Info del chat */}
@@ -984,9 +1017,13 @@ Adapta la receta a los ingredientes disponibles y sus sustitutos. Guía paso a p
             <span className="text-sm font-bold text-neutral-700 block leading-tight">Chef Sous</span>
             <span className="text-[10px] text-neutral-400 leading-tight">{countryFlag} {recipe.name} · {servings} persona{servings !== 1 ? 's' : ''}</span>
           </div>
+          <span className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ml-1 ${isLoading ? 'bg-yellow-100 text-yellow-600' : 'bg-emerald-100 text-emerald-600'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-emerald-500'}`} />
+            {isLoading ? 'Respondiendo…' : 'Conectado'}
+          </span>
         </div>
         <button
-          onClick={() => { clearMessages(); setChatStarted(false); setStep('intro'); }}
+          onClick={() => setShowConfirmEnd(true)}
           className="flex items-center gap-1 text-xs text-neutral-400 hover:text-red-500 transition-colors px-2 py-1 rounded-full hover:bg-red-50"
         >
           <RefreshCw className="w-3 h-3" />
@@ -1023,7 +1060,7 @@ Adapta la receta a los ingredientes disponibles y sus sustitutos. Guía paso a p
           <button
             onClick={handleStartVoice}
             title="Hablar con Sous (manos libres)"
-            className="p-1.5 bg-red-500 hover:bg-red-600 transition-colors rounded-full text-white flex-shrink-0"
+            className="p-1.5 bg-violet-600 hover:bg-violet-700 transition-colors rounded-full text-white flex-shrink-0"
           >
             <Mic className="w-4 h-4" />
           </button>

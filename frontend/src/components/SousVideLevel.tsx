@@ -1,3 +1,4 @@
+/** SousVideLevel.tsx — Nivel 13, Mundo 4: Pico del Maestro (Premium). Cocción sous-vide y pasteurización. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

@@ -1,3 +1,4 @@
+/** AlquimistaBoss.tsx — Jefe 16, Mundo 4: Pico del Maestro (Premium). Desafío de técnicas avanzadas y cocina molecular. */
 import { BossPage } from './BossPage';
 import type { BossRecipe } from './BossPage';
 

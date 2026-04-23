@@ -1,3 +1,28 @@
+/**
+ * AuthScreen.tsx
+ *
+ * Pantalla de autenticación de Sous Chef. Soporta dos modos:
+ *
+ * Modo Login:
+ * - Valida contra `LOCAL_USERS` (precargados) y `sous_registered_users` (localStorage).
+ * - Al iniciar sesión, guarda el objeto de usuario en `localStorage['user']`.
+ * - Despacha `userStateChange` para sincronizar header y contextos.
+ * - Si el usuario tiene email, verifica membresía premium en Hotmart en segundo plano.
+ *
+ * Modo Registro (3 pasos):
+ * 1. Datos: usuario + contraseña (con toggle de visibilidad).
+ * 2. Email (opcional): para verificar membresía premium futura.
+ *    - El usuario puede saltar este paso con "Saltar este paso →".
+ * 3. Confirmación animada con mensaje de bienvenida.
+ *
+ * Los usuarios registrados se guardan en `localStorage['sous_registered_users']`
+ * como array de `LocalUser[]`.
+ *
+ * Limitaciones MVP:
+ * - Contraseñas en texto plano (aceptable para demo).
+ * - Autenticación 100% local (sin backend de auth).
+ */
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChefHat, AlertTriangle, ArrowRight, UserPlus, LogIn, Check, Eye, EyeOff } from 'lucide-react';

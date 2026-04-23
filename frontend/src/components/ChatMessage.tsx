@@ -1,10 +1,33 @@
+/**
+ * ChatMessage.tsx
+ *
+ * Componente de renderizado de mensajes del chat. Soporta dos modos:
+ *
+ * - **Mensajes del usuario**: texto plano sin formato.
+ * - **Mensajes del chef**: markdown ligero con soporte de negrita, cursiva,
+ *   títulos (#, ##, ###), listas numeradas, viñetas y separadores.
+ *
+ * El parser está implementado sin dependencias externas para mantener
+ * el bundle pequeño. Interpreta el subset de markdown que genera el
+ * system prompt del chef (ver `services/gemini.ts`).
+ *
+ * Indicador de escritura:
+ * Cuando `text` es una cadena vacía, muestra tres puntos animados en lugar
+ * del mensaje, indicando que la respuesta está siendo generada (SSE streaming).
+ */
+
 import React from 'react';
 
 // ── Parser de markdown ligero — sin dependencias externas ─────────────────────
 
-/** Convierte **texto** en <strong> y *texto* en <em> dentro de una línea */
+/**
+ * Convierte texto inline con marcadores `**bold**` y `*italic*` en nodos React.
+ * Solo procesa un nivel de anidamiento; no soporta marcadores anidados.
+ *
+ * @param text - Línea de texto con posibles marcadores de negrita/cursiva.
+ * @returns Array de nodos React: texto plano, `<strong>` o `<em>`.
+ */
 function parseInline(text: string): React.ReactNode[] {
-  // Divide por **bold** y *italic*
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
@@ -17,13 +40,23 @@ function parseInline(text: string): React.ReactNode[] {
   });
 }
 
+/** Props del componente ChatMessage. */
 interface ChatMessageProps {
+  /** Contenido textual del mensaje. Cadena vacía activa el indicador de escritura. */
   text: string;
+  /** Si es `true`, aplica el parser de markdown (mensajes del chef). */
   isChef: boolean;
 }
 
+/**
+ * Renderiza un mensaje individual del chat.
+ *
+ * - Si `text` está vacío: muestra tres puntos pulsantes (indicador de generación).
+ * - Si `isChef` es `false`: texto plano del usuario.
+ * - Si `isChef` es `true`: mensaje del chef con markdown completo.
+ */
 export const ChatMessage = ({ text, isChef }: ChatMessageProps) => {
-  // Indicador de escritura
+  // Indicador de escritura (placeholder vacío durante streaming SSE)
   if (!text) {
     return (
       <span className="flex gap-1 items-center h-4">
@@ -34,35 +67,35 @@ export const ChatMessage = ({ text, isChef }: ChatMessageProps) => {
     );
   }
 
-  // Mensajes del usuario — texto plano
+  // Mensaje del usuario — texto plano, sin formato
   if (!isChef) {
     return <span className="text-sm leading-relaxed">{text}</span>;
   }
 
-  // Mensajes del chef — renderizado markdown
+  // ── Mensaje del chef — parser markdown línea por línea ────────────────────
   const lines = text.split('\n');
   const nodes: React.ReactNode[] = [];
   let i = 0;
 
   while (i < lines.length) {
-    const raw = lines[i];
+    const raw  = lines[i];
     const line = raw.trim();
 
-    // Línea vacía → espacio pequeño
+    // Línea vacía → separador de espacio pequeño
     if (!line) {
       nodes.push(<div key={i} className="h-1.5" />);
       i++;
       continue;
     }
 
-    // Separador horizontal --- o ═══
+    // Separador horizontal (--- o ═══)
     if (/^[-═]{3,}$/.test(line)) {
       nodes.push(<hr key={i} className="border-neutral-200 my-2" />);
       i++;
       continue;
     }
 
-    // Títulos ### ## #
+    // Título nivel 3 (###)
     if (line.startsWith('### ')) {
       nodes.push(
         <p key={i} className="text-sm font-bold text-neutral-700 mt-2 mb-0.5 first:mt-0">
@@ -72,6 +105,8 @@ export const ChatMessage = ({ text, isChef }: ChatMessageProps) => {
       i++;
       continue;
     }
+
+    // Título nivel 2 (##)
     if (line.startsWith('## ')) {
       nodes.push(
         <p key={i} className="text-sm font-black text-neutral-800 mt-2 mb-0.5 first:mt-0">
@@ -81,6 +116,8 @@ export const ChatMessage = ({ text, isChef }: ChatMessageProps) => {
       i++;
       continue;
     }
+
+    // Título nivel 1 (#)
     if (line.startsWith('# ')) {
       nodes.push(
         <p key={i} className="text-sm font-black text-neutral-800 mt-2 mb-0.5 first:mt-0">
@@ -91,7 +128,7 @@ export const ChatMessage = ({ text, isChef }: ChatMessageProps) => {
       continue;
     }
 
-    // Lista numerada  1. 2. 3.
+    // Lista numerada (1. 2. 3. ...)
     if (/^\d+\.\s/.test(line)) {
       const listItems: React.ReactNode[] = [];
       let num = 1;
@@ -112,7 +149,7 @@ export const ChatMessage = ({ text, isChef }: ChatMessageProps) => {
       continue;
     }
 
-    // Lista con viñetas - o •
+    // Lista con viñetas (- o •)
     if (line.startsWith('- ') || line.startsWith('• ')) {
       const listItems: React.ReactNode[] = [];
       while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('• '))) {

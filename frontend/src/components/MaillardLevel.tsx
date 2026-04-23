@@ -1,3 +1,4 @@
+/** MaillardLevel.tsx — Nivel 6, Mundo 2: Valle del Fuego. Reacción de Maillard y sellado de carnes. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

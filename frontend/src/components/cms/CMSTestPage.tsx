@@ -1,3 +1,13 @@
+/**
+ * CMSTestPage.tsx
+ *
+ * Página de prueba para el sistema CMS. Muestra un ejemplo de página
+ * renderizada con bloques mock para verificar que el `DynamicPageRenderer`
+ * funciona correctamente.
+ *
+ * Acceso: ruta `/cms/test` (solo disponible en desarrollo / para admins).
+ */
+
 import React from 'react';
 import { DynamicPageRenderer } from './DynamicPageRenderer';
 import type { CMSBlock } from '../../types/cms';

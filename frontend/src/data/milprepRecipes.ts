@@ -1,3 +1,18 @@
+/**
+ * milprepRecipes.ts
+ *
+ * Catálogo de recetas del módulo Mealprep (meal prep semanal).
+ * Cada receta incluye ingredientes con cantidades base para 1 persona,
+ * que el módulo escala automáticamente según el número de comensales.
+ *
+ * Las recetas están organizadas en dos grupos:
+ * - Recetas personalizadas (primero, para fácil acceso al seleccionar).
+ * - Recetas clásicas del catálogo estándar.
+ *
+ * La IA del módulo usa estas recetas para generar la lista de mercado
+ * consolidada y el plan de batch cooking semanal.
+ */
+
 export type Ingredient = {
     name: string;
     category: 'Verduras y Frutas' | 'Proteínas' | 'Lácteos y Refrigerados' | 'Despensa';

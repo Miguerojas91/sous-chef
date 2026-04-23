@@ -1,3 +1,24 @@
+/**
+ * MembresiaPage.tsx
+ *
+ * Página de suscripción Premium de Sous Chef.
+ * Presenta los beneficios, el precio y el botón de compra vía Hotmart.
+ * También incluye el flujo de verificación para usuarios que ya pagaron.
+ *
+ * Flujo "ya pagué":
+ * 1. Usuario ingresa el correo usado en Hotmart.
+ * 2. Se llama a `checkMembership(email)` que consulta el proxy.
+ * 3. Si la membresía es válida: se llama a `updatePremiumStatus(true)`,
+ *    se muestra mensaje de éxito y se redirige a `/mapa` en 1.5 s.
+ * 4. Si no se encuentra: se muestra mensaje de error con instrucciones.
+ *
+ * Si el usuario ya es premium al montar el componente, se muestra
+ * directamente la pantalla de confirmación con acceso al mapa.
+ *
+ * Variables de entorno:
+ * - `VITE_HOTMART_URL` — URL de pago en Hotmart (fallback: placeholder).
+ */
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {

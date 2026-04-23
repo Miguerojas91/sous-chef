@@ -1,3 +1,4 @@
+/** EsferificacionLevel.tsx — Nivel 14, Mundo 4: Pico del Maestro (Premium). Esferificación básica e inversa. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

@@ -1,3 +1,29 @@
+/**
+ * CookingSession.tsx
+ *
+ * Módulo principal "Cocinemos" — sesión de cocina guiada por IA.
+ * Soporta dos modos de interacción que el usuario puede alternar:
+ *
+ * Modo Texto (SSE):
+ * - Chat con el chef via `useGeminiChat` (Server-Sent Events).
+ * - Respuestas rápidas (`<QuickReplies>`) para acciones comunes.
+ * - Markdown renderizado con `<ChatMessage>`.
+ *
+ * Modo Voz (WebSocket):
+ * - Conversación en tiempo real via `useGeminiLive`.
+ * - Transcripción de voz en pantalla.
+ * - Indicadores de estado: conectando, escuchando, hablando, dormido.
+ * - `friendlyVoiceError` para mostrar errores comprensibles.
+ * - Toast de onboarding en la primera activación de voz.
+ *
+ * Configuración inicial (se recibe como props de la ruta):
+ * - `intent`        — Qué quiere hacer el usuario (`CookingIntent`).
+ * - `timeAvailable` — Tiempo disponible para cocinar.
+ *
+ * Wake Lock: mantiene la pantalla encendida durante toda la sesión
+ * (`useWakeLock(chatStarted || voiceMode)`).
+ */
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 import { useGeminiLive } from '../hooks/useGeminiLive';

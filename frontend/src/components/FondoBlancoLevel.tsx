@@ -1,3 +1,4 @@
+/** FondoBlancoLevel.tsx — Nivel 9, Mundo 3: Mar de Sabores (Premium). Elaboración de fondo blanco de ternera. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

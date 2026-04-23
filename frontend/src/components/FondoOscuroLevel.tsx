@@ -1,3 +1,4 @@
+/** FondoOscuroLevel.tsx — Nivel 10, Mundo 3: Mar de Sabores (Premium). Elaboración de fondo oscuro de res. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

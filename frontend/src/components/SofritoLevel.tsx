@@ -1,3 +1,4 @@
+/** SofritoLevel.tsx — Nivel 5, Mundo 2: Valle del Fuego. Técnica de sofrito como base aromática. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

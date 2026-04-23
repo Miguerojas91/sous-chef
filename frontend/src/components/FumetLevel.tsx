@@ -1,3 +1,4 @@
+/** FumetLevel.tsx — Nivel 11, Mundo 3: Mar de Sabores (Premium). Elaboración de fumet de pescado. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

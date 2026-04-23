@@ -1,3 +1,4 @@
+/** MenuDegustacionLevel.tsx — Nivel 17, Mundo 5: Castillo del Chef (Premium). Diseño de menú degustación de 8 tiempos. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

@@ -1,14 +1,35 @@
-// Usuarios locales para acceso sin backend
+/**
+ * localUsers.ts
+ *
+ * Usuarios precargados para acceso directo sin necesidad de backend de autenticación.
+ * En producción estos datos se complementan con los usuarios registrados
+ * dinámicamente, que se almacenan en `localStorage` bajo la clave
+ * `sous_registered_users`.
+ *
+ * ⚠️  SEGURIDAD: Este archivo contiene contraseñas en texto plano.
+ * Es aceptable mientras la app sea una demo/MVP con usuarios de confianza.
+ * Para producción escalable se debe migrar a un backend de autenticación real.
+ */
+
+/** Estructura de un usuario de la aplicación Sous Chef. */
 export interface LocalUser {
+  /** Nombre de usuario único (insensible a mayúsculas al comparar). */
   username: string;
+  /** Contraseña en texto plano (solo para MVP local). */
   password: string;
+  /** Correo electrónico opcional, usado para verificar membresía premium vía Hotmart. */
   email?: string;
+  /** Puntos de experiencia acumulados. Aumentan al completar niveles. */
   xp: number;
+  /** Rango calculado a partir del XP (ej. "Iniciado", "Sous Chef"). */
   rank: string;
+  /** Si es `true`, tiene acceso al Constructor Visual CMS y a todos los módulos. */
   is_admin: boolean;
+  /** Si es `true`, tiene acceso a los mundos premium (Mundos 3-5 del Modo Aventura). */
   isPremium?: boolean;
 }
 
+/** Lista de usuarios preconfigurados que no requieren registro. */
 export const LOCAL_USERS: LocalUser[] = [
   {
     username: 'admin',

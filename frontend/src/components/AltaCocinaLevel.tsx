@@ -1,3 +1,4 @@
+/** AltaCocinaLevel.tsx — Nivel 19, Mundo 5: Castillo del Chef (Premium). Alta cocina francesa clásica (Escoffier). */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

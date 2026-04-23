@@ -1,3 +1,27 @@
+/**
+ * SkillTreeMap.tsx
+ *
+ * Mapa gamificado de habilidades culinarias del Modo Aventura.
+ * Renderiza un SVG scrollable de ~2950 px de alto con 5 mundos y 20 niveles
+ * conectados por una carretera sinuosa estilo "Mario World".
+ *
+ * Estructura de mundos:
+ * 1. Isla del Cuchillo  — Técnicas de corte (libre)
+ * 2. Valle del Fuego    — Salsas y calor (libre)
+ * 3. Mar de Sabores     — Fondos y caldos (Premium)
+ * 4. Pico del Maestro   — Técnicas avanzadas (Premium)
+ * 5. Castillo del Chef  — Alta cocina (Premium)
+ *
+ * Flujo de usuario:
+ * - Los niveles se desbloquean secuencialmente (el anterior debe tener ≥1 estrella).
+ * - Tocar un nodo activo abre el `LevelModal` con info y botón de inicio.
+ * - Los mundos 3-5 muestran overlay de Premium si el usuario no está suscrito.
+ * - Banner de onboarding en la primera visita (se oculta al cerrar y se guarda
+ *   en localStorage bajo `sous_map_onboarding_seen`).
+ *
+ * El progreso (estrellas por nivel) se lee de `localStorage['sous_level_stars']`.
+ */
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Flame, Trophy, ChefHat, Star } from 'lucide-react';

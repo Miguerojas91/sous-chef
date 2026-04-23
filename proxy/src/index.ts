@@ -1,3 +1,35 @@
+/**
+ * proxy/src/index.ts
+ *
+ * Servidor proxy Express + WebSocket para Sous Chef.
+ * Actúa como intermediario entre el navegador y la API de Gemini,
+ * manteniendo las claves de API exclusivamente en el servidor.
+ *
+ * ── Endpoints HTTP ──────────────────────────────────────────────
+ * GET  /health                    — Health check para Railway/Vercel.
+ * GET  /api/membership/check      — Verifica si un email tiene premium.
+ * POST /api/hotmart/webhook       — Recibe eventos de compra de Hotmart.
+ * POST /api/membership/grant      — Admin: otorgar/revocar premium manualmente.
+ * POST /api/chat                  — Chat de texto con streaming SSE (Gemini 2.5 Flash).
+ * POST /api/evaluate              — Evaluación de imagen culinaria con Gemini Vision.
+ *
+ * ── WebSocket ───────────────────────────────────────────────────
+ * WS   /api/live                  — Proxy de voz en tiempo real (Gemini Live).
+ *
+ * Variables de entorno requeridas:
+ * - `GEMINI_API_KEY`  — Clave de API de Google Generative AI.
+ * - `PORT`            — Puerto del servidor (default: 3001).
+ * - `ALLOWED_ORIGIN`  — Origen CORS permitido (default: '*').
+ * - `HOTMART_TOKEN`   — Token de verificación de webhooks Hotmart.
+ * - `ADMIN_SECRET`    — Secret para endpoints de administración manual.
+ * - `PREMIUM_EMAILS`  — Lista CSV de emails premium persistidos (env var Railway).
+ *
+ * Seguridad:
+ * - La clave de Gemini NUNCA se envía al navegador.
+ * - El WebSocket proxy simplifica el protocolo Gemini Live a un subset
+ *   sin revelar el proveedor de IA al cliente.
+ */
+
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';

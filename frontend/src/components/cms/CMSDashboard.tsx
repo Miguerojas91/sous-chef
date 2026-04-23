@@ -1,3 +1,18 @@
+/**
+ * CMSDashboard.tsx
+ *
+ * Panel de administración del Constructor Visual CMS.
+ * Solo accesible para usuarios con `is_admin: true`.
+ *
+ * Funcionalidades:
+ * - Lista todas las páginas dinámicas creadas.
+ * - Permite crear nuevas páginas con slug personalizado.
+ * - Navega al editor de cada página al hacer clic en "Editar".
+ *
+ * Acceso: ruta `/cms` protegida por `RequireAuth` en App.tsx.
+ * Si el usuario no es admin, muestra un mensaje de acceso denegado.
+ */
+
 import React, { useEffect, useState } from 'react';
 import { ShieldAlert, Plus, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';

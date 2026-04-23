@@ -1,3 +1,4 @@
+/** JulianaLevel.tsx — Nivel 1, Mundo 1: Isla del Cuchillo. Técnica de corte juliana (bastones 3×3×60 mm). */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

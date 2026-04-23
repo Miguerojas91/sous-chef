@@ -1,3 +1,4 @@
+/** MarinajeLevel.tsx — Nivel 18, Mundo 5: Castillo del Chef (Premium). Maridaje de vino y gastronomía avanzada. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

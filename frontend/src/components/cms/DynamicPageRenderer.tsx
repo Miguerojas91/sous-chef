@@ -1,3 +1,13 @@
+/**
+ * DynamicPageRenderer.tsx
+ *
+ * Renderizador de páginas dinámicas del CMS.
+ * Toma un array de `CMSBlock[]` y genera el JSX correspondiente
+ * según el tipo de cada bloque (paragraph, header, image, accordion, etc.).
+ *
+ * Se usa en las rutas `/p/:slug` para mostrar páginas creadas por el admin.
+ */
+
 import React from 'react';
 import type { CMSBlock } from '../../types/cms';
 import { ChevronDown, Info } from 'lucide-react';

@@ -1,3 +1,4 @@
+/** EmulsionLevel.tsx — Nivel 7, Mundo 2: Valle del Fuego. Ciencia de emulsiones estables (mayonesa, vinagreta). */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

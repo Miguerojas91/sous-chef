@@ -1,3 +1,21 @@
+/**
+ * BlockZone.tsx
+ *
+ * Zona de contenido dinámico del CMS. Renderiza una lista de bloques
+ * (`CMSBlock[]`) y, en modo edición admin, permite añadir, reordenar
+ * y eliminar bloques inline.
+ *
+ * Tipos de bloque soportados:
+ * - `paragraph` — Párrafo de texto editable.
+ * - `header`    — Encabezado con texto editable.
+ * - `image`     — Imagen con URL y pie de foto editables.
+ * - `checklist` — Lista de verificación con ítems editables.
+ * - `quote`     — Cita destacada con texto editable.
+ *
+ * Los bloques se persisten en localStorage bajo `cms_blocks_{zoneKey}`.
+ * En modo lectura, el componente renderiza los bloques sin controles de edición.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useEditor } from '../../context/EditorContext';
 import { ChevronUp, ChevronDown, Trash2, Type, Image as ImageIcon, LayoutList, MessageSquare } from 'lucide-react';

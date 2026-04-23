@@ -1,3 +1,4 @@
+/** ChefVegetalBoss.tsx — Jefe 4, Mundo 1: Isla del Cuchillo. Desafío maestro de cortes vegetales combinados. */
 import { BossPage } from './BossPage';
 import type { BossRecipe } from './BossPage';
 

@@ -1,3 +1,4 @@
+/** GranChefBoss.tsx — Jefe 20, Mundo 5: Castillo del Chef (Premium). Desafío final de alta cocina. Maestría Culinaria. */
 import { BossPage } from './BossPage';
 import type { BossRecipe } from './BossPage';
 

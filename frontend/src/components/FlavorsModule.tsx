@@ -1,3 +1,27 @@
+/**
+ * FlavorsModule.tsx
+ *
+ * Módulo "Sabores del Mundo" — masterclasses de cocina internacional.
+ * Permite al usuario explorar recetas de distintas culturas culinarias
+ * y cocinarlas con ayuda de la IA.
+ *
+ * Flujo:
+ * 1. Pantalla de selección — cuadrícula de países/culturas.
+ * 2. Pantalla de receta — ingredientes con contador de personas y pasos.
+ * 3. Chat IA — guía de cocina con modo texto (SSE) y modo voz (WebSocket).
+ *
+ * Características:
+ * - Lista de compras con casillas para marcar ingredientes disponibles.
+ * - Contador de personas con botones +/− (1-20, con toast al llegar al límite).
+ * - Diálogo de confirmación antes de terminar la sesión de chat.
+ * - Toast de onboarding en la primera activación de voz.
+ * - `friendlyVoiceError` para mensajes de error comprensibles.
+ * - Indicador de conexión (Conectado / Respondiendo) en el header del chat.
+ *
+ * Wake Lock: mantiene la pantalla encendida durante el chat
+ * (`useWakeLock(chatStarted || voiceMode)`).
+ */
+
 import { useState, useRef, useEffect } from 'react';
 import { Globe, ChevronDown, ChevronUp, ArrowLeft, ShoppingCart, Check, Send, Clock, ChefHat, XCircle, RefreshCw, HelpCircle, Mic, X, Users, Minus, Plus } from 'lucide-react';
 import { useGeminiChat } from '../hooks/useGeminiChat';

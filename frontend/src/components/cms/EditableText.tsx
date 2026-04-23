@@ -1,3 +1,22 @@
+/**
+ * EditableText.tsx
+ *
+ * Componente inline del CMS que permite editar cualquier texto de la app
+ * directamente en la pantalla, sin salir de la interfaz.
+ *
+ * Comportamiento:
+ * - En modo lectura: renderiza el texto guardado (o `defaultText` si no hay nada).
+ * - En modo edición (admin activo): muestra un botón de paleta al hacer hover,
+ *   que abre un popover con un textarea para editar el texto inline.
+ * - Los cambios se persisten en localStorage bajo la clave `cms_text_{elementKey}`.
+ * - El CMS sincroniza los textos con la base de datos cuando el admin guarda.
+ *
+ * Uso:
+ * ```tsx
+ * <EditableText elementKey="home_title" defaultText="Sous Chef" as="h1" />
+ * ```
+ */
+
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Palette } from 'lucide-react';

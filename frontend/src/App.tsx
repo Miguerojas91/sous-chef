@@ -1,3 +1,29 @@
+/**
+ * App.tsx
+ *
+ * Punto de entrada principal de la aplicación Sous Chef.
+ * Define el router, el sistema de autenticación local, el toast global,
+ * los guardias de ruta (premium, niveles) y el layout raíz.
+ *
+ * ── Sistema de Toast ─────────────────────────────────────────────────────────
+ * `showToast(msg, type)` puede llamarse desde cualquier archivo.
+ * Despacha el evento `sous:toast` que escucha el componente `Layout`.
+ * No requiere context ni prop-drilling.
+ *
+ * ── Guardias de ruta ─────────────────────────────────────────────────────────
+ * - `RequireAuth`   — Redirige a `/login` si no hay sesión.
+ * - `PremiumRoute`  — Redirige a `/membresia` con toast si el usuario no es premium.
+ * - `LevelRoute`    — Redirige a `/mapa` con toast si el nivel está bloqueado.
+ * - `ToastRedirect` — Lanza un toast antes de hacer `navigate(replace: true)`.
+ *
+ * ── Layout ───────────────────────────────────────────────────────────────────
+ * El componente `Layout` envuelve todas las rutas autenticadas con:
+ * - Header con nombre de usuario y XP.
+ * - Barra de navegación inferior de 6 pestañas.
+ * - Toast overlay global (escucha `sous:toast`).
+ * - Botón de modo editor (solo admins).
+ */
+
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { CookingSession } from './components/CookingSession';
 import { ChefHat, Home, Compass, Map as MapIcon, Globe, BookOpen, LogOut, CalendarDays, ShieldAlert, X } from 'lucide-react';

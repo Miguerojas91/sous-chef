@@ -1,3 +1,29 @@
+/**
+ * MilprepModule.tsx
+ *
+ * Módulo de Mealprep — planificación inteligente de comidas semanales.
+ * Guía al usuario en 3 pasos a través de pestañas:
+ *
+ * 1. Recetas — Selección de hasta 7 recetas del catálogo.
+ *    - Búsqueda por nombre, contador de personas (1-20).
+ *    - Al pulsar "¡Estoy listo!" redirige al usuario a "Recetas" si no eligió ninguna.
+ *
+ * 2. Lista de Mercado — Ingredientes consolidados de todas las recetas.
+ *    - Escalado automático por número de personas.
+ *    - Agrupado por categoría (Verduras, Proteínas, Lácteos, Despensa).
+ *    - Casillas de verificación para marcar lo que ya tienen.
+ *
+ * 3. Chat IA — Conversación con el chef sobre el plan de la semana.
+ *    - Modo texto (SSE) via `useGeminiChat`.
+ *    - Modo voz (WebSocket) via `useGeminiLive`.
+ *    - Contexto inicial enviado al chat con recetas seleccionadas y número de personas.
+ *    - Diálogo de confirmación antes de terminar la sesión.
+ *    - Toast de onboarding en la primera activación de voz.
+ *
+ * Wake Lock: mantiene la pantalla encendida durante el chat
+ * (`useWakeLock(chatStarted || voiceMode)`).
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useGeminiChat } from '../hooks/useGeminiChat';
 import { ChefHat, ShoppingCart, BookOpen, MessageSquare, Send, Mic, CalendarDays, CheckCircle2, Clock, XCircle, HelpCircle, RefreshCw, X } from 'lucide-react';

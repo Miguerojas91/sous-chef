@@ -1,3 +1,26 @@
+/**
+ * AcademyModule.tsx
+ *
+ * Módulo "La Academia" — biblioteca de clases teóricas culinarias.
+ * Organiza el contenido en 4 niveles de dificultad progresiva:
+ *
+ * 1. Cimientos  (Básico)    — Higiene, cuchillos, fondos, temperaturas.
+ * 2. Técnica    (Intermedio) — Emulsiones, Maillard, salsas madre, fermentación.
+ * 3. Maestría   (Avanzado)  — Sous-vide, esferificación, cocina molecular.
+ * 4. Élite      (Experto)   — Alta cocina, liderazgo de brigada. (Bloqueado)
+ *
+ * Funcionalidades:
+ * - Acordeón de niveles: al hacer clic en un nivel se expande/colapsa.
+ * - Tarjetas de lección expandibles con descripción y lista de temas.
+ * - Lecciones marcadas como premium muestran badge y botón diferenciado.
+ * - Niveles bloqueados (`locked: true`) desactivan interacción con `pointer-events-none`.
+ * - Todos los textos son editables vía CMS con `<EditableText>`.
+ * - Barra de progreso global en el header (clases completadas / total).
+ *
+ * Nota: el estado `completed` de cada lección es actualmente estático.
+ * En versiones futuras debería persistirse en localStorage o en el backend.
+ */
+
 import { useState } from 'react';
 import { BookOpen, Star, Clock, ChevronDown, ChevronUp, Lock, CheckCircle, PlayCircle } from 'lucide-react';
 import { EditableText } from './cms/EditableText';

@@ -1,3 +1,4 @@
+/** ChiffonadeLevel.tsx — Nivel 3, Mundo 1: Isla del Cuchillo. Técnica de corte chiffonade de hojas finas. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

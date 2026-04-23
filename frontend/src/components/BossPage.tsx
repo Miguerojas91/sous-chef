@@ -1,3 +1,25 @@
+/**
+ * BossPage.tsx
+ *
+ * Componente base reutilizable para todos los niveles de jefe (Boss) del Modo Aventura.
+ * Presenta la batalla culinaria en formato de "desafío foto" con múltiples recetas.
+ * Cada Boss (ChefVegetalBoss, FlambeadorBoss, etc.) pasa sus propios `challenges`.
+ *
+ * Flujo del nivel Boss:
+ * 1. El usuario elige uno de los desafíos disponibles.
+ * 2. Lee la receta y los criterios de evaluación.
+ * 3. Sube una foto de su resultado.
+ * 4. La IA evalúa la foto via `evaluateImage()` del proxy.
+ *    - Si `stars > 0`: se marca el desafío como completado y se suma XP.
+ *    - Si `stars === 0`: se limpia la imagen después de 2.5 s para poder reintentar.
+ * 5. El nivel Boss se completa cuando se aprueba al menos un desafío.
+ *
+ * Diferencias con LevelPage:
+ * - Los bosses tienen múltiples recetas/desafíos (no solo pasos lineales).
+ * - La recompensa de XP es mayor (definida por cada boss).
+ * - Incluye animación de victoria y countdown de reintento.
+ */
+
 import { useState, useEffect, useRef } from 'react';
 import { evaluateImage } from '../services/gemini';
 import type { EvaluationResult } from '../services/gemini';

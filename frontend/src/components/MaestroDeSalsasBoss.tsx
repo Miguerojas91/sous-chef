@@ -1,3 +1,4 @@
+/** MaestroDeSalsasBoss.tsx — Jefe 12, Mundo 3: Mar de Sabores (Premium). Desafío de fondos y salsas clásicas. */
 import { BossPage } from './BossPage';
 import type { BossRecipe } from './BossPage';
 

@@ -1,3 +1,26 @@
+/**
+ * LevelPage.tsx
+ *
+ * Componente base reutilizable para todos los niveles normales del Modo Aventura.
+ * Cada nivel (JulianaLevel, BrunoiseLevel, etc.) pasa sus propios `steps`
+ * y criterios de evaluación; este componente gestiona toda la lógica común.
+ *
+ * Flujo del nivel:
+ * 1. Fase "Aprende" — Acordeón de pasos con tips y advertencias.
+ *    - `completedSteps` persiste en localStorage por ruta (`sous_steps_{path}`).
+ * 2. Fase "Evalúa" — El usuario sube una foto de su resultado.
+ *    - Se llama a `evaluateImage()` vía el proxy.
+ *    - Si `stars > 0`: se persiste la puntuación y se suma XP.
+ *    - Si `stars === 0`: solo muestra el feedback (no marca como completado).
+ *
+ * Props principales:
+ * - `steps`        — Pasos de la técnica con descripción, tip y alertas.
+ * - `criteria`     — Criterios de evaluación enviados a la IA.
+ * - `levelName`    — Nombre del nivel (para el prompt de evaluación).
+ * - `xpReward`     — XP otorgado al completar con ≥1 estrella.
+ * - `worldColor`   — Clase de color Tailwind del mundo (para estilos del botón).
+ */
+
 import { useState, useRef } from 'react';
 import { evaluateImage } from '../services/gemini';
 import type { EvaluationResult } from '../services/gemini';

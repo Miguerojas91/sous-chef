@@ -1,3 +1,4 @@
+/** FlambeadorBoss.tsx — Jefe 8, Mundo 2: Valle del Fuego. Desafío de salsas y reacciones de calor. */
 import { BossPage } from './BossPage';
 import type { BossRecipe } from './BossPage';
 

@@ -1,3 +1,4 @@
+/** BrunoiseLevel.tsx — Nivel 2, Mundo 1: Isla del Cuchillo. Técnica de corte brunoise (cubos 3×3×3 mm). */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [

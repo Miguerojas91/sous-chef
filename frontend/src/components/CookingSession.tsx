@@ -93,12 +93,19 @@ const CookingChat: React.FC<{
   const [inputText, setInputText] = useState('');
   const [voiceMode, setVoiceMode] = useState(false);
   const [showConfirmEnd, setShowConfirmEnd] = useState(false);
+  const [showFloatingEnd, setShowFloatingEnd] = useState(false);
   const textBottomRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   // Mantiene la pantalla encendida mientras el chat o la voz estén activos
   useWakeLock(true);
 
   useEffect(() => { textBottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const handleMessagesScroll = () => {
+    const el = messagesRef.current;
+    if (el) setShowFloatingEnd(el.scrollTop > 60);
+  };
 
   // Auto-mensaje inicial solo en sesión nueva (sin historial previo)
   useEffect(() => {
@@ -402,8 +409,18 @@ const CookingChat: React.FC<{
         </button>
       </div>
 
+      {/* Botón flotante — visible solo al bajar en el chat */}
+      {showFloatingEnd && (
+        <button
+          onClick={handleConfirmReset}
+          className="fixed top-[68px] right-3 z-[60] bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-xl ring-2 ring-white transition-all"
+        >
+          Terminar sesión
+        </button>
+      )}
+
       {/* Mensajes */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 min-h-0">
+      <div ref={messagesRef} onScroll={handleMessagesScroll} className="flex-1 overflow-y-auto px-3 py-3 space-y-3 min-h-0">
         {messages.length === 0 && !isLoading && (
           <div className="text-center mt-10 px-4">
             <div className="text-4xl mb-3">👨‍🍳</div>

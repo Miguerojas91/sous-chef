@@ -100,11 +100,16 @@ const CookingChat: React.FC<{
   // Mantiene la pantalla encendida mientras el chat o la voz estén activos
   useWakeLock(true);
 
-  useEffect(() => { textBottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => {
+    textBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Mostrar botón flotante cuando la conversación es más larga que la pantalla
+    const el = messagesRef.current;
+    if (el) setShowFloatingEnd(el.scrollHeight > el.clientHeight + 40);
+  }, [messages]);
 
   const handleMessagesScroll = () => {
     const el = messagesRef.current;
-    if (el) setShowFloatingEnd(el.scrollTop > 60);
+    if (el) setShowFloatingEnd(el.scrollHeight > el.clientHeight + 40);
   };
 
   // Auto-mensaje inicial solo en sesión nueva (sin historial previo)

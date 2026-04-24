@@ -21,9 +21,20 @@
  * En versiones futuras debería persistirse en localStorage o en el backend.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BookOpen, Star, Clock, ChevronDown, ChevronUp, Lock, CheckCircle, PlayCircle } from 'lucide-react';
 import { EditableText } from './cms/EditableText';
+
+const COMPLETED_KEY = 'sous_academy_completed';
+
+/** Abre el visor de clase en el nivel Layout (mismo patrón que el toast). */
+export function openLesson(detail: {
+    title: string; emoji: string; duration: string;
+    levelName: string; levelColor: string; levelBg: string; levelBorder: string;
+    isCompleted: boolean;
+}) {
+    window.dispatchEvent(new CustomEvent('sous:openLesson', { detail }));
+}
 
 interface Lesson {
     title: string;
@@ -285,12 +296,14 @@ const LEVELS: Level[] = [
     },
 ];
 
-const LessonCard = ({ lesson, levelBg, levelBorder, levelColor, levelLocked }: {
+const LessonCard = ({ lesson, levelBg, levelBorder, levelColor, levelLocked, isCompleted, onOpen }: {
     lesson: Lesson;
     levelBg: string;
     levelBorder: string;
     levelColor: string;
     levelLocked?: boolean;
+    isCompleted: boolean;
+    onOpen: () => void;
 }) => {
     const [open, setOpen] = useState(false);
 
@@ -314,7 +327,7 @@ const LessonCard = ({ lesson, levelBg, levelBorder, levelColor, levelLocked }: {
                                 <Star size={9} fill="currentColor" /> PREMIUM
                             </span>
                         )}
-                        {lesson.completed && (
+                        {isCompleted && (
                             <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
                         )}
                     </div>
@@ -339,19 +352,18 @@ const LessonCard = ({ lesson, levelBg, levelBorder, levelColor, levelLocked }: {
                         <ul className="space-y-1">
                             {lesson.topics.map((t, i) => (
                                 <li key={i} className="flex items-start gap-2 text-sm text-neutral-700">
-                                    <span className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${levelBg.replace('bg-', 'bg-').replace('-50', '-400')}`} style={{ background: '' }} />
-                                    <span className={`mt-0.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${levelColor.replace('text-', 'bg-').replace('-700', '-400')}`}></span>
+                                    <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${levelColor.replace('text-', 'bg-').replace('-700', '-400')}`}></span>
                                     <EditableText elementKey={`acad_lesson_${lesson.title.replace(/\s+/g, '')}_top_${i}`} defaultText={t} as="span" />
                                 </li>
                             ))}
                         </ul>
                     </div>
-                    <button className={`mt-4 w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-bold text-sm text-white transition-colors ${lesson.isPremium ? 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600' : 'bg-orange-500 hover:bg-orange-600'}`}>
+                    <button
+                        onClick={onOpen}
+                        className={`mt-4 w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-bold text-sm text-white transition-colors ${lesson.isPremium ? 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600' : 'bg-orange-500 hover:bg-orange-600'}`}
+                    >
                         <PlayCircle size={16} />
-                        {lesson.completed ? 
-                            <EditableText elementKey={`acad_lesson_${lesson.title.replace(/\s+/g, '')}_btn_r`} defaultText="Repasar clase" as="span" /> : 
-                            <EditableText elementKey={`acad_lesson_${lesson.title.replace(/\s+/g, '')}_btn_s`} defaultText="Comenzar clase" as="span" />
-                        }
+                        {isCompleted ? 'Repasar clase' : 'Comenzar clase'}
                     </button>
                 </div>
             )}
@@ -359,13 +371,49 @@ const LessonCard = ({ lesson, levelBg, levelBorder, levelColor, levelLocked }: {
     );
 };
 
+// ── Helper: carga y guarda el set de lecciones completadas en localStorage ────
+
+function loadCompleted(): Set<string> {
+    try {
+        const raw = localStorage.getItem(COMPLETED_KEY);
+        return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch { return new Set(); }
+}
+
+function saveCompleted(set: Set<string>) {
+    localStorage.setItem(COMPLETED_KEY, JSON.stringify([...set]));
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
+
 export const AcademyModule = () => {
     const [activeLevel, setActiveLevel] = useState<number | null>(null);
+    const [completedSet, setCompletedSet] = useState<Set<string>>(loadCompleted);
 
-    const completedTotal = LEVELS.flatMap(l => l.lessons).filter(l => l.completed).length;
+    // Escucha el evento de lección completada para actualizar el progreso
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const { title } = (e as CustomEvent<{ title: string }>).detail;
+            setCompletedSet(prev => {
+                const next = new Set(prev);
+                next.add(title);
+                saveCompleted(next);
+                return next;
+            });
+        };
+        window.addEventListener('sous:lessonComplete', handler);
+        return () => window.removeEventListener('sous:lessonComplete', handler);
+    }, []);
+
     const total = LEVELS.flatMap(l => l.lessons).length;
+    // Incluye los completados iniciales del LEVELS array + los guardados en localStorage
+    const initialCompleted = new Set(LEVELS.flatMap(l => l.lessons).filter(l => l.completed).map(l => l.title));
+    const allCompleted = new Set([...initialCompleted, ...completedSet]);
+    const completedTotal = allCompleted.size;
 
     return (
+        <>
+
         <div className="p-6 md:p-8 w-full max-w-5xl mx-auto">
             {/* Header */}
             <div className="mb-8 flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-neutral-200 pb-6">
@@ -388,7 +436,7 @@ export const AcademyModule = () => {
 
             <div className="space-y-6">
                 {LEVELS.map((level, li) => {
-                    const levelCompleted = level.lessons.filter(l => l.completed).length;
+                    const levelCompleted = level.lessons.filter(l => allCompleted.has(l.title)).length;
 
                     return (
                         <section key={li} className={`rounded-2xl border-2 ${level.border} overflow-hidden`}>
@@ -427,6 +475,17 @@ export const AcademyModule = () => {
                                             levelBorder={level.border}
                                             levelColor={level.color}
                                             levelLocked={level.locked}
+                                            isCompleted={allCompleted.has(lesson.title)}
+                                            onOpen={() => openLesson({
+                                                title: lesson.title,
+                                                emoji: lesson.emoji,
+                                                duration: lesson.duration,
+                                                levelName: level.name,
+                                                levelColor: level.color,
+                                                levelBg: level.bg,
+                                                levelBorder: level.border,
+                                                isCompleted: allCompleted.has(lesson.title),
+                                            })}
                                         />
                                     ))}
                                 </div>
@@ -436,5 +495,6 @@ export const AcademyModule = () => {
                 })}
             </div>
         </div>
+        </>
     );
 };

@@ -26,6 +26,7 @@
 
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { CookingSession } from './components/CookingSession';
+import { LessonViewer } from './components/LessonViewer';
 import { ChefHat, Home, Compass, Map as MapIcon, Globe, BookOpen, LogOut, CalendarDays, ShieldAlert, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { EditorProvider, useEditor } from './context/EditorContext';
@@ -81,6 +82,13 @@ const navLinks = [
   { to: '/milprep',  icon: CalendarDays,label: 'Mealprep',         shortLabel: 'Mealprep',  exact: false },
 ];
 
+// ── Lesson viewer system ──────────────────────────────────────────────────────
+interface LessonEventData {
+  title: string; emoji: string; duration: string;
+  levelName: string; levelColor: string; levelBg: string; levelBorder: string;
+  isCompleted: boolean;
+}
+
 // ── Toast system ──────────────────────────────────────────────────────────────
 interface ToastData { msg: string; type: 'info' | 'warning' | 'success' | 'error' }
 
@@ -122,6 +130,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [toast, setToast] = useState<ToastData | null>(null);
+  const [activeLesson, setActiveLesson] = useState<LessonEventData | null>(null);
   const [userData, setUserData] = useState({
     username: "Cargando...",
     rank: "Iniciado",
@@ -177,6 +186,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     return () => { window.removeEventListener('sous:toast', handler); clearTimeout(timer); };
   }, []);
 
+  // Lesson viewer listener
+  useEffect(() => {
+    const handler = (e: Event) => {
+      setActiveLesson((e as CustomEvent<LessonEventData>).detail);
+    };
+    window.addEventListener('sous:openLesson', handler);
+    return () => window.removeEventListener('sous:openLesson', handler);
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('user');
     navigate('/login');
@@ -186,6 +204,25 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
+      {/* Lesson viewer — renderiza sobre todo el layout */}
+      {activeLesson && (
+        <LessonViewer
+          lessonTitle={activeLesson.title}
+          lessonEmoji={activeLesson.emoji}
+          lessonDuration={activeLesson.duration}
+          levelName={activeLesson.levelName}
+          levelColor={activeLesson.levelColor}
+          levelBg={activeLesson.levelBg}
+          levelBorder={activeLesson.levelBorder}
+          isCompleted={activeLesson.isCompleted}
+          onClose={() => setActiveLesson(null)}
+          onComplete={(title) => {
+            window.dispatchEvent(new CustomEvent('sous:lessonComplete', { detail: { title } }));
+            setActiveLesson(null);
+          }}
+        />
+      )}
+
       {/* Toast */}
       {toast && <Toast data={toast} onClose={() => setToast(null)} />}
 

@@ -29,7 +29,7 @@ import { useGeminiChat } from '../hooks/useGeminiChat';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 import { buildCookingSystemPrompt } from '../services/gemini';
 import type { CookingIntent } from '../services/gemini';
-import { Mic, ChefHat, Send, X, ArrowLeft, Clock, Utensils, Sparkles, RefreshCw } from 'lucide-react';
+import { Mic, ChefHat, Send, X, ArrowLeft, Clock, Utensils, Sparkles } from 'lucide-react';
 import { friendlyVoiceError } from '../utils/friendlyError';
 import { QuickReplies } from './QuickReplies';
 import { ChatMessage } from './ChatMessage';
@@ -168,7 +168,38 @@ const CookingChat: React.FC<{
     const silenceLeft     = Math.max(0, 30 - silenceSeconds);
 
     return (
-      <div className="flex flex-col h-full bg-neutral-950 overflow-hidden">
+      <div className="flex flex-col h-full bg-neutral-950 overflow-hidden relative">
+
+        {/* Botón flotante terminar sesión — voz */}
+        {showConfirmEnd && (
+          <div className="absolute inset-0 z-30 bg-black/70 flex items-center justify-center p-6">
+            <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 max-w-xs w-full shadow-2xl">
+              <p className="text-lg font-black text-white mb-1 text-center">¿Terminar sesión?</p>
+              <p className="text-sm text-neutral-400 text-center mb-5">Se borrará todo el historial de esta conversación.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowConfirmEnd(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-neutral-600 font-bold text-neutral-300 text-sm hover:bg-neutral-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => { setShowConfirmEnd(false); handleReset(); }}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500 font-bold text-white text-sm hover:bg-red-600 transition-colors"
+                >
+                  Sí, terminar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <button
+          onClick={handleConfirmReset}
+          className="absolute top-4 right-4 z-20 flex items-center gap-1.5 bg-red-500/90 hover:bg-red-500 text-white text-xs font-bold px-3 py-2 rounded-full shadow-lg backdrop-blur-sm transition-all active:scale-95"
+        >
+          <X className="w-3 h-3" />
+          Terminar sesión
+        </button>
 
         {/* Zona central: lo que Sous está diciendo */}
         <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
@@ -301,14 +332,7 @@ const CookingChat: React.FC<{
           </div>
 
           {/* Acciones */}
-          <div className="flex items-center justify-between">
-            <button
-              onClick={handleConfirmReset}
-              className="text-xs text-neutral-500 hover:text-red-400 transition-colors px-3 py-2 rounded-xl hover:bg-neutral-800"
-            >
-              Terminar sesión
-            </button>
-
+          <div className="flex items-center justify-end">
             <div className="flex items-center gap-2">
               {/* Botón de prueba — envía texto para verificar que la sesión responde */}
               {isListening && (
@@ -360,25 +384,26 @@ const CookingChat: React.FC<{
         </div>
       )}
 
+      {/* Botón flotante terminar sesión */}
+      <button
+        onClick={handleConfirmReset}
+        className="absolute bottom-24 right-4 z-10 flex items-center gap-1.5 bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3.5 py-2.5 rounded-full shadow-lg transition-all"
+      >
+        <X className="w-3.5 h-3.5" />
+        Terminar sesión
+      </button>
+
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-neutral-100 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <ChefHat className="text-orange-500 w-4 h-4" />
-          <div>
-            <span className="text-sm font-bold text-neutral-700 block leading-tight">Chef Sous</span>
-            <span className="text-[10px] text-neutral-400 leading-tight">{intentLabel[intent]} · {timeAvailable}</span>
-          </div>
-          <span className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ml-1 ${isLoading ? 'bg-yellow-100 text-yellow-600' : 'bg-emerald-100 text-emerald-600'}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-emerald-500'}`} />
-            {isLoading ? 'Respondiendo…' : 'Conectado'}
-          </span>
+      <div className="flex items-center px-4 py-2.5 bg-white border-b border-neutral-100 flex-shrink-0">
+        <ChefHat className="text-orange-500 w-4 h-4 mr-2" />
+        <div>
+          <span className="text-sm font-bold text-neutral-700 block leading-tight">Chef Sous</span>
+          <span className="text-[10px] text-neutral-400 leading-tight">{intentLabel[intent]} · {timeAvailable}</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button onClick={handleConfirmReset} title="Terminar sesión" className="flex items-center gap-1 text-xs text-neutral-400 hover:text-red-500 transition-colors px-2 py-1 rounded-full hover:bg-red-50">
-            <RefreshCw className="w-3 h-3" />
-            Terminar sesión
-          </button>
-        </div>
+        <span className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ml-2 ${isLoading ? 'bg-yellow-100 text-yellow-600' : 'bg-emerald-100 text-emerald-600'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-emerald-500'}`} />
+          {isLoading ? 'Respondiendo…' : 'Conectado'}
+        </span>
       </div>
 
       {/* Mensajes */}

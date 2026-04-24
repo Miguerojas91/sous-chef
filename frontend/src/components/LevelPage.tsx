@@ -151,8 +151,8 @@ export const LevelPage = ({
         result = { stars: 0, feedback: 'No pudimos conectar con el evaluador. Revisa tu conexión e intenta de nuevo.' };
       }
       setEvaluationResult(result);
-      if (result.stars === 0) {
-        // Imagen inválida — no guardar progreso ni XP
+      if (!result.stars || result.stars < 1) {
+        // Imagen inválida o sin contenido culinario — no guardar progreso ni XP
         setUploadState('rejected');
       } else {
         // Guardar progreso: XP solo si es la primera vez que se completa este nivel

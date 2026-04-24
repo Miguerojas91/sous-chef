@@ -186,26 +186,36 @@ app.post('/api/evaluate', async (req, res) => {
     ? criteria.map(c => `${c.stars}: ${c.label}`).join('\n')
     : '⭐⭐⭐: Técnica impecable\n⭐⭐: Buena ejecución\n⭐: Primer intento válido';
 
-  const prompt = `Eres un evaluador culinario estricto y honesto. Tu trabajo es verificar si una imagen muestra el resultado de una tarea de cocina específica.
+  const prompt = `Eres un juez culinario con tolerancia cero al fraude. Evaluarás una imagen enviada como evidencia de haber completado una tarea de cocina.
 
-TAREA A EVALUAR: "${levelName}"
+TAREA REQUERIDA: "${levelName}"
 
-═══ PASO 1: VERIFICACIÓN DE CONTENIDO (OBLIGATORIO) ═══
-Antes de calificar, determina si la imagen muestra claramente el resultado de la tarea culinaria descrita.
+━━━ REGLA ABSOLUTA (NUNCA VIOLAR) ━━━
+Si la imagen NO muestra claramente el resultado de la tarea culinaria "${levelName}", debes devolver stars=0 SIN EXCEPCIÓN.
+Imágenes inválidas incluyen (pero no se limitan a): teclados, teléfonos, habitaciones, escritorios, personas, animales, bebidas, utensilios solos, empaques, cualquier objeto que no sea el resultado culinario solicitado.
+NO hay "primer intento válido" si no hay comida relevante en la imagen. stars=1, 2 o 3 son EXCLUSIVOS para imágenes que SÍ muestran la tarea culinaria.
 
-Si la imagen NO muestra la tarea (por ejemplo: es un escritorio, un objeto random, una persona, una habitación, o cualquier cosa que no sea el resultado culinario requerido), responde EXACTAMENTE:
-{"stars": 0, "feedback": "La imagen no muestra la tarea requerida. Fotografía tu resultado culinario y vuelve a intentarlo."}
-
-═══ PASO 2: EVALUACIÓN (solo si SÍ muestra la tarea) ═══
-Criterios de calificación:
+━━━ PROCESO DE EVALUACIÓN ━━━
+PRIMERO responde internamente: ¿La imagen muestra "${levelName}"? SI o NO.
+- Si NO → stars=0 obligatoriamente.
+- Si SI → evalúa con estos criterios:
 ${criteriaText}
 
-Sé estricto: si la técnica es incorrecta o el resultado es claramente inadecuado, da 1 estrella.
+━━━ FORMATO DE RESPUESTA (JSON puro, sin markdown) ━━━
+{"stars": <número entre 0 y 3>, "feedback": "<1-2 oraciones en español, sé específico sobre lo que ves o no ves>"}
 
-Responde ÚNICAMENTE con JSON válido (sin markdown, sin texto extra):
-{"stars": <0, 1, 2 o 3>, "feedback": "<retroalimentación honesta en español, máximo 2 oraciones>"}
+EJEMPLOS DE RESPUESTA CORRECTA:
+- Imagen de teclado → {"stars": 0, "feedback": "La imagen muestra un teclado, no una preparación culinaria. Fotografía tu resultado de ${levelName} y vuelve a intentarlo."}
+- Imagen de plato mal ejecutado → {"stars": 1, "feedback": "Se observa el intento pero la técnica necesita mejora..."}
+- Imagen de plato bien ejecutado → {"stars": 3, "feedback": "Excelente ejecución de ${levelName}..."}`;
 
-REGLA CRÍTICA: stars = 0 si la imagen no muestra la tarea culinaria requerida. Nunca des estrellas a fotos de objetos, escritorios, personas o cualquier cosa que no sea el resultado culinario solicitado.`;
+  // Palabras clave que indican que la IA detectó imagen inválida pero por error dio stars>0
+  const INVALID_KEYWORDS = [
+    'no se observa', 'no muestra', 'no es una', 'no contiene', 'no hay',
+    'no corresponde', 'no es el resultado', 'no es comida', 'no es un plato',
+    'no es una preparación', 'teclado', 'teléfono', 'escritorio', 'objeto',
+    'no evidencia', 'no presenta', 'imagen no muestra',
+  ];
 
   try {
     if (!imageBase64) throw new Error('imageBase64 vacío');
@@ -225,13 +235,23 @@ REGLA CRÍTICA: stars = 0 si la imagen no muestra la tarea culinaria requerida. 
     });
 
     const text = (response.text ?? '').trim();
+    console.log(`[evaluate] raw response: ${text.slice(0, 200)}`);
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      const stars = Math.min(3, Math.max(0, Math.round(Number(parsed.stars) ?? 0)));
+      let stars = Math.min(3, Math.max(0, Math.round(Number(parsed.stars) || 0)));
+      const feedback: string = parsed.feedback || '';
+
+      // Post-procesamiento: si el feedback indica imagen inválida pero stars>0, forzar 0
+      const feedbackLower = feedback.toLowerCase();
+      if (stars > 0 && INVALID_KEYWORDS.some(kw => feedbackLower.includes(kw))) {
+        console.log(`[evaluate] Override stars ${stars}→0: feedback indica imagen inválida`);
+        stars = 0;
+      }
+
       res.json({
         stars,
-        feedback: parsed.feedback || (stars === 0
+        feedback: feedback || (stars === 0
           ? 'La imagen no muestra la tarea requerida. Fotografía tu resultado y vuelve a intentarlo.'
           : '¡Buen trabajo! Sigue practicando la técnica.'),
       });

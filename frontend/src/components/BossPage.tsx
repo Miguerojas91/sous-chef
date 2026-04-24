@@ -149,8 +149,8 @@ export const BossPage = ({
       setChallengeResults(prev => ({ ...prev, [id]: evalResult }));
       setReviewingId(null);
 
-      // Solo marcar como completado si la imagen es válida (stars > 0)
-      if (evalResult.stars > 0) {
+      // Solo marcar como completado si la imagen es válida (stars >= 1)
+      if (evalResult.stars && evalResult.stars >= 1) {
         setCompletedChallenges(prev => {
           const next = new Set(prev);
           next.add(id);

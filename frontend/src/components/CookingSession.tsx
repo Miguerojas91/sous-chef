@@ -384,7 +384,7 @@ const CookingChat: React.FC<{
         </div>
       )}
 
-      {/* Header — incluye botón flotante terminar sesión */}
+      {/* Header */}
       <div className="flex items-center px-4 py-2.5 bg-white border-b border-neutral-100 flex-shrink-0">
         <ChefHat className="text-orange-500 w-4 h-4 mr-2" />
         <div>
@@ -395,12 +395,20 @@ const CookingChat: React.FC<{
           <span className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-emerald-500'}`} />
           {isLoading ? 'Respondiendo…' : 'Conectado'}
         </span>
+      </div>
+
+      {/* Tira sticky — Terminar sesión */}
+      <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-1.5 bg-red-600/90 backdrop-blur-sm flex-shrink-0">
+        <span className="flex items-center gap-1.5 text-white text-xs font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-pulse" />
+          Sesión activa
+        </span>
         <button
           onClick={handleConfirmReset}
-          className="ml-auto flex items-center gap-1.5 bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm transition-all"
+          className="flex items-center gap-1 text-white text-xs font-bold underline underline-offset-2 hover:opacity-80 active:opacity-60 transition-opacity"
         >
           <X className="w-3 h-3" />
-          Terminar
+          Terminar sesión
         </button>
       </div>
 

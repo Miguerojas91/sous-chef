@@ -195,9 +195,8 @@ const CookingChat: React.FC<{
         )}
         <button
           onClick={handleConfirmReset}
-          className="absolute top-4 right-4 z-20 flex items-center gap-1.5 bg-red-500/90 hover:bg-red-500 text-white text-xs font-bold px-3 py-2 rounded-full shadow-lg backdrop-blur-sm transition-all active:scale-95"
+          className="absolute top-4 right-4 z-20 bg-red-500/90 hover:bg-red-500 text-white text-xs font-bold px-3 py-2 rounded-full shadow-lg backdrop-blur-sm transition-all active:scale-95"
         >
-          <X className="w-3 h-3" />
           Terminar sesión
         </button>
 
@@ -384,8 +383,16 @@ const CookingChat: React.FC<{
         </div>
       )}
 
-      {/* Header — sticky para que nunca desaparezca al hacer scroll */}
-      <div className="sticky top-0 z-10 flex items-center px-4 py-2.5 bg-white border-b border-neutral-100 flex-shrink-0 shadow-sm">
+      {/* Botón flotante fijo — siempre visible sin importar el scroll */}
+      <button
+        onClick={handleConfirmReset}
+        className="fixed top-[68px] right-3 z-[60] bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-lg transition-all"
+      >
+        Terminar sesión
+      </button>
+
+      {/* Header */}
+      <div className="flex items-center px-4 py-2.5 bg-white border-b border-neutral-100 flex-shrink-0">
         <ChefHat className="text-orange-500 w-4 h-4 mr-2" />
         <div>
           <span className="text-sm font-bold text-neutral-700 block leading-tight">Chef Sous</span>
@@ -395,13 +402,6 @@ const CookingChat: React.FC<{
           <span className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-emerald-500'}`} />
           {isLoading ? 'Respondiendo…' : 'Conectado'}
         </span>
-        <button
-          onClick={handleConfirmReset}
-          className="ml-auto flex items-center gap-1.5 bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm transition-all"
-        >
-          <X className="w-3 h-3" />
-          Terminar sesión
-        </button>
       </div>
 
       {/* Mensajes */}

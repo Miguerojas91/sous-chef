@@ -383,14 +383,6 @@ const CookingChat: React.FC<{
         </div>
       )}
 
-      {/* Botón flotante fijo — siempre visible sin importar el scroll */}
-      <button
-        onClick={handleConfirmReset}
-        className="fixed top-[68px] right-3 z-[60] bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-xl ring-2 ring-white transition-all"
-      >
-        Terminar sesión
-      </button>
-
       {/* Header */}
       <div className="flex items-center px-4 py-2.5 bg-white border-b border-neutral-100 flex-shrink-0">
         <ChefHat className="text-orange-500 w-4 h-4 mr-2" />
@@ -402,6 +394,12 @@ const CookingChat: React.FC<{
           <span className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-emerald-500'}`} />
           {isLoading ? 'Respondiendo…' : 'Conectado'}
         </span>
+        <button
+          onClick={handleConfirmReset}
+          className="ml-auto bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm transition-all"
+        >
+          Terminar sesión
+        </button>
       </div>
 
       {/* Mensajes */}

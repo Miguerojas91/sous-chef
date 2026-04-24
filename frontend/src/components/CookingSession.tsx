@@ -384,16 +384,7 @@ const CookingChat: React.FC<{
         </div>
       )}
 
-      {/* Botón flotante terminar sesión */}
-      <button
-        onClick={handleConfirmReset}
-        className="absolute bottom-24 right-4 z-10 flex items-center gap-1.5 bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3.5 py-2.5 rounded-full shadow-lg transition-all"
-      >
-        <X className="w-3.5 h-3.5" />
-        Terminar sesión
-      </button>
-
-      {/* Header */}
+      {/* Header — incluye botón flotante terminar sesión */}
       <div className="flex items-center px-4 py-2.5 bg-white border-b border-neutral-100 flex-shrink-0">
         <ChefHat className="text-orange-500 w-4 h-4 mr-2" />
         <div>
@@ -404,6 +395,13 @@ const CookingChat: React.FC<{
           <span className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-emerald-500'}`} />
           {isLoading ? 'Respondiendo…' : 'Conectado'}
         </span>
+        <button
+          onClick={handleConfirmReset}
+          className="ml-auto flex items-center gap-1.5 bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm transition-all"
+        >
+          <X className="w-3 h-3" />
+          Terminar
+        </button>
       </div>
 
       {/* Mensajes */}

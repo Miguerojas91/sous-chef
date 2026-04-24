@@ -387,19 +387,18 @@ const CookingChat: React.FC<{
       <div className="flex items-center px-4 py-2.5 bg-white border-b border-neutral-100 flex-shrink-0">
         <ChefHat className="text-orange-500 w-4 h-4 mr-2" />
         <div>
-          <span className="text-sm font-bold text-neutral-700 block leading-tight">Chef Sous</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-bold text-neutral-700 leading-tight">Chef Sous</span>
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-emerald-500'}`} />
+          </div>
           <span className="text-[10px] text-neutral-400 leading-tight">{intentLabel[intent]} · {timeAvailable}</span>
         </div>
-        <span className={`flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ml-2 ${isLoading ? 'bg-yellow-100 text-yellow-600' : 'bg-emerald-100 text-emerald-600'}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-yellow-400 animate-pulse' : 'bg-emerald-500'}`} />
-          {isLoading ? 'Respondiendo…' : 'Conectado'}
-        </span>
       </div>
 
-      {/* Botón flotante — siempre visible debajo del header del chat */}
+      {/* Botón flotante — siempre visible pegado al header de la app */}
       <button
         onClick={handleConfirmReset}
-        className="fixed top-[120px] right-3 z-[60] bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-xl ring-2 ring-white transition-all"
+        className="fixed top-[68px] right-3 z-[60] bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-xl ring-2 ring-white transition-all"
       >
         Terminar sesión
       </button>

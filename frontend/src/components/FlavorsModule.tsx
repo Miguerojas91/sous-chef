@@ -123,7 +123,7 @@ const REGIONS: Region[] = [
           {
             name: 'Bandeja Paisa',
             technique: 'Mixto', difficulty: 'Difícil', time: '3h',
-            ingredients: ['frijoles rojos', 'chicharrón', 'carne molida', 'chorizo', 'morcilla', 'arroz', 'huevo', 'aguacate', 'plátano maduro', 'hogao', 'arepa'],
+            ingredients: ['frijoles rojos', 'chicharrón', 'carne molida', 'chorizo', 'morcilla', 'arroz', 'huevo', 'aguacate', 'plátano maduro', 'harina de maíz precocida', 'tomate chonto', 'cebolla larga'],
             description: 'El plato emblema de Antioquia. Una bandeja monumental que combina los sabores más representativos de la cocina colombiana.',
           },
           {
@@ -169,7 +169,7 @@ const REGIONS: Region[] = [
           {
             name: 'Asado Argentino',
             technique: 'Parrilla', difficulty: 'Intermedio', time: '3h',
-            ingredients: ['tira de asado', 'vacío', 'chorizo', 'morcilla', 'sal gruesa', 'chimichurri', 'perejil', 'ajo', 'orégano', 'vinagre', 'aceite de oliva'],
+            ingredients: ['tira de asado', 'vacío', 'chorizo', 'morcilla', 'sal gruesa', 'perejil', 'ajo', 'orégano', 'vinagre', 'aceite de oliva'],
             description: 'El ritual nacional. La parrilla argentina con sus cortes clásicos y el chimichurri casero que los acompaña.',
           },
           {

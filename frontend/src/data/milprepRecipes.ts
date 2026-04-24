@@ -314,7 +314,7 @@ export const MILPREP_RECIPES: Recipe[] = [
         ingredients: [
             { name: 'Berenjena', category: 'Verduras y Frutas', baseAmount: 1, unit: ' ud' },
             { name: 'Queso mozzarella', category: 'Lácteos y Refrigerados', baseAmount: 100, unit: 'g' },
-            { name: 'Salsa de tomate casera', category: 'Despensa', baseAmount: 150, unit: 'g' },
+            { name: 'Salsa de tomate', category: 'Despensa', baseAmount: 150, unit: 'g' },
             { name: 'Espinaca fresca', category: 'Verduras y Frutas', baseAmount: 50, unit: 'g' },
         ]
     },

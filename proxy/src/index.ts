@@ -208,9 +208,11 @@ Responde ÚNICAMENTE con JSON válido (sin markdown, sin texto extra):
 REGLA CRÍTICA: stars = 0 si la imagen no muestra la tarea culinaria requerida. Nunca des estrellas a fotos de objetos, escritorios, personas o cualquier cosa que no sea el resultado culinario solicitado.`;
 
   try {
+    if (!imageBase64) throw new Error('imageBase64 vacío');
     const ai = getAI();
     const mimeType = (imageBase64.split(';')[0].split(':')[1] || 'image/jpeg') as string;
-    const base64Data = imageBase64.split(',')[1];
+    const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+    console.log(`[evaluate] levelName="${levelName}" mimeType="${mimeType}" base64Len=${base64Data?.length ?? 0}`);
 
     const response = await ai.models.generateContent({
       model: TEXT_MODEL,
@@ -236,7 +238,8 @@ REGLA CRÍTICA: stars = 0 si la imagen no muestra la tarea culinaria requerida. 
     } else {
       throw new Error('No JSON en respuesta');
     }
-  } catch {
+  } catch (err) {
+    console.error('[evaluate] Error:', err);
     res.json({ stars: 0, feedback: 'No pudimos analizar la imagen. Asegúrate de que muestre claramente tu resultado culinario.' });
   }
 });

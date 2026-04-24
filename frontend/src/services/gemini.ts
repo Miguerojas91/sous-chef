@@ -142,20 +142,47 @@ export interface EvaluationResult {
  * @returns Resultado con estrellas y retroalimentación. Devuelve 2 estrellas
  *          con mensaje genérico si la llamada falla (nunca lanza excepción).
  */
+/** Comprime una imagen dataURL a máximo 1280px y calidad 0.82 para reducir el payload. */
+async function compressImage(dataUrl: string, maxPx = 1280, quality = 0.82): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl); // si falla, usar original
+    img.src = dataUrl;
+  });
+}
+
 export async function evaluateImage(
   imageBase64: string,
   levelName: string,
   criteria: { stars: string; label: string }[]
 ): Promise<EvaluationResult> {
   try {
-    const res = await fetch(`${API_URL}/api/evaluate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageBase64, levelName, criteria }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json() as EvaluationResult;
-  } catch {
-    return { stars: 2, feedback: '¡Buena técnica! Con más práctica llegarás a la perfección.' };
+    const compressed = await compressImage(imageBase64);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000); // 30s timeout
+    try {
+      const res = await fetch(`${API_URL}/api/evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: compressed, levelName, criteria }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json() as EvaluationResult;
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch (err) {
+    console.error('[evaluateImage] Error al contactar el evaluador:', err);
+    return { stars: 0, feedback: 'No pudimos conectar con el evaluador. Revisa tu conexión e intenta de nuevo.' };
   }
 }

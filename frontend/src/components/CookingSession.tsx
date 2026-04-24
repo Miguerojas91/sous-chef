@@ -361,7 +361,7 @@ const CookingChat: React.FC<{
     <div className="flex flex-col h-full bg-neutral-50 relative">
       {/* Modal confirmar fin de sesión */}
       {showConfirmEnd && (
-        <div className="absolute inset-0 z-20 bg-black/50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-6">
           <div className="bg-white rounded-2xl p-6 max-w-xs w-full shadow-2xl">
             <p className="text-lg font-black text-neutral-800 mb-1 text-center">¿Terminar sesión?</p>
             <p className="text-sm text-neutral-500 text-center mb-5">Se borrará todo el historial de esta conversación. ¿Estás seguro?</p>

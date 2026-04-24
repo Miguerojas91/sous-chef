@@ -386,7 +386,7 @@ const CookingChat: React.FC<{
       {/* Botón flotante fijo — siempre visible sin importar el scroll */}
       <button
         onClick={handleConfirmReset}
-        className="fixed top-[68px] right-3 z-[60] bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-lg transition-all"
+        className="fixed top-[68px] right-3 z-[60] bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3.5 py-2 rounded-full shadow-xl ring-2 ring-white transition-all"
       >
         Terminar sesión
       </button>

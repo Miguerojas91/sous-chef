@@ -20,7 +20,11 @@
 // ── URL base del proxy (nunca la IA directamente) ─────────────────────────────
 // En desarrollo: vacío → Vite proxea /api → localhost:3001
 // En producción: VITE_API_URL=https://tu-proxy.railway.app
-export const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
+// Saneamiento defensivo: trim + remoción de slash final.
+// (Vercel a veces deja un \n al final del valor de la env var.)
+export const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) ?? '')
+  .trim()
+  .replace(/\/+$/, '');
 
 // ── Instrucción base de seguridad (se añade a TODOS los prompts) ──────────────
 /** Guarda de tópico: la IA solo responde sobre cocina. */

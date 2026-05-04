@@ -6,7 +6,9 @@
  * y sincroniza el resultado con localStorage para uso offline inmediato.
  */
 
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
+const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) ?? '')
+  .trim()
+  .replace(/\/+$/, '');
 
 /**
  * Consulta el proxy para saber si un email tiene membresía premium activa.

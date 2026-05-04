@@ -28,6 +28,13 @@ import { useNavigate } from 'react-router-dom';
 import { ChefHat, AlertTriangle, ArrowRight, UserPlus, LogIn, Check, Eye, EyeOff } from 'lucide-react';
 import { LOCAL_USERS, type LocalUser } from '../data/localUsers';
 import { checkMembership } from '../utils/membership';
+import {
+  isBackendAuthEnabled,
+  backendLogin,
+  backendRegister,
+  setSession,
+  BackendUnavailableError,
+} from '../utils/auth';
 
 // ── Usuarios registrados localmente (guardados en localStorage) ───────────────
 function getStoredUsers(): LocalUser[] {
@@ -94,17 +101,40 @@ export const AuthScreen = () => {
                 userData = { ...userData, isPremium };
             } catch { /* continuar sin premium */ }
         }
-        localStorage.setItem('user', JSON.stringify(userData));
-        window.dispatchEvent(new Event('userStateChange'));
+        setSession(userData);
         navigate('/');
     };
 
     const finishRegister = async (data: LocalUser) => {
         setIsLoading(true);
-        const stored = getStoredUsers();
-        saveStoredUsers([...stored, data]);
-        await loginWithData({ ...data });
-        setIsLoading(false);
+        try {
+            // 1) Backend JWT si está disponible y el usuario tiene email
+            if (isBackendAuthEnabled() && data.email) {
+                try {
+                    const user = await backendRegister({
+                        username: data.username,
+                        email: data.email,
+                        password: data.password,
+                        allergies: formData.allergies,
+                        dislikes: formData.dislikes,
+                    });
+                    await loginWithData(user);
+                    return;
+                } catch (err) {
+                    if (!(err instanceof BackendUnavailableError)) {
+                        setError(err instanceof Error ? err.message : 'Error al registrar');
+                        return;
+                    }
+                    // Fallback local
+                }
+            }
+            // 2) Fallback local
+            const stored = getStoredUsers();
+            saveStoredUsers([...stored, data]);
+            await loginWithData({ ...data });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -113,13 +143,33 @@ export const AuthScreen = () => {
 
         if (isLogin) {
             // ── Login ──────────────────────────────────────────────────────
-            const match = findUser(formData.username, formData.password);
-            if (match) {
-                setIsLoading(true);
-                await loginWithData({ ...match });
+            setIsLoading(true);
+            try {
+                // 1) Backend JWT si está disponible
+                if (isBackendAuthEnabled()) {
+                    try {
+                        const user = await backendLogin(formData.username.trim(), formData.password.trim());
+                        // Pasa por loginWithData para chequeo premium + navigate
+                        await loginWithData(user);
+                        return;
+                    } catch (err) {
+                        if (!(err instanceof BackendUnavailableError)) {
+                            // Error real (credenciales inválidas, etc.)
+                            setError(err instanceof Error ? err.message : 'Error de autenticación');
+                            return;
+                        }
+                        // Backend caído → fallback local
+                    }
+                }
+                // 2) Fallback local
+                const match = findUser(formData.username, formData.password);
+                if (match) {
+                    await loginWithData({ ...match });
+                } else {
+                    setError('Usuario o contraseña incorrectos.');
+                }
+            } finally {
                 setIsLoading(false);
-            } else {
-                setError('Usuario o contraseña incorrectos.');
             }
             return;
         }

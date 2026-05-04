@@ -40,6 +40,7 @@ import { HomeMenu } from './components/HomeMenu';
 import { MilprepModule } from './components/MilprepModule';
 import { MembresiaPage } from './components/MembresiaPage';
 import { isPremiumUser } from './utils/membership';
+import { clearSession } from './utils/auth';
 import { isLevelUnlocked } from './data/levelsData';
 
 // ── Mundo 1: Isla del Cuchillo ─────────────────────────────────────────────
@@ -107,7 +108,7 @@ const Toast = ({ data, onClose }: { data: ToastData; onClose: () => void }) => {
   return (
     <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl max-w-sm w-[92vw] animate-in fade-in slide-in-from-top-4 duration-300 ${colors[data.type]}`}>
       <span className="flex-1 text-sm font-semibold leading-snug">{data.msg}</span>
-      <button onClick={onClose} className="flex-shrink-0 opacity-70 hover:opacity-100">
+      <button onClick={onClose} aria-label="Cerrar notificación" className="flex-shrink-0 opacity-70 hover:opacity-100">
         <X size={16} />
       </button>
     </div>
@@ -148,10 +149,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         let rank = "Iniciado";
         let nextXp = 500;
         let base = 0;
-        if (user.xp > 500) { rank = "Cocinero de Partida"; nextXp = 1500; base = 500; }
-        if (user.xp > 1500) { rank = "Sous Chef"; nextXp = 5000; base = 1500; }
-        if (user.xp > 5000) { rank = "Chef de Cuisine"; nextXp = 15000; base = 5000; }
-        if (user.xp > 15000) { rank = "Maestría Culinaria"; nextXp = 50000; base = 15000; }
+        if (user.xp >= 500) { rank = "Cocinero de Partida"; nextXp = 1500; base = 500; }
+        if (user.xp >= 1500) { rank = "Sous Chef"; nextXp = 5000; base = 1500; }
+        if (user.xp >= 5000) { rank = "Chef de Cuisine"; nextXp = 15000; base = 5000; }
+        if (user.xp >= 15000) { rank = "Maestría Culinaria"; nextXp = 50000; base = 15000; }
         const progress = ((user.xp - base) / (nextXp - base)) * 100;
         setUserData({
           username: user.username,
@@ -196,7 +197,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
+    clearSession();
     navigate('/login');
   };
 

@@ -224,11 +224,22 @@ app.post('/api/chat', aiLimiter, async (req, res) => {
     return void res.status(400).json({ error: 'contents inválido' });
   }
 
+  const startedAt = Date.now();
+  const reqId = Math.random().toString(36).slice(2, 8);
+  console.log(`[chat ${reqId}] start turns=${contents.length} sys=${(systemInstruction ?? '').length}c`);
+
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('X-Accel-Buffering', 'no'); // anti-buffering en proxies (nginx-style)
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
+  // Heartbeat: comentario SSE cada 15s para que la conexión no la mate ningún proxy intermedio.
+  const heartbeat = setInterval(() => {
+    try { res.write(': ping\n\n'); } catch { /* connection cerrada */ }
+  }, 15_000);
+
+  let bytesSent = 0;
   try {
     const ai = getAI();
     const stream = await ai.models.generateContentStream({
@@ -239,13 +250,19 @@ app.post('/api/chat', aiLimiter, async (req, res) => {
 
     for await (const chunk of stream) {
       const text = chunk.text ?? '';
-      if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      if (text) {
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        bytesSent += text.length;
+      }
     }
     res.write('data: [DONE]\n\n');
+    console.log(`[chat ${reqId}] done bytes=${bytesSent} ms=${Date.now() - startedAt}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[chat ${reqId}] error: ${msg}`);
     res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
   } finally {
+    clearInterval(heartbeat);
     res.end();
   }
 });

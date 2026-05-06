@@ -120,6 +120,11 @@ export const useGeminiChat = ({
   const callAPI = useCallback(async (
     contents: Array<{ role: string; parts: [{ text: string }] }>
   ): Promise<void> => {
+    // Timeout total de 60s (cubre cold-start de Railway + Gemini lento).
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort('timeout'), 60_000);
+    let fullText = '';
+
     try {
       const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
@@ -128,6 +133,7 @@ export const useGeminiChat = ({
           contents,
           systemInstruction: systemPromptRef.current,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
@@ -135,7 +141,7 @@ export const useGeminiChat = ({
       const reader  = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer    = '';
-      let fullText  = '';
+      let streamErr: string | null = null;
 
       // Leer el stream línea por línea
       while (true) {
@@ -152,7 +158,7 @@ export const useGeminiChat = ({
           if (data === '[DONE]') break;
           try {
             const parsed = JSON.parse(data) as { text?: string; error?: string };
-            if (parsed.error) throw new Error(parsed.error);
+            if (parsed.error) { streamErr = parsed.error; continue; }
             if (parsed.text) {
               fullText += parsed.text;
               // Actualizar el placeholder del chef con el texto acumulado
@@ -165,19 +171,41 @@ export const useGeminiChat = ({
           } catch { /* saltar línea mal formada */ }
         }
       }
+
+      if (streamErr) throw new Error(streamErr);
+
+      // Stream OK pero sin texto → fallback (Gemini puede devolver vacío)
+      if (!fullText) {
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            agent: 'chef',
+            text: 'No pude generar una respuesta esta vez. ¿Puedes reformular tu pregunta? 🤔',
+          };
+          return updated;
+        });
+      }
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      console.error('[useGeminiChat] Error al llamar al proxy:', errMsg);
-      // Reemplazar el placeholder vacío con mensaje de error amigable
+      const isAbort = error instanceof DOMException && error.name === 'AbortError';
+      const errMsg = isAbort
+        ? 'Tardé demasiado en responder. Intenta de nuevo.'
+        : (error instanceof Error ? error.message : String(error));
+      console.error('[useGeminiChat] Error:', errMsg);
+
+      // Si ya teníamos texto parcial, lo conservamos y añadimos nota.
+      // Si no, reemplazamos por mensaje de error.
       setMessages(prev => {
         const updated = [...prev];
         updated[updated.length - 1] = {
           agent: 'chef',
-          text: '¡Lo siento! Tuve un problema al conectarme. ¿Puedes intentar de nuevo? 🙏',
+          text: fullText
+            ? `${fullText}\n\n⚠️ ${errMsg}`
+            : `¡Lo siento! ${errMsg} 🙏`,
         };
         return updated;
       });
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
     }
   }, []);

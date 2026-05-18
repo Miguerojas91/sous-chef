@@ -17,6 +17,8 @@
  * - En producción, `VITE_API_URL` apunta al proxy Railway.
  */
 
+import { getCountryContext } from '../data/countries';
+
 // ── URL base del proxy (nunca la IA directamente) ─────────────────────────────
 // En desarrollo: vacío → Vite proxea /api → localhost:3001
 // En producción: VITE_API_URL=https://tu-proxy.railway.app
@@ -82,12 +84,37 @@ export type CookingIntent = 'discover-known' | 'discover-together' | 'cook-ingre
  * @param mode          - Modo de interacción: `'text'` (SSE) o `'voice'` (WebSocket).
  * @returns System prompt completo listo para enviarse al modelo.
  */
-export function buildCookingSystemPrompt(intent: CookingIntent, timeAvailable: string, mode: 'text' | 'voice' = 'text'): string {
+export function buildCookingSystemPrompt(
+  intent: CookingIntent,
+  timeAvailable: string,
+  mode: 'text' | 'voice' = 'text',
+  countryCode?: string,
+): string {
+  // Bloque de contexto local — se inyecta solo si el usuario configuró su país.
+  // Resuelve la falencia #2 del informe de mercado (5,421 likes de quejas por
+  // recetas con ingredientes inaccesibles en LATAM).
+  let countryBlock = '';
+  if (countryCode) {
+    const ctx = getCountryContext(countryCode);
+    if (ctx) {
+      countryBlock = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌎 CONTEXTO LOCAL DEL USUARIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${ctx}
+
+Usa SIEMPRE estos nombres locales y referencias culturales. No le menciones
+al usuario que estás adaptando — simplemente habla como un sous chef de su país.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+    }
+  }
+
   const base = `${BASE_SAFETY}
 
 Eres Sous, un sous chef personal, experto y muy paciente. Siempre hablas en español.
 El usuario tiene ${timeAvailable} disponibles para cocinar. Adapta siempre las recetas y tiempos a esto.
-Cuando el usuario diga que terminó de cocinar o quiera empezar de nuevo, dile que puede usar el botón "Terminar sesión" que aparece en pantalla.
+Cuando el usuario diga que terminó de cocinar o quiera empezar de nuevo, dile que puede usar el botón "Terminar sesión" que aparece en pantalla.${countryBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🛡️ REGLA INVIOLABLE DE INGREDIENTES — NUNCA LA ROMPAS

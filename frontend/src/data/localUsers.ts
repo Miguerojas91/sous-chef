@@ -27,6 +27,8 @@ export interface LocalUser {
   is_admin: boolean;
   /** Si es `true`, tiene acceso a los mundos premium (Mundos 3-5 del Modo Aventura). */
   isPremium?: boolean;
+  /** Código ISO del país del usuario para localización de recetas (ej. 'CO', 'MX'). */
+  country?: string;
 }
 
 /** Lista de usuarios preconfigurados que no requieren registro. */

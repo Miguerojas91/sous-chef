@@ -35,6 +35,8 @@ import {
   setSession,
   BackendUnavailableError,
 } from '../utils/auth';
+import { CountryPicker } from './CountryPicker';
+import { getCountry } from '../data/countries';
 
 // ── Usuarios registrados localmente (guardados en localStorage) ───────────────
 function getStoredUsers(): LocalUser[] {
@@ -70,7 +72,8 @@ export const AuthScreen = () => {
         email: '',
         password: '',
         allergies: [] as string[],
-        dislikes: [] as string[]
+        dislikes: [] as string[],
+        country: '' as string,
     });
 
     const [showPassword, setShowPassword] = useState(false);
@@ -191,6 +194,7 @@ export const AuthScreen = () => {
             xp: 0,
             rank: 'Iniciado',
             is_admin: false,
+            country: formData.country || undefined,
         };
         await finishRegister(newUser);
     };
@@ -295,6 +299,29 @@ export const AuthScreen = () => {
 
                         {step === 2 && !isLogin && (
                             <div className="animate-in fade-in slide-in-from-right-8 duration-300">
+                                {/* País — primero, para localizar todo lo que viene después */}
+                                {!formData.country ? (
+                                    <CountryPicker
+                                        mode="inline"
+                                        onSelect={(code) => setFormData(prev => ({ ...prev, country: code }))}
+                                    />
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData(prev => ({ ...prev, country: '' }))}
+                                        className="w-full mb-5 flex items-center justify-between px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-colors text-left"
+                                    >
+                                        <span className="flex items-center gap-3">
+                                            <span className="text-2xl" aria-hidden>{getCountry(formData.country)?.flag}</span>
+                                            <span>
+                                                <span className="block text-xs text-emerald-600 font-bold">Cocinas desde</span>
+                                                <span className="block text-sm font-semibold text-emerald-900">{getCountry(formData.country)?.name}</span>
+                                            </span>
+                                        </span>
+                                        <span className="text-xs text-emerald-600 font-semibold">Cambiar</span>
+                                    </button>
+                                )}
+
                                 <div className="text-center mb-6">
                                     <AlertTriangle className="mx-auto h-12 w-12 text-orange-500 mb-2" />
                                     <h3 className="text-lg font-black text-neutral-900">¿Hay algo que debamos evitar?</h3>

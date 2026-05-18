@@ -25,54 +25,79 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { CookingSession } from './components/CookingSession';
 import { LessonViewer } from './components/LessonViewer';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ChefHat, Home, Compass, Map as MapIcon, Globe, BookOpen, LogOut, CalendarDays, ShieldAlert, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense, memo, type ComponentType } from 'react';
 import { EditorProvider, useEditor } from './context/EditorContext';
 
-// Custom Components
-import { SkillTreeMap } from './components/SkillTreeMap';
-import { AcademyModule } from './components/AcademyModule';
-import { FlavorsModule } from './components/FlavorsModule';
+// ── Eager (necesario en el primer paint) ──────────────────────────────────────
 import { AuthScreen } from './components/AuthScreen';
 import { HomeMenu } from './components/HomeMenu';
-import { MilprepModule } from './components/MilprepModule';
-import { MembresiaPage } from './components/MembresiaPage';
 import { isPremiumUser } from './utils/membership';
-import { clearSession } from './utils/auth';
+import { clearSession, backendLogout, getUserCountry, setUserCountry } from './utils/auth';
 import { isLevelUnlocked } from './data/levelsData';
+import { CountryPicker } from './components/CountryPicker';
 
-// ── Mundo 1: Isla del Cuchillo ─────────────────────────────────────────────
-import { JulianaLevel } from './components/JulianaLevel';
-import { CMSTestPage } from './components/cms/CMSTestPage';
-import { BrunoiseLevel } from './components/BrunoiseLevel';
-import { ChiffonadeLevel } from './components/ChiffonadeLevel';
-import { ChefVegetalBoss } from './components/ChefVegetalBoss';
+// ── Lazy helper: convierte un import nombrado en lazy() ───────────────────────
+// React.lazy espera `default`. Como nuestros componentes exportan named, lo
+// envolvemos. Cada llamada a `lazyNamed(...)` produce un chunk separado.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lazyNamed(loader: () => Promise<any>, exportName: string) {
+  return lazy(async () => {
+    const mod = await loader();
+    return { default: mod[exportName] as ComponentType<Record<string, never>> };
+  });
+}
 
-// ── Mundo 2: Valle del Fuego ───────────────────────────────────────────────
-import { SofritoLevel } from './components/SofritoLevel';
-import { MaillardLevel } from './components/MaillardLevel';
-import { EmulsionLevel } from './components/EmulsionLevel';
-import { FlambeadorBoss } from './components/FlambeadorBoss';
+// ── Lazy: módulos principales ─────────────────────────────────────────────────
+const CookingSession = lazyNamed(() => import('./components/CookingSession'), 'CookingSession');
+const SkillTreeMap   = lazyNamed(() => import('./components/SkillTreeMap'),   'SkillTreeMap');
+const AcademyModule  = lazyNamed(() => import('./components/AcademyModule'),  'AcademyModule');
+const FlavorsModule  = lazyNamed(() => import('./components/FlavorsModule'),  'FlavorsModule');
+const MilprepModule  = lazyNamed(() => import('./components/MilprepModule'),  'MilprepModule');
+const MembresiaPage  = lazyNamed(() => import('./components/MembresiaPage'),  'MembresiaPage');
+const CMSTestPage    = lazyNamed(() => import('./components/cms/CMSTestPage'),'CMSTestPage');
 
-// ── Mundo 3: Mar de Sabores ────────────────────────────────────────────────
-import { FondoBlancoLevel } from './components/FondoBlancoLevel';
-import { FondoOscuroLevel } from './components/FondoOscuroLevel';
-import { FumetLevel } from './components/FumetLevel';
-import { MaestroDeSalsasBoss } from './components/MaestroDeSalsasBoss';
+// ── Lazy: Mundo 1 ─────────────────────────────────────────────────────────────
+const JulianaLevel    = lazyNamed(() => import('./components/JulianaLevel'),    'JulianaLevel');
+const BrunoiseLevel   = lazyNamed(() => import('./components/BrunoiseLevel'),   'BrunoiseLevel');
+const ChiffonadeLevel = lazyNamed(() => import('./components/ChiffonadeLevel'), 'ChiffonadeLevel');
+const ChefVegetalBoss = lazyNamed(() => import('./components/ChefVegetalBoss'), 'ChefVegetalBoss');
 
-// ── Mundo 4: Pico del Maestro ──────────────────────────────────────────────
-import { SousVideLevel } from './components/SousVideLevel';
-import { EsferificacionLevel } from './components/EsferificacionLevel';
-import { FermentacionLevel } from './components/FermentacionLevel';
-import { AlquimistaBoss } from './components/AlquimistaBoss';
+// ── Lazy: Mundo 2 ─────────────────────────────────────────────────────────────
+const SofritoLevel   = lazyNamed(() => import('./components/SofritoLevel'),   'SofritoLevel');
+const MaillardLevel  = lazyNamed(() => import('./components/MaillardLevel'),  'MaillardLevel');
+const EmulsionLevel  = lazyNamed(() => import('./components/EmulsionLevel'),  'EmulsionLevel');
+const FlambeadorBoss = lazyNamed(() => import('./components/FlambeadorBoss'), 'FlambeadorBoss');
 
-// ── Mundo 5: Castillo del Chef ─────────────────────────────────────────────
-import { MenuDegustacionLevel } from './components/MenuDegustacionLevel';
-import { MarinajeLevel } from './components/MarinajeLevel';
-import { AltaCocinaLevel } from './components/AltaCocinaLevel';
-import { GranChefBoss } from './components/GranChefBoss';
+// ── Lazy: Mundo 3 ─────────────────────────────────────────────────────────────
+const FondoBlancoLevel    = lazyNamed(() => import('./components/FondoBlancoLevel'),    'FondoBlancoLevel');
+const FondoOscuroLevel    = lazyNamed(() => import('./components/FondoOscuroLevel'),    'FondoOscuroLevel');
+const FumetLevel          = lazyNamed(() => import('./components/FumetLevel'),          'FumetLevel');
+const MaestroDeSalsasBoss = lazyNamed(() => import('./components/MaestroDeSalsasBoss'), 'MaestroDeSalsasBoss');
+
+// ── Lazy: Mundo 4 ─────────────────────────────────────────────────────────────
+const SousVideLevel       = lazyNamed(() => import('./components/SousVideLevel'),       'SousVideLevel');
+const EsferificacionLevel = lazyNamed(() => import('./components/EsferificacionLevel'), 'EsferificacionLevel');
+const FermentacionLevel   = lazyNamed(() => import('./components/FermentacionLevel'),   'FermentacionLevel');
+const AlquimistaBoss      = lazyNamed(() => import('./components/AlquimistaBoss'),      'AlquimistaBoss');
+
+// ── Lazy: Mundo 5 ─────────────────────────────────────────────────────────────
+const MenuDegustacionLevel = lazyNamed(() => import('./components/MenuDegustacionLevel'), 'MenuDegustacionLevel');
+const MarinajeLevel        = lazyNamed(() => import('./components/MarinajeLevel'),        'MarinajeLevel');
+const AltaCocinaLevel      = lazyNamed(() => import('./components/AltaCocinaLevel'),      'AltaCocinaLevel');
+const GranChefBoss         = lazyNamed(() => import('./components/GranChefBoss'),         'GranChefBoss');
+
+// ── Fallback de Suspense durante carga de chunk ───────────────────────────────
+const RouteFallback = () => (
+  <div role="status" aria-live="polite" className="flex items-center justify-center h-full min-h-[60vh]">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-10 h-10 rounded-full border-4 border-orange-200 border-t-orange-500 animate-spin" aria-hidden />
+      <span className="text-sm font-semibold text-neutral-500">Cargando…</span>
+    </div>
+  </div>
+);
 
 const navLinks = [
   { to: '/home',     icon: Home,        label: 'Inicio',           shortLabel: 'Inicio',    exact: true },
@@ -98,7 +123,7 @@ export function showToast(msg: string, type: ToastData['type'] = 'info') {
   window.dispatchEvent(new CustomEvent('sous:toast', { detail: { msg, type } }));
 }
 
-const Toast = ({ data, onClose }: { data: ToastData; onClose: () => void }) => {
+const Toast = memo(({ data, onClose }: { data: ToastData; onClose: () => void }) => {
   const colors: Record<ToastData['type'], string> = {
     info:    'bg-blue-600 text-white',
     warning: 'bg-amber-500 text-white',
@@ -113,7 +138,8 @@ const Toast = ({ data, onClose }: { data: ToastData; onClose: () => void }) => {
       </button>
     </div>
   );
-};
+});
+Toast.displayName = 'Toast';
 
 // Redirect with toast (for locked level / premium routes)
 const ToastRedirect = ({ to, msg, type }: { to: string; msg: string; type: ToastData['type'] }) => {
@@ -132,6 +158,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const [toast, setToast] = useState<ToastData | null>(null);
   const [activeLesson, setActiveLesson] = useState<LessonEventData | null>(null);
+
+  // CountryPicker one-shot: se muestra solo a usuarios que aún no han elegido
+  // país (legacy users de antes del feature). El registro nuevo ya lo pide.
+  const [showCountryPicker, setShowCountryPicker] = useState(() => !getUserCountry());
+
   const [userData, setUserData] = useState({
     username: "Cargando...",
     rank: "Iniciado",
@@ -196,15 +227,36 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     return () => window.removeEventListener('sous:openLesson', handler);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await backendLogout(); // revoca el refresh en el server (no-op si dev local)
     clearSession();
     navigate('/login');
   };
 
   const userInitial = userData.username?.[0]?.toUpperCase() ?? '?';
 
+  const handleCountrySelect = (code: string) => {
+    setUserCountry(code);
+    setShowCountryPicker(false);
+    showToast(`Listo, Sous te sugerirá recetas locales 🌎`, 'success');
+  };
+
+  const handleCountrySkip = () => {
+    setUserCountry('OTHER'); // guarda OTHER para que no se vuelva a preguntar
+    setShowCountryPicker(false);
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
+      {/* CountryPicker one-shot (solo si no hay país configurado) */}
+      {showCountryPicker && (
+        <CountryPicker
+          mode="modal"
+          onSelect={handleCountrySelect}
+          onSkip={handleCountrySkip}
+        />
+      )}
+
       {/* Lesson viewer — renderiza sobre todo el layout */}
       {activeLesson && (
         <LessonViewer
@@ -397,10 +449,27 @@ const LevelRoute = ({ children, path }: { children: React.ReactNode; path: strin
   return <>{children}</>;
 };
 
+// Cierra sesión cuando el backend expira el JWT y el refresh también falla.
+const AuthExpiryWatcher = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const handler = () => {
+      showToast('Tu sesión expiró. Inicia sesión nuevamente.', 'warning');
+      clearSession();
+      navigate('/login', { replace: true });
+    };
+    window.addEventListener('sous:auth-expired', handler);
+    return () => window.removeEventListener('sous:auth-expired', handler);
+  }, [navigate]);
+  return null;
+};
+
 function App() {
   return (
+    <ErrorBoundary>
     <EditorProvider>
       <Router>
+        <AuthExpiryWatcher />
         <Routes>
         <Route path="/login" element={<AuthScreen />} />
 
@@ -408,6 +477,7 @@ function App() {
         <Route path="/*" element={
           <ProtectedRoute>
             <Layout>
+              <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/" element={<Navigate to="/home" replace />} />
                 {/* CMS Routes */}
@@ -451,12 +521,14 @@ function App() {
                 <Route path="/academia" element={<AcademyModule />} />
                 <Route path="/milprep" element={<MilprepModule />} />
               </Routes>
+              </Suspense>
             </Layout>
           </ProtectedRoute>
         } />
       </Routes>
     </Router>
     </EditorProvider>
+    </ErrorBoundary>
   );
 }
 

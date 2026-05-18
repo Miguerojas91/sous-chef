@@ -34,6 +34,7 @@ import { friendlyVoiceError } from '../utils/friendlyError';
 import { QuickReplies } from './QuickReplies';
 import { ChatMessage } from './ChatMessage';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { getUserCountry } from '../utils/auth';
 
 // ── Persistencia de la sesión activa ─────────────────────────────────────────
 
@@ -80,8 +81,11 @@ const CookingChat: React.FC<{
   timeAvailable: string;
   onReset: () => void;
 }> = ({ intent, timeAvailable, onReset }) => {
-  const textPrompt  = buildCookingSystemPrompt(intent, timeAvailable, 'text');
-  const voicePrompt = buildCookingSystemPrompt(intent, timeAvailable, 'voice');
+  // El país se evalúa una sola vez al montar — no queremos que cambie en medio
+  // de una conversación si el usuario lo actualiza en otra pestaña.
+  const country = useRef(getUserCountry()).current;
+  const textPrompt  = buildCookingSystemPrompt(intent, timeAvailable, 'text', country);
+  const voicePrompt = buildCookingSystemPrompt(intent, timeAvailable, 'voice', country);
 
   const { isLoading, messages, sendMessage, clearMessages } = useGeminiChat({
     mode: 'cooking',

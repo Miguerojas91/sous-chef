@@ -29,7 +29,14 @@ export interface LocalUser {
   isPremium?: boolean;
   /** Código ISO del país del usuario para localización de recetas (ej. 'CO', 'MX'). */
   country?: string;
-  /** IDs de filtros dietéticos persistentes (ej. ['diabetico', 'sin-gluten']). */
+  /**
+   * IDs de TODOS los filtros activos persistentes del usuario (dietéticos,
+   * restricciones de hogar como "sin horno", presupuesto, familia, etc.).
+   * Se inyectan automáticamente al system prompt en cada sesión sin pedir
+   * confirmación. El usuario los edita desde su perfil.
+   */
+  preferences?: string[];
+  /** @deprecated — usa `preferences`. Mantenido para back-compat con storage legacy. */
   dietaryPreferences?: string[];
   /** Ingredientes con alergia (NUNCA usar). */
   allergies?: string[];

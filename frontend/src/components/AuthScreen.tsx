@@ -37,6 +37,7 @@ import {
 } from '../utils/auth';
 import { CountryPicker } from './CountryPicker';
 import { getCountry } from '../data/countries';
+import { PreferencesEditor } from './PreferencesEditor';
 
 // ── Usuarios registrados localmente (guardados en localStorage) ───────────────
 function getStoredUsers(): LocalUser[] {
@@ -74,26 +75,12 @@ export const AuthScreen = () => {
         allergies: [] as string[],
         dislikes: [] as string[],
         country: '' as string,
+        preferences: [] as string[],
     });
 
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [currentTag, setCurrentTag] = useState('');
-    const [tagType, setTagType] = useState<'allergies' | 'dislikes'>('allergies');
     const [error, setError] = useState('');
-
-    const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && currentTag.trim() !== '') {
-            e.preventDefault();
-            setFormData(prev => ({
-                ...prev,
-                [tagType]: [...prev[tagType], currentTag.trim()]
-            }));
-            setCurrentTag('');
-        }
-    };
-
-    const currentList = tagType === 'allergies' ? formData.allergies : formData.dislikes;
 
     const loginWithData = async (data: LocalUser) => {
         // Verificar membresía premium si el usuario tiene email
@@ -195,6 +182,7 @@ export const AuthScreen = () => {
             rank: 'Iniciado',
             is_admin: false,
             country: formData.country || undefined,
+            preferences: formData.preferences.length > 0 ? formData.preferences : undefined,
             allergies: formData.allergies.length > 0 ? formData.allergies : undefined,
             dislikes: formData.dislikes.length > 0 ? formData.dislikes : undefined,
         };
@@ -324,55 +312,21 @@ export const AuthScreen = () => {
                                     </button>
                                 )}
 
-                                <div className="text-center mb-6">
-                                    <AlertTriangle className="mx-auto h-12 w-12 text-orange-500 mb-2" />
-                                    <h3 className="text-lg font-black text-neutral-900">¿Hay algo que debamos evitar?</h3>
-                                    <p className="text-sm text-neutral-500 mt-1">Sous diseñará y bloqueará recomendaciones basado en esto de forma estricta.</p>
+                                <div className="text-center mb-5">
+                                    <AlertTriangle className="mx-auto h-10 w-10 text-orange-500 mb-1.5" />
+                                    <h3 className="text-lg font-black text-neutral-900">Tus preferencias</h3>
+                                    <p className="text-sm text-neutral-500 mt-1">Sous las respetará en TODAS tus sesiones — no tendrás que repetirlas cada vez.</p>
                                 </div>
 
-                                <div className="flex gap-2 mb-4 p-1 bg-neutral-100 rounded-lg">
-                                    <button
-                                        type="button"
-                                        onClick={() => setTagType('allergies')}
-                                        className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-colors ${tagType === 'allergies' ? 'bg-white shadow-sm text-red-600' : 'text-neutral-500 hover:text-neutral-700'}`}
-                                    >
-                                        Alergias (Peligro)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setTagType('dislikes')}
-                                        className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-colors ${tagType === 'dislikes' ? 'bg-white shadow-sm text-orange-600' : 'text-neutral-500 hover:text-neutral-700'}`}
-                                    >
-                                        No me gusta
-                                    </button>
-                                </div>
-
-                                <input
-                                    type="text"
-                                    className="appearance-none block w-full px-3 py-3 border border-neutral-300 rounded-xl shadow-sm placeholder-neutral-400 focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm mb-4"
-                                    placeholder={`Escribe un ingrediente y presiona ENTER`}
-                                    value={currentTag}
-                                    onChange={(e) => setCurrentTag(e.target.value)}
-                                    onKeyDown={handleAddTag}
+                                <PreferencesEditor
+                                    mode="inline"
+                                    initialFilterIds={formData.preferences}
+                                    initialAllergies={formData.allergies}
+                                    initialDislikes={formData.dislikes}
+                                    onChange={({ filterIds, allergies, dislikes }) =>
+                                        setFormData(prev => ({ ...prev, preferences: filterIds, allergies, dislikes }))
+                                    }
                                 />
-
-                                <div className="flex flex-wrap gap-2 min-h-[80px] p-4 bg-neutral-50 rounded-xl border border-neutral-100">
-                                    {currentList.length === 0 ? (
-                                        <span className="text-neutral-400 text-sm italic w-full text-center mt-2">No hay {tagType === 'allergies' ? 'alergias' : 'ingredientes no deseados'} agregados.</span>
-                                    ) : (
-                                        currentList.map((tag, idx) => (
-                                            <div key={idx} className={`px-3 py-1 text-sm font-bold rounded-full flex items-center gap-1 ${tagType === 'allergies' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
-                                                {tag}
-                                                <button type="button" onClick={() => {
-                                                    setFormData(prev => ({
-                                                        ...prev,
-                                                        [tagType]: prev[tagType].filter(t => t !== tag)
-                                                    }))
-                                                }} className="ml-1 hover:text-neutral-900">&times;</button>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
 
                                 <div className="mt-8 flex gap-3">
                                     <button

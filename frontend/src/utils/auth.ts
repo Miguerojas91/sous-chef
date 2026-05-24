@@ -47,14 +47,23 @@ export const setUserCountry = (countryCode: string): void => {
   window.dispatchEvent(new Event('userStateChange'));
 };
 
-/** Devuelve las preferencias dietéticas persistentes del usuario (vacío si no hay). */
-export const getUserDietary = (): string[] => getUser()?.dietaryPreferences ?? [];
+/**
+ * Devuelve TODAS las preferencias persistentes del usuario (filtros activos).
+ * Lee primero `preferences` (campo nuevo); si no existe, cae a
+ * `dietaryPreferences` (campo legacy) para no romper a usuarios viejos.
+ */
+export const getUserPreferences = (): string[] => {
+  const u = getUser();
+  return u?.preferences ?? u?.dietaryPreferences ?? [];
+};
 
-/** Actualiza las preferencias dietéticas (ej. diabético, keto) del usuario. */
-export const setUserDietary = (ids: string[]): void => {
+/** Actualiza las preferencias del usuario. */
+export const setUserPreferences = (ids: string[]): void => {
   const user = getUser();
   if (!user) return;
-  const next = { ...user, dietaryPreferences: ids };
+  // Borramos el campo legacy para evitar inconsistencia entre los dos.
+  const { dietaryPreferences: _legacy, ...rest } = user;
+  const next = { ...rest, preferences: ids };
   localStorage.setItem(USER_KEY, JSON.stringify(next));
   window.dispatchEvent(new Event('userStateChange'));
 };
@@ -62,8 +71,32 @@ export const setUserDietary = (ids: string[]): void => {
 /** Devuelve las alergias guardadas del usuario (vacío si no hay). */
 export const getUserAllergies = (): string[] => getUser()?.allergies ?? [];
 
+/** Actualiza las alergias del usuario. */
+export const setUserAllergies = (allergies: string[]): void => {
+  const user = getUser();
+  if (!user) return;
+  const next = { ...user, allergies };
+  localStorage.setItem(USER_KEY, JSON.stringify(next));
+  window.dispatchEvent(new Event('userStateChange'));
+};
+
 /** Devuelve los disgustos guardados del usuario (vacío si no hay). */
 export const getUserDislikes = (): string[] => getUser()?.dislikes ?? [];
+
+/** Actualiza los disgustos del usuario. */
+export const setUserDislikes = (dislikes: string[]): void => {
+  const user = getUser();
+  if (!user) return;
+  const next = { ...user, dislikes };
+  localStorage.setItem(USER_KEY, JSON.stringify(next));
+  window.dispatchEvent(new Event('userStateChange'));
+};
+
+// ── Aliases legacy (mantienen las llamadas viejas funcionando) ────────────────
+/** @deprecated — usa `getUserPreferences`. */
+export const getUserDietary = getUserPreferences;
+/** @deprecated — usa `setUserPreferences`. */
+export const setUserDietary = setUserPreferences;
 
 export const setSession = (user: LocalUser, token?: string, refreshToken?: string): void => {
   localStorage.setItem(USER_KEY, JSON.stringify(user));

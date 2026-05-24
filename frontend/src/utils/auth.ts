@@ -47,6 +47,24 @@ export const setUserCountry = (countryCode: string): void => {
   window.dispatchEvent(new Event('userStateChange'));
 };
 
+/** Devuelve las preferencias dietéticas persistentes del usuario (vacío si no hay). */
+export const getUserDietary = (): string[] => getUser()?.dietaryPreferences ?? [];
+
+/** Actualiza las preferencias dietéticas (ej. diabético, keto) del usuario. */
+export const setUserDietary = (ids: string[]): void => {
+  const user = getUser();
+  if (!user) return;
+  const next = { ...user, dietaryPreferences: ids };
+  localStorage.setItem(USER_KEY, JSON.stringify(next));
+  window.dispatchEvent(new Event('userStateChange'));
+};
+
+/** Devuelve las alergias guardadas del usuario (vacío si no hay). */
+export const getUserAllergies = (): string[] => getUser()?.allergies ?? [];
+
+/** Devuelve los disgustos guardados del usuario (vacío si no hay). */
+export const getUserDislikes = (): string[] => getUser()?.dislikes ?? [];
+
 export const setSession = (user: LocalUser, token?: string, refreshToken?: string): void => {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
   if (token) localStorage.setItem(TOKEN_KEY, token);

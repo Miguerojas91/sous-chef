@@ -34,7 +34,8 @@ import { friendlyVoiceError } from '../utils/friendlyError';
 import { QuickReplies } from './QuickReplies';
 import { ChatMessage } from './ChatMessage';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { getUserCountry } from '../utils/auth';
+import { getUserCountry, getUserDietary, getUserAllergies, getUserDislikes, setUserDietary } from '../utils/auth';
+import { getSessionFilters, getDietaryFilters, getFilter } from '../data/recipeFilters';
 
 // ── Persistencia de la sesión activa ─────────────────────────────────────────
 
@@ -44,6 +45,7 @@ const CHAT_STORAGE_KEY = 'sous_chat_cooking';
 interface SessionMeta {
   intent: CookingIntent;
   timeAvailable: string;
+  filterIds?: string[];
 }
 
 function loadMeta(): SessionMeta | null {
@@ -79,13 +81,19 @@ const TIME_OPTIONS = [
 const CookingChat: React.FC<{
   intent: CookingIntent;
   timeAvailable: string;
+  filterIds: string[];
   onReset: () => void;
-}> = ({ intent, timeAvailable, onReset }) => {
-  // El país se evalúa una sola vez al montar — no queremos que cambie en medio
-  // de una conversación si el usuario lo actualiza en otra pestaña.
-  const country = useRef(getUserCountry()).current;
-  const textPrompt  = buildCookingSystemPrompt(intent, timeAvailable, 'text', country);
-  const voicePrompt = buildCookingSystemPrompt(intent, timeAvailable, 'voice', country);
+}> = ({ intent, timeAvailable, filterIds, onReset }) => {
+  // País + alergias se evalúan una sola vez al montar — no queremos que cambien
+  // a mitad de conversación si el usuario edita el perfil en otra pestaña.
+  const promptOpts = useRef({
+    countryCode: getUserCountry(),
+    filterIds,
+    allergies: getUserAllergies(),
+    dislikes: getUserDislikes(),
+  }).current;
+  const textPrompt  = buildCookingSystemPrompt(intent, timeAvailable, 'text', promptOpts);
+  const voicePrompt = buildCookingSystemPrompt(intent, timeAvailable, 'voice', promptOpts);
 
   const { isLoading, messages, sendMessage, clearMessages } = useGeminiChat({
     mode: 'cooking',
@@ -471,19 +479,31 @@ export const CookingSession: React.FC = () => {
   });
   const [intent, setIntent] = useState<CookingIntent | null>(() => loadMeta()?.intent ?? null);
   const [timeAvailable, setTimeAvailable] = useState<string | null>(() => loadMeta()?.timeAvailable ?? null);
+  const [activeFilterIds, setActiveFilterIds] = useState<string[]>(
+    () => loadMeta()?.filterIds ?? getUserDietary()  // pre-seleccionados los dietéticos del perfil
+  );
   // Guardamos el intent temporalmente mientras el usuario elige el tiempo
   const pendingIntentRef = useRef<CookingIntent | null>(null);
 
   const selectIntent = (i: CookingIntent) => {
     pendingIntentRef.current = i;
+    // Resetear los filtros al valor del perfil cada vez que entras a configurar
+    setActiveFilterIds(getUserDietary());
     setPhase('time-picker');
+  };
+
+  const toggleFilter = (id: string) => {
+    setActiveFilterIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
   const selectTime = (time: string) => {
     const i = pendingIntentRef.current!;
     setIntent(i);
     setTimeAvailable(time);
-    saveMeta({ intent: i, timeAvailable: time });
+    // Persistir los dietéticos elegidos como defecto para próximas sesiones
+    const dietary = activeFilterIds.filter(id => getFilter(id)?.kind === 'dietary');
+    setUserDietary(dietary);
+    saveMeta({ intent: i, timeAvailable: time, filterIds: activeFilterIds });
     setPhase('chatting');
   };
 
@@ -491,45 +511,124 @@ export const CookingSession: React.FC = () => {
     clearSession();
     setIntent(null);
     setTimeAvailable(null);
+    setActiveFilterIds(getUserDietary());
     pendingIntentRef.current = null;
     setPhase('landing');
   };
 
   // ── Pantalla: chatting ──
   if (phase === 'chatting' && intent && timeAvailable) {
-    return <CookingChat intent={intent} timeAvailable={timeAvailable} onReset={handleReset} />;
+    return (
+      <CookingChat
+        intent={intent}
+        timeAvailable={timeAvailable}
+        filterIds={loadMeta()?.filterIds ?? []}
+        onReset={handleReset}
+      />
+    );
   }
 
-  // ── Pantalla: selector de tiempo ──
+  // ── Pantalla: selector de tiempo + filtros ──
   if (phase === 'time-picker') {
+    const sessionFilters = getSessionFilters();
+    const dietaryFilters = getDietaryFilters();
+    const userHasDietary = activeFilterIds.some(id => getFilter(id)?.kind === 'dietary');
+
     return (
-      <div className="flex flex-col h-full bg-gradient-to-br from-orange-50 to-amber-50">
-        <div className="flex items-center px-4 py-2.5 border-b border-orange-100 bg-white/60 flex-shrink-0">
+      <div className="flex flex-col h-full bg-gradient-to-br from-orange-50 to-amber-50 overflow-y-auto">
+        <div className="flex items-center px-4 py-2.5 border-b border-orange-100 bg-white/60 sticky top-0 z-10">
           <button onClick={() => setPhase(pendingIntentRef.current === 'cook-ingredients' ? 'landing' : 'discover-sub')} className="p-1.5 rounded-full hover:bg-orange-100 transition-colors mr-2">
             <ArrowLeft className="w-4 h-4 text-orange-600" />
           </button>
           <span className="text-sm font-bold text-neutral-700">Antes de empezar…</span>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-5 gap-3">
-          <div className="text-center mb-1">
-            <Clock className="w-7 h-7 text-orange-400 mx-auto mb-2" />
-            <h2 className="text-lg font-extrabold text-neutral-800 mb-0.5">¿Cuánto tiempo tienes?</h2>
-            <p className="text-xs text-neutral-500">Sous ajustará las recetas a tu disponibilidad.</p>
-          </div>
+        <div className="flex-1 flex flex-col items-center px-5 py-6 gap-6 w-full max-w-md mx-auto">
+          {/* Filtros de sesión */}
+          <section className="w-full">
+            <h3 className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-orange-500" />
+              Esta sesión <span className="font-normal text-xs text-neutral-400">— opcional</span>
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {sessionFilters.map(f => {
+                const active = activeFilterIds.includes(f.id);
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => toggleFilter(f.id)}
+                    aria-pressed={active}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                      active
+                        ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-200'
+                        : 'bg-white text-neutral-700 border-neutral-200 hover:border-orange-300'
+                    }`}
+                  >
+                    <span>{f.emoji}</span>
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
-          <div className="flex flex-col gap-2 w-full max-w-sm">
-            {TIME_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => selectTime(opt.value)}
-                className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-orange-100 hover:border-orange-300 hover:shadow-md transition-all text-left active:scale-[0.98]"
-              >
-                <span className="text-xl">{opt.emoji}</span>
-                <span className="text-sm font-semibold text-neutral-800">{opt.label}</span>
-              </button>
-            ))}
-          </div>
+          {/* Preferencias dietéticas persistentes */}
+          <section className="w-full">
+            <h3 className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+              <Utensils className="w-4 h-4 text-emerald-600" />
+              Mis preferencias
+              <span className="font-normal text-xs text-neutral-400">— se recuerdan</span>
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {dietaryFilters.map(f => {
+                const active = activeFilterIds.includes(f.id);
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => toggleFilter(f.id)}
+                    aria-pressed={active}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                      active
+                        ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-200'
+                        : 'bg-white text-neutral-700 border-neutral-200 hover:border-emerald-300'
+                    }`}
+                  >
+                    <span>{f.emoji}</span>
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+            {userHasDietary && (
+              <p className="text-[11px] text-emerald-600 mt-1.5 font-medium">
+                ✓ Sous respetará estas preferencias en todas tus sesiones
+              </p>
+            )}
+          </section>
+
+          {/* Selector de tiempo — la acción de "commit" */}
+          <section className="w-full pt-2">
+            <div className="text-center mb-3">
+              <Clock className="w-7 h-7 text-orange-400 mx-auto mb-1" />
+              <h2 className="text-lg font-extrabold text-neutral-800 mb-0.5">¿Cuánto tiempo tienes?</h2>
+              <p className="text-xs text-neutral-500">Elige el tiempo para empezar.</p>
+            </div>
+
+            <div className="flex flex-col gap-2 w-full">
+              {TIME_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => selectTime(opt.value)}
+                  className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-orange-100 hover:border-orange-300 hover:shadow-md transition-all text-left active:scale-[0.98]"
+                >
+                  <span className="text-xl">{opt.emoji}</span>
+                  <span className="text-sm font-semibold text-neutral-800">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
         </div>
       </div>
     );

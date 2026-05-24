@@ -195,6 +195,8 @@ export const AuthScreen = () => {
             rank: 'Iniciado',
             is_admin: false,
             country: formData.country || undefined,
+            allergies: formData.allergies.length > 0 ? formData.allergies : undefined,
+            dislikes: formData.dislikes.length > 0 ? formData.dislikes : undefined,
         };
         await finishRegister(newUser);
     };
@@ -399,6 +401,7 @@ export const AuthScreen = () => {
                                             password: formData.password.trim(),
                                             email: formData.email.trim() || undefined,
                                             xp: 0, rank: 'Iniciado', is_admin: false,
+                                            country: formData.country || undefined,
                                         };
                                         await finishRegister(newUser);
                                     }}

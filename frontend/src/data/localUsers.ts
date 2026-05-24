@@ -29,6 +29,12 @@ export interface LocalUser {
   isPremium?: boolean;
   /** Código ISO del país del usuario para localización de recetas (ej. 'CO', 'MX'). */
   country?: string;
+  /** IDs de filtros dietéticos persistentes (ej. ['diabetico', 'sin-gluten']). */
+  dietaryPreferences?: string[];
+  /** Ingredientes con alergia (NUNCA usar). */
+  allergies?: string[];
+  /** Ingredientes que no le gustan (evitar, no crítico). */
+  dislikes?: string[];
 }
 
 /** Lista de usuarios preconfigurados que no requieren registro. */

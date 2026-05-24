@@ -18,6 +18,7 @@
  */
 
 import { getCountryContext } from '../data/countries';
+import { buildFiltersPromptBlock } from '../data/recipeFilters';
 
 // ── URL base del proxy (nunca la IA directamente) ─────────────────────────────
 // En desarrollo: vacío → Vite proxea /api → localhost:3001
@@ -84,12 +85,26 @@ export type CookingIntent = 'discover-known' | 'discover-together' | 'cook-ingre
  * @param mode          - Modo de interacción: `'text'` (SSE) o `'voice'` (WebSocket).
  * @returns System prompt completo listo para enviarse al modelo.
  */
+export interface CookingPromptOptions {
+  /** Código ISO del país del usuario (CO, MX, AR…). */
+  countryCode?: string;
+  /** IDs de filtros activos para esta sesión (ver `recipeFilters.ts`). */
+  filterIds?: string[];
+  /** Alergias declaradas por el usuario (no usar nunca). */
+  allergies?: string[];
+  /** Ingredientes que no le gustan al usuario. */
+  dislikes?: string[];
+}
+
 export function buildCookingSystemPrompt(
   intent: CookingIntent,
   timeAvailable: string,
   mode: 'text' | 'voice' = 'text',
-  countryCode?: string,
+  options: CookingPromptOptions | string = {},
 ): string {
+  // Compatibilidad: si llega un string como cuarto arg, asume countryCode.
+  const opts: CookingPromptOptions = typeof options === 'string' ? { countryCode: options } : options;
+  const countryCode = opts.countryCode;
   // Bloque de contexto local — se inyecta solo si el usuario configuró su país.
   // Resuelve la falencia #2 del informe de mercado (5,421 likes de quejas por
   // recetas con ingredientes inaccesibles en LATAM).
@@ -110,11 +125,19 @@ al usuario que estás adaptando — simplemente habla como un sous chef de su pa
     }
   }
 
+  // Bloque de restricciones (filtros + alergias + dislikes). Se inyecta solo si hay algo activo.
+  const filtersBlock = buildFiltersPromptBlock({
+    activeFilterIds: opts.filterIds,
+    allergies: opts.allergies,
+    dislikes: opts.dislikes,
+  });
+  const filtersSection = filtersBlock ? `\n\n${filtersBlock}` : '';
+
   const base = `${BASE_SAFETY}
 
 Eres Sous, un sous chef personal, experto y muy paciente. Siempre hablas en español.
 El usuario tiene ${timeAvailable} disponibles para cocinar. Adapta siempre las recetas y tiempos a esto.
-Cuando el usuario diga que terminó de cocinar o quiera empezar de nuevo, dile que puede usar el botón "Terminar sesión" que aparece en pantalla.${countryBlock}
+Cuando el usuario diga que terminó de cocinar o quiera empezar de nuevo, dile que puede usar el botón "Terminar sesión" que aparece en pantalla.${countryBlock}${filtersSection}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🛡️ REGLA INVIOLABLE DE INGREDIENTES — NUNCA LA ROMPAS

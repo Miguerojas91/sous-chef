@@ -29,7 +29,7 @@ import { useGeminiChat } from '../hooks/useGeminiChat';
 import { useGeminiLive } from '../hooks/useGeminiLive';
 import { buildCookingSystemPrompt } from '../services/gemini';
 import type { CookingIntent } from '../services/gemini';
-import { Mic, ChefHat, Send, X, ArrowLeft, Clock, Utensils, Sparkles } from 'lucide-react';
+import { Mic, ChefHat, Send, X, ArrowLeft, Clock, Utensils, Sparkles, Settings2, Crown } from 'lucide-react';
 import { friendlyVoiceError } from '../utils/friendlyError';
 import { QuickReplies } from './QuickReplies';
 import { ChatMessage } from './ChatMessage';
@@ -44,7 +44,9 @@ import {
   setUserDislikes,
 } from '../utils/auth';
 import { PreferencesEditor, summarizePreferences } from './PreferencesEditor';
-import { Settings2 } from 'lucide-react';
+import { getVoiceUsageSummary, hasReachedCap as voiceCapReached } from '../utils/voiceUsage';
+import { isPremiumUser } from '../utils/membership';
+import { Link } from 'react-router-dom';
 
 // ── Persistencia de la sesión activa ─────────────────────────────────────────
 
@@ -154,10 +156,26 @@ const CookingChat: React.FC<{
   const handleConfirmReset = () => setShowConfirmEnd(true);
 
   const handleStartVoice = async () => {
+    // Pre-flight: si ya consumió todos sus minutos del mes, no entres a voz.
+    // Muestra un toast con CTA a Premium en lugar del modo voz.
+    if (voiceCapReached()) {
+      const isPro = isPremiumUser();
+      window.dispatchEvent(new CustomEvent('sous:toast', { detail: {
+        msg: isPro
+          ? '🎙️ Ya usaste tus 60 minutos de voz Pro este mes. Vuelve el día 1.'
+          : '🎙️ Ya usaste tus 15 minutos gratis de voz este mes. Pásate a Pro para 60 min/mes.',
+        type: 'warning',
+      }}));
+      return;
+    }
     if (!localStorage.getItem('sous_voice_onboarding_seen')) {
       localStorage.setItem('sous_voice_onboarding_seen', '1');
+      const summary = getVoiceUsageSummary();
+      const remainingTxt = summary.minutesLeft > 0
+        ? `Tienes ${summary.minutesLeft} min de voz este mes (cap ${summary.isPremium ? 'Pro' : 'gratis'}).`
+        : '';
       window.dispatchEvent(new CustomEvent('sous:toast', { detail: {
-        msg: '🎙️ Modo manos libres: habla cuando quieras, Sous te escucha. Si hay silencio por 30s entrará en reposo — di algo para despertarlo.',
+        msg: `🎙️ Modo manos libres: habla cuando quieras, Sous te escucha. ${remainingTxt}`.trim(),
         type: 'info',
       }}));
     }
@@ -185,7 +203,47 @@ const CookingChat: React.FC<{
     const isReconnecting  = voiceState === 'reconnecting';
     const needsTap        = voiceState === 'needs-tap';
     const isSleeping      = voiceState === 'sleeping';
+    const capReached      = voiceState === 'cap-reached';
     const silenceLeft     = Math.max(0, 30 - silenceSeconds);
+
+    // ── Cap mensual alcanzado → no entrar a voz, mostrar CTA Premium ──
+    if (capReached) {
+      const isPro = isPremiumUser();
+      return (
+        <div className="flex flex-col h-full bg-gradient-to-br from-amber-50 to-orange-50 items-center justify-center p-6">
+          <div className="bg-white rounded-3xl shadow-xl border border-orange-100 max-w-sm w-full p-6 text-center">
+            <div className="bg-gradient-to-br from-amber-400 to-orange-500 w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+              <Crown className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-xl font-black text-neutral-900 mb-2">
+              {isPro ? 'Cap mensual alcanzado' : 'Has usado tus 15 minutos gratis'}
+            </h2>
+            <p className="text-sm text-neutral-600 mb-5 leading-snug">
+              {isPro
+                ? 'Tus 60 minutos de voz Pro de este mes se reinician el día 1. Por ahora puedes seguir cocinando en modo texto — es gratis e ilimitado.'
+                : 'Sigue conversando en modo texto (gratis e ilimitado) o pásate a Pro para 60 minutos de voz al mes.'}
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setVoiceMode(false)}
+                className="w-full py-3 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm transition-colors"
+              >
+                Volver al chat de texto
+              </button>
+              {!isPro && (
+                <Link
+                  to="/membresia"
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                  onClick={() => setVoiceMode(false)}
+                >
+                  <Crown size={16} /> Pásate a Pro · $9.99/mes
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="flex flex-col h-full bg-neutral-950 overflow-hidden relative">

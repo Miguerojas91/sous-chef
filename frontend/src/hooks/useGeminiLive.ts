@@ -29,6 +29,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import NoSleep from 'nosleep.js';
 import { API_URL, CHEF_SYSTEM_PROMPT } from '../services/gemini';
+import {
+  addUsedSeconds as addVoiceSeconds,
+  hasReachedCap as voiceCapReached,
+  getRemainingSeconds as voiceRemainingSeconds,
+} from '../utils/voiceUsage';
 
 // ── Helpers de audio ──────────────────────────────────────────────────────────
 
@@ -36,18 +41,30 @@ import { API_URL, CHEF_SYSTEM_PROMPT } from '../services/gemini';
  * Convierte un buffer de audio Float32 (rango -1..1) a PCM16 codificado en base64.
  * Formato requerido por la API Gemini Live (audio/pcm;rate=16000).
  *
+ * Optimización: reusamos un Int16Array (`_pcm16Scratch`) entre invocaciones.
+ * En el hot path (12 fps de audio), esto elimina ~24 allocations/seg que
+ * antes generaban presión de GC.
+ *
  * @param float32 - Buffer de muestras de audio en punto flotante.
  * @returns Cadena base64 del audio en formato PCM 16-bit little-endian.
  */
+let _pcm16Scratch: Int16Array | null = null;
 function float32ToPCM16Base64(float32: Float32Array): string {
-  const pcm16 = new Int16Array(float32.length);
+  if (!_pcm16Scratch || _pcm16Scratch.length !== float32.length) {
+    _pcm16Scratch = new Int16Array(float32.length);
+  }
+  const pcm16 = _pcm16Scratch;
   for (let i = 0; i < float32.length; i++) {
-    const s = Math.max(-1, Math.min(1, float32[i]));
+    const s = float32[i] < -1 ? -1 : float32[i] > 1 ? 1 : float32[i];
     pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
-  const bytes = new Uint8Array(pcm16.buffer);
+  const bytes = new Uint8Array(pcm16.buffer, 0, pcm16.byteLength);
+  // Evitar concat en loop (O(n²) en strings grandes). Bloques de 8192.
   let bin = '';
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  const CHUNK = 8192;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)));
+  }
   return btoa(bin);
 }
 
@@ -60,11 +77,16 @@ function float32ToPCM16Base64(float32: Float32Array): string {
  * @param to   - Frecuencia de muestreo objetivo (Hz).
  * @returns Nuevo buffer a la tasa `to`. Devuelve el original si `from === to`.
  */
+// Buffer scratch reusable para downsample — evita allocations por frame.
+let _downsampleScratch: Float32Array | null = null;
 function downsample(buf: Float32Array, from: number, to: number): Float32Array {
   if (from === to) return buf;
   const ratio = from / to;
   const len   = Math.round(buf.length / ratio);
-  const out   = new Float32Array(len);
+  if (!_downsampleScratch || _downsampleScratch.length !== len) {
+    _downsampleScratch = new Float32Array(len);
+  }
+  const out = _downsampleScratch;
   for (let i = 0; i < len; i++) {
     const s = Math.floor(i * ratio);
     const e = Math.min(Math.floor((i + 1) * ratio), buf.length);
@@ -124,7 +146,8 @@ export type VoiceState =
   | 'speaking'
   | 'sleeping'
   | 'reconnecting'
-  | 'needs-tap';
+  | 'needs-tap'
+  | 'cap-reached';
 
 /** Entrada en la transcripción de la conversación de voz. */
 export interface VoiceTranscriptEntry {
@@ -267,6 +290,13 @@ export function useGeminiLive(customSystemPrompt?: string) {
   const sessionStartRef     = useRef(0);
   /** Ref de `reconnectSession` para romper dependencias circulares en closures. */
   const reconnectSessionRef = useRef<() => void>(() => {});
+  /**
+   * Último timestamp en que se reportó 1 segundo de uso de voz al tracker.
+   * Inicializa en 0 cada vez que se abre/reabre el WS. Solo se incrementa
+   * mientras hay sesión activa (no en sleeping).
+   * Ver utils/voiceUsage.ts.
+   */
+  const lastUsageReportRef  = useRef(0);
 
   // ── Utilidades de estado ───────────────────────────────────────────────────
 
@@ -369,9 +399,15 @@ export function useGeminiLive(customSystemPrompt?: string) {
   const startSilenceCountdown = useCallback(() => {
     if (silenceIntervalRef.current) return;
     lastVoiceTimeRef.current = Date.now();
+    let lastEmitted = -1;
     silenceIntervalRef.current = setInterval(() => {
-      const elapsed = (Date.now() - lastVoiceTimeRef.current) / 1000;
-      setSilenceSeconds(Math.floor(elapsed));
+      const elapsed = Math.floor((Date.now() - lastVoiceTimeRef.current) / 1000);
+      // Solo re-renderiza si el segundo cambió (evita re-renders idénticos
+      // si por alguna razón el setInterval dispara dos veces el mismo valor).
+      if (elapsed !== lastEmitted) {
+        lastEmitted = elapsed;
+        setSilenceSeconds(elapsed);
+      }
     }, 1000);
   }, []);
 
@@ -423,6 +459,8 @@ export function useGeminiLive(customSystemPrompt?: string) {
     if (voiceStateRef.current === 'sleeping') return;
     stopSilenceCountdown();
     wakeFrameCountRef.current = 0;
+    // Reseteamos el tracker — no queremos contar el tiempo de sleep como uso.
+    lastUsageReportRef.current = 0;
     if (sessionRef.current) { try { sessionRef.current.close(); } catch { /* ok */ } sessionRef.current = null; }
     isReconnectingRef.current = false;
     setVoiceStateSync('sleeping');
@@ -682,6 +720,14 @@ export function useGeminiLive(customSystemPrompt?: string) {
   const startListening = useCallback(async () => {
     if (voiceStateRef.current !== 'idle' && voiceStateRef.current !== 'needs-tap' && voiceStateRef.current !== 'sleeping') return;
 
+    // Pre-flight: si el usuario ya consumió todo su cap del mes, no abrimos
+    // sesión (ahorra costos + comunica el estado en la UI). Ver MONETIZATION.md
+    // y utils/voiceUsage.ts.
+    if (voiceCapReached()) {
+      setVoiceStateSync('cap-reached');
+      return;
+    }
+
     const resumingFromSleep = voiceStateRef.current === 'sleeping';
 
     // Reanudar desde sleeping sin reiniciar el micrófono
@@ -780,11 +826,35 @@ export function useGeminiLive(customSystemPrompt?: string) {
 
         if (!sessionRef.current) return;
 
+        // ── Tracking de uso para el cap mensual ─────────────────────────────
+        // Reportamos 1 segundo cada vez que pasa 1 segundo real con sesión WS
+        // activa (estado 'listening' o 'speaking'). No contamos sleep ni
+        // reconnecting.
+        if (lastUsageReportRef.current === 0) {
+          lastUsageReportRef.current = now;
+        } else if (now - lastUsageReportRef.current >= 1000) {
+          const elapsedSec = Math.floor((now - lastUsageReportRef.current) / 1000);
+          if (elapsedSec > 0) {
+            addVoiceSeconds(elapsedSec);
+            lastUsageReportRef.current += elapsedSec * 1000;
+            // Si con este segundo se llegó al cap, cerramos la sesión
+            // inmediatamente para no seguir cobrando.
+            if (voiceRemainingSeconds() <= 0) {
+              wantsVoiceRef.current = false;
+              try { sessionRef.current?.close(); } catch { /* ok */ }
+              sessionRef.current = null;
+              setVoiceStateSync('cap-reached');
+              return;
+            }
+          }
+        }
+
         // ── Gate de costo: solo enviar audio cuando hay voz o cola post-voz ──
         // Ahorra ~70% del audio facturado en sesiones con silencios largos.
         if (now > voiceTailUntilRef.current) return;
 
-        const resampled = downsample(new Float32Array(raw), nativeRateRef.current, INPUT_SAMPLE_RATE);
+        // `raw` ya es un Float32Array — pasamos directo, downsample no muta.
+        const resampled = downsample(raw, nativeRateRef.current, INPUT_SAMPLE_RATE);
         sessionRef.current.sendRealtimeInput({ audio: { data: float32ToPCM16Base64(resampled), mimeType: 'audio/pcm;rate=16000' } });
       };
 

@@ -231,6 +231,15 @@ function getProxyWsUrl(): string {
   return `${proto}//${location.host}/api/live`;
 }
 
+/**
+ * Clave YYYY-MM del mes actual (zona del cliente). Usada para detectar cuándo
+ * una sesión cruza al mes siguiente y forzar reset del cap.
+ */
+function getMonthKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 // ── Hook principal ────────────────────────────────────────────────────────────
 
 /**
@@ -297,6 +306,12 @@ export function useGeminiLive(customSystemPrompt?: string) {
    * Ver utils/voiceUsage.ts.
    */
   const lastUsageReportRef  = useRef(0);
+  /**
+   * Mes (YYYY-MM) en que arrancó la sesión activa actual. Si cambia mid-
+   * sesión (cruce de medianoche del último día del mes), forzamos sleep
+   * para evitar que el usuario consuma 2× su cap.
+   */
+  const sessionMonthKeyRef  = useRef<string>('');
 
   // ── Utilidades de estado ───────────────────────────────────────────────────
 
@@ -461,6 +476,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
     wakeFrameCountRef.current = 0;
     // Reseteamos el tracker — no queremos contar el tiempo de sleep como uso.
     lastUsageReportRef.current = 0;
+    sessionMonthKeyRef.current = ''; // se rehidrata al reanudar
     if (sessionRef.current) { try { sessionRef.current.close(); } catch { /* ok */ } sessionRef.current = null; }
     isReconnectingRef.current = false;
     setVoiceStateSync('sleeping');
@@ -652,6 +668,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
         () => {
           isReconnectingRef.current = false;
           voiceTailUntilRef.current = 0;
+          sessionMonthKeyRef.current = getMonthKey(); // anclar mes al reconectar
           setVoiceStateSync('listening');
           startSilenceCountdown();
         },
@@ -776,6 +793,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
         [],
         () => {
           sessionStartRef.current   = Date.now();
+          sessionMonthKeyRef.current = getMonthKey(); // FIX #2: anclar mes
           voiceTailUntilRef.current = 0;
           setVoiceStateSync('listening');
           startSilenceCountdown();
@@ -833,16 +851,33 @@ export function useGeminiLive(customSystemPrompt?: string) {
         if (lastUsageReportRef.current === 0) {
           lastUsageReportRef.current = now;
         } else if (now - lastUsageReportRef.current >= 1000) {
-          const elapsedSec = Math.floor((now - lastUsageReportRef.current) / 1000);
+          // FIX #3 — clamp contra throttling de background tab:
+          // si el browser puso la pestaña en background, el setInterval/audio
+          // puede entregar un delta de minutos de golpe. Sin clamp, cobraríamos
+          // tiempo en el que el usuario no estaba realmente hablando.
+          // 5s es el techo razonable: un audio buffer cada ~85ms NO puede dar
+          // saltos legítimos mayores a eso si la pestaña está activa.
+          const rawElapsedSec = Math.floor((now - lastUsageReportRef.current) / 1000);
+          const elapsedSec = Math.min(rawElapsedSec, 5);
           if (elapsedSec > 0) {
             addVoiceSeconds(elapsedSec);
             lastUsageReportRef.current += elapsedSec * 1000;
-            // Si con este segundo se llegó al cap, cerramos la sesión
-            // inmediatamente para no seguir cobrando.
+
+            // FIX #2 — detectar cruce de mes mid-session:
+            // si el usuario cocinó hasta cruzar medianoche del último día del
+            // mes, los segundos siguientes irían contra un cap fresco y
+            // podría usar 2× su asignación. Forzamos sleep si cambia el mes.
+            if (sessionMonthKeyRef.current !== getMonthKey()) {
+              goToSleep();
+              return;
+            }
+
+            // FIX #1 — si con este segundo se llegó al cap, cleanup() COMPLETO
+            // (libera mic, AudioContext, wake lock, NoSleep). Antes solo
+            // cerrábamos el WS y el mic seguía activo consumiendo batería.
             if (voiceRemainingSeconds() <= 0) {
               wantsVoiceRef.current = false;
-              try { sessionRef.current?.close(); } catch { /* ok */ }
-              sessionRef.current = null;
+              cleanup();
               setVoiceStateSync('cap-reached');
               return;
             }

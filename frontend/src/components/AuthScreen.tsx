@@ -350,12 +350,19 @@ export const AuthScreen = () => {
                                 <button
                                     type="button"
                                     onClick={async () => {
+                                        // FIX #4 — Preserva cualquier preferencia / alergia / disgusto
+                                        // que el usuario haya alcanzado a marcar antes de saltar.
+                                        // Antes solo se persistía el país y se descartaba todo lo demás
+                                        // silenciosamente.
                                         const newUser: LocalUser = {
                                             username: formData.username.trim(),
                                             password: formData.password.trim(),
                                             email: formData.email.trim() || undefined,
                                             xp: 0, rank: 'Iniciado', is_admin: false,
                                             country: formData.country || undefined,
+                                            preferences: formData.preferences.length > 0 ? formData.preferences : undefined,
+                                            allergies: formData.allergies.length > 0 ? formData.allergies : undefined,
+                                            dislikes: formData.dislikes.length > 0 ? formData.dislikes : undefined,
                                         };
                                         await finishRegister(newUser);
                                     }}

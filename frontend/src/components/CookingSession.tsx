@@ -560,7 +560,15 @@ export const CookingSession: React.FC = () => {
   };
 
   const selectTime = (time: string) => {
-    const i = pendingIntentRef.current!;
+    // FIX #5 — antes asumíamos non-null con `!`. Si el usuario hace F5
+    // estando en time-picker, pendingIntentRef se pierde (no se persiste).
+    // En ese caso, en lugar de explotar, volvemos al landing para que
+    // re-seleccione intent.
+    const i = pendingIntentRef.current;
+    if (!i) {
+      setPhase('landing');
+      return;
+    }
     setIntent(i);
     setTimeAvailable(time);
     saveMeta({ intent: i, timeAvailable: time });

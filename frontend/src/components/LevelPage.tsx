@@ -26,6 +26,9 @@ import { evaluateImage } from '../services/gemini';
 import type { EvaluationResult } from '../services/gemini';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getLevelStars, saveLevelStars, addXP } from '../utils/progress';
+import { useWakeLock } from '../hooks/useWakeLock';
+import { track, Events } from '../utils/analytics';
+import { useEffect } from 'react';
 import {
   ArrowLeft, BookOpen, Upload, CheckCircle, Star,
   ChevronRight, Lightbulb, AlertTriangle, Camera, Trophy, Play,
@@ -106,6 +109,17 @@ export const LevelPage = ({
   evaluationCriteria,
   backPath = '/mapa',
 }: LevelPageProps) => {
+  // Mantén la pantalla encendida durante todo el nivel — el usuario tiene las
+  // manos en la tabla de cortar / sartén y no quiere ir desbloqueando el
+  // teléfono cada 30 s.
+  useWakeLock(true, { mediaSessionTitle: `Cocinando: ${levelName}` });
+
+  // Analytics: nivel abierto.
+  useEffect(() => {
+    track(Events.LevelOpened, { level: levelName, world: worldName });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const navigate = useNavigate();
   const location = useLocation();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -144,6 +158,7 @@ export const LevelPage = ({
       const imageData = e.target?.result as string;
       setUploadedImage(imageData);
       setUploadState('reviewing');
+      track(Events.LevelPhotoSubmitted, { level: levelName, world: worldName });
       let result: EvaluationResult;
       try {
         result = await evaluateImage(imageData, levelName, evaluationCriteria || []);
@@ -154,12 +169,20 @@ export const LevelPage = ({
       if (!result.stars || result.stars < 1) {
         // Imagen inválida o sin contenido culinario — no guardar progreso ni XP
         setUploadState('rejected');
+        track(Events.LevelEvalFailed, { level: levelName, stars: 0 });
       } else {
         // Guardar progreso: XP solo si es la primera vez que se completa este nivel
         const isFirstCompletion = getLevelStars(location.pathname) === 0;
         saveLevelStars(location.pathname, result.stars);
         if (isFirstCompletion) addXP(xpReward);
         setUploadState('approved');
+        track(Events.LevelCompleted, {
+          level: levelName,
+          world: worldName,
+          stars: result.stars,
+          first_completion: isFirstCompletion,
+          xp_earned: isFirstCompletion ? xpReward : 0,
+        });
       }
     };
     reader.readAsDataURL(file);

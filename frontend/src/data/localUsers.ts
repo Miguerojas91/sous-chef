@@ -1,14 +1,26 @@
 /**
  * localUsers.ts
  *
- * Usuarios precargados para acceso directo sin necesidad de backend de autenticación.
- * En producción estos datos se complementan con los usuarios registrados
- * dinámicamente, que se almacenan en `localStorage` bajo la clave
- * `sous_registered_users`.
+ * Usuarios precargados para acceso directo sin backend de autenticación.
  *
- * ⚠️  SEGURIDAD: Este archivo contiene contraseñas en texto plano.
- * Es aceptable mientras la app sea una demo/MVP con usuarios de confianza.
- * Para producción escalable se debe migrar a un backend de autenticación real.
+ * ⚠️  IMPORTANTE — Estado actual (pre-beta cleanup):
+ *
+ * El array LOCAL_USERS fue VACIADO antes del beta cerrado porque las
+ * contraseñas plaintext quedaban visibles en el bundle JavaScript de
+ * producción (cualquiera con DevTools podía leerlas en `view-source`).
+ *
+ * Los usuarios fundadores (familia, amigos) deben migrar a una de estas
+ * opciones:
+ *  1. Registrarse via el formulario normal (recomendado — sus credenciales
+ *     se guardan SOLO en su propio dispositivo en `sous_registered_users`).
+ *  2. Backend con JWT (cuando esté desplegado). Ver `backend/seed_users.py`
+ *     que migra los usuarios viejos a Postgres con bcrypt.
+ *
+ * Para tener UN admin seed sin meterlo al bundle: configura
+ * `VITE_SEED_ADMIN=username:password[:email]` en Vercel env vars.
+ * El AuthScreen lee este valor en runtime y lo añade al array efectivo.
+ *
+ * El símbolo `LOCAL_USERS` se mantiene exportado para no romper imports.
  */
 
 /** Estructura de un usuario de la aplicación Sous Chef. */
@@ -44,55 +56,32 @@ export interface LocalUser {
   dislikes?: string[];
 }
 
-/** Lista de usuarios preconfigurados que no requieren registro. */
-export const LOCAL_USERS: LocalUser[] = [
-  {
-    username: 'admin',
-    password: 'SousChef@Admin1',
+/**
+ * Lista de usuarios precargados — VACÍA en producción.
+ *
+ * Si necesitas un admin seed: configura `VITE_SEED_ADMIN` en Vercel.
+ * No agregues credenciales aquí (quedan en el bundle público).
+ */
+export const LOCAL_USERS: LocalUser[] = [];
+
+/**
+ * Lee un admin seed opcional desde env var (Vite lo inyecta en build pero
+ * solo si está configurado — el usuario regular no lo ve en el bundle si
+ * no se configuró).
+ *
+ * Formato esperado: `username:password` o `username:password:email`.
+ */
+export function getSeedAdmin(): LocalUser[] {
+  const raw = ((import.meta.env.VITE_SEED_ADMIN as string | undefined) ?? '').trim();
+  if (!raw) return [];
+  const parts = raw.split(':');
+  if (parts.length < 2) return [];
+  return [{
+    username: parts[0],
+    password: parts[1],
+    email: parts[2] || undefined,
     xp: 9999,
     rank: 'Maestría Culinaria',
     is_admin: true,
-  },
-  {
-    username: 'Tatis',
-    password: 'Homerojay07*',
-    xp: 0,
-    rank: 'Iniciado',
-    is_admin: false,
-  },
-  {
-    username: 'Papa',
-    password: 'Maroma2011.',
-    xp: 0,
-    rank: 'Iniciado',
-    is_admin: false,
-  },
-  {
-    username: 'miguerojas91',
-    password: 'Miguel40.',
-    xp: 0,
-    rank: 'Iniciado',
-    is_admin: false,
-  },
-  {
-    username: 'Olga',
-    password: 'Valeria',
-    xp: 0,
-    rank: 'Iniciado',
-    is_admin: false,
-  },
-  {
-    username: 'Alexa',
-    password: 'Alexa',
-    xp: 0,
-    rank: 'Iniciado',
-    is_admin: false,
-  },
-  {
-    username: 'Gaby',
-    password: 'Gabyismm',
-    xp: 0,
-    rank: 'Iniciado',
-    is_admin: false,
-  },
-];
+  }];
+}

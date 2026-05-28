@@ -47,6 +47,7 @@ import { PreferencesEditor, summarizePreferences } from './PreferencesEditor';
 import { getVoiceUsageSummary, hasReachedCap as voiceCapReached } from '../utils/voiceUsage';
 import { isPremiumUser } from '../utils/membership';
 import { Link } from 'react-router-dom';
+import { track, Events } from '../utils/analytics';
 
 // ── Persistencia de la sesión activa ─────────────────────────────────────────
 
@@ -122,6 +123,16 @@ const CookingChat: React.FC<{
 
   useEffect(() => { textBottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
+  // Analytics: trackear transición a estados clave de voz.
+  useEffect(() => {
+    if (voiceState === 'cap-reached') {
+      track(Events.VoiceCapReached, {
+        is_premium: isPremiumUser(),
+        used_min: Math.round(getVoiceUsageSummary().used / 60),
+      });
+    }
+  }, [voiceState]);
+
   // Auto-mensaje inicial solo en sesión nueva (sin historial previo)
   useEffect(() => {
     if (messages.length > 0) return;
@@ -160,6 +171,7 @@ const CookingChat: React.FC<{
     // Muestra un toast con CTA a Premium en lugar del modo voz.
     if (voiceCapReached()) {
       const isPro = isPremiumUser();
+      track(Events.VoiceCapBlocked, { is_premium: isPro });
       window.dispatchEvent(new CustomEvent('sous:toast', { detail: {
         msg: isPro
           ? '🎙️ Ya usaste tus 60 minutos de voz Pro este mes. Vuelve el día 1.'
@@ -168,6 +180,7 @@ const CookingChat: React.FC<{
       }}));
       return;
     }
+    track(Events.VoiceStarted, { is_premium: isPremiumUser() });
     if (!localStorage.getItem('sous_voice_onboarding_seen')) {
       localStorage.setItem('sous_voice_onboarding_seen', '1');
       const summary = getVoiceUsageSummary();
@@ -556,6 +569,7 @@ export const CookingSession: React.FC = () => {
 
   const selectIntent = (i: CookingIntent) => {
     pendingIntentRef.current = i;
+    track(Events.CookingIntentPicked, { intent: i });
     setPhase('time-picker');
   };
 
@@ -572,6 +586,7 @@ export const CookingSession: React.FC = () => {
     setIntent(i);
     setTimeAvailable(time);
     saveMeta({ intent: i, timeAvailable: time });
+    track(Events.CookingStarted, { intent: i, time_available: time });
     setPhase('chatting');
   };
 

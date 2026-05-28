@@ -15,6 +15,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { API_URL, CHEF_SYSTEM_PROMPT, MILPREP_SYSTEM_PROMPT } from '../services/gemini';
+import { track, Events } from '../utils/analytics';
 
 /** Un mensaje en el historial de conversación del chat. */
 export type ChatMessage = {
@@ -107,8 +108,24 @@ export const useGeminiChat = ({
     if (systemPrompt) systemPromptRef.current = systemPrompt;
   }, [systemPrompt]);
 
-  // Persistir historial cada vez que cambia
-  useEffect(() => { saveMessages(key, messages); }, [key, messages]);
+  // Persistir historial con debounce de 500 ms.
+  // Sin esto, cada chunk del stream SSE dispara un JSON.stringify + write a
+  // localStorage (síncrono) — fácil 2-5 MB de escrituras por respuesta larga.
+  // Forzamos flush al desmontar para no perder el último estado.
+  useEffect(() => {
+    const id = setTimeout(() => saveMessages(key, messages), 500);
+    return () => clearTimeout(id);
+  }, [key, messages]);
+
+  // Flush sincrónico al desmontar / pestaña a background — garantiza persistencia.
+  useEffect(() => {
+    const flush = () => saveMessages(key, messages);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      flush();
+    };
+  }, [key, messages]);
 
   /**
    * Llama al proxy con los contenidos preparados y procesa el stream SSE.
@@ -191,6 +208,7 @@ export const useGeminiChat = ({
         ? 'Tardé demasiado en responder. Intenta de nuevo.'
         : (error instanceof Error ? error.message : String(error));
       console.error('[useGeminiChat] Error:', errMsg);
+      track(Events.ChatErrorFallback, { is_timeout: isAbort, has_partial_text: fullText.length > 0 });
 
       // Si ya teníamos texto parcial, lo conservamos y añadimos nota.
       // Si no, reemplazamos por mensaje de error.
@@ -240,6 +258,13 @@ export const useGeminiChat = ({
       contents.push({ role: m.agent === 'user' ? 'user' : 'model', parts: [{ text: m.text }] });
     });
     contents.push({ role: 'user', parts: [{ text: trimmed }] });
+
+    // Analytics: trackeamos solo el conteo, NO el contenido del mensaje (PII).
+    track(Events.ChatMessageSent, {
+      mode,
+      char_count: trimmed.length,
+      turn_number: Math.ceil(messages.length / 2) + 1,
+    });
 
     // Agregar mensaje del usuario + placeholder vacío del chef (se rellena con el stream)
     setMessages(prev => [...prev, { agent: 'user', text: trimmed }, { agent: 'chef', text: '' }]);

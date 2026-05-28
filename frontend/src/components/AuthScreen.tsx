@@ -26,7 +26,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChefHat, AlertTriangle, ArrowRight, UserPlus, LogIn, Check, Eye, EyeOff } from 'lucide-react';
-import { LOCAL_USERS, type LocalUser } from '../data/localUsers';
+import { LOCAL_USERS, getSeedAdmin, type LocalUser } from '../data/localUsers';
 import { checkMembership } from '../utils/membership';
 import {
   isBackendAuthEnabled,
@@ -38,6 +38,7 @@ import {
 import { CountryPicker } from './CountryPicker';
 import { getCountry } from '../data/countries';
 import { PreferencesEditor } from './PreferencesEditor';
+import { track, identify, Events } from '../utils/analytics';
 
 // ── Usuarios registrados localmente (guardados en localStorage) ───────────────
 function getStoredUsers(): LocalUser[] {
@@ -50,7 +51,7 @@ function saveStoredUsers(users: LocalUser[]) {
 }
 
 function findUser(username: string, password: string): LocalUser | undefined {
-  const all = [...LOCAL_USERS, ...getStoredUsers()];
+  const all = [...LOCAL_USERS, ...getSeedAdmin(), ...getStoredUsers()];
   return all.find(
     u => u.username.toLowerCase() === username.trim().toLowerCase()
       && u.password === password.trim()
@@ -58,7 +59,7 @@ function findUser(username: string, password: string): LocalUser | undefined {
 }
 
 function usernameExists(username: string): boolean {
-  const all = [...LOCAL_USERS, ...getStoredUsers()];
+  const all = [...LOCAL_USERS, ...getSeedAdmin(), ...getStoredUsers()];
   return all.some(u => u.username.toLowerCase() === username.trim().toLowerCase());
 }
 
@@ -92,11 +93,26 @@ export const AuthScreen = () => {
             } catch { /* continuar sin premium */ }
         }
         setSession(userData);
+        // Analytics: identify + login event
+        identify(userData.username, {
+            is_admin: !!userData.is_admin,
+            is_premium: !!userData.isPremium,
+            country: userData.country ?? null,
+        });
+        track(Events.LoggedIn, { is_premium: !!userData.isPremium });
         navigate('/');
     };
 
     const finishRegister = async (data: LocalUser) => {
         setIsLoading(true);
+        // Track antes de la red para no perder el evento si falla.
+        track(Events.Registered, {
+            country: data.country ?? null,
+            has_email: !!data.email,
+            preference_count: (data.preferences ?? []).length,
+            allergy_count: (data.allergies ?? []).length,
+            dislike_count: (data.dislikes ?? []).length,
+        });
         try {
             // 1) Backend JWT si está disponible y el usuario tiene email
             if (isBackendAuthEnabled() && data.email) {

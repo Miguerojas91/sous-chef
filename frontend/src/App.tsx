@@ -35,9 +35,15 @@ import { EditorProvider, useEditor } from './context/EditorContext';
 import { AuthScreen } from './components/AuthScreen';
 import { HomeMenu } from './components/HomeMenu';
 import { isPremiumUser } from './utils/membership';
-import { clearSession, backendLogout, getUserCountry, setUserCountry } from './utils/auth';
+import { clearSession, backendLogout, getUserCountry, setUserCountry, getUser } from './utils/auth';
 import { isLevelUnlocked } from './data/levelsData';
 import { CountryPicker } from './components/CountryPicker';
+import { initAnalytics, identify, resetIdentity, track, Events } from './utils/analytics';
+import { useRoutePageviews } from './hooks/useAnalytics';
+import { FeedbackButton } from './components/FeedbackButton';
+
+// Inicializar PostHog al cargar el módulo (antes de cualquier render).
+initAnalytics();
 
 // ── Lazy helper: convierte un import nombrado en lazy() ───────────────────────
 // React.lazy espera `default`. Como nuestros componentes exportan named, lo
@@ -57,6 +63,7 @@ const AcademyModule  = lazyNamed(() => import('./components/AcademyModule'),  'A
 const FlavorsModule  = lazyNamed(() => import('./components/FlavorsModule'),  'FlavorsModule');
 const MilprepModule  = lazyNamed(() => import('./components/MilprepModule'),  'MilprepModule');
 const MembresiaPage  = lazyNamed(() => import('./components/MembresiaPage'),  'MembresiaPage');
+const ProfilePage    = lazyNamed(() => import('./components/ProfilePage'),    'ProfilePage');
 const CMSTestPage    = lazyNamed(() => import('./components/cms/CMSTestPage'),'CMSTestPage');
 
 // ── Lazy: Mundo 1 ─────────────────────────────────────────────────────────────
@@ -201,6 +208,17 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     loadUserData();
+    // Identificar al usuario en PostHog (username como distinct_id — no es PII fuerte).
+    const u = getUser();
+    if (u?.username) {
+      identify(u.username, {
+        is_admin: !!u.is_admin,
+        is_premium: !!u.isPremium,
+        country: u.country ?? null,
+        has_preferences: ((u.preferences ?? u.dietaryPreferences ?? []).length > 0),
+        has_allergies: ((u.allergies ?? []).length > 0),
+      });
+    }
     window.addEventListener('userStateChange', loadUserData);
     return () => window.removeEventListener('userStateChange', loadUserData);
   }, []);
@@ -228,8 +246,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const handleLogout = async () => {
+    track(Events.LoggedOut);
     await backendLogout(); // revoca el refresh en el server (no-op si dev local)
     clearSession();
+    resetIdentity();
     navigate('/login');
   };
 
@@ -299,7 +319,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
           {/* User info */}
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-3 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-2 rounded-2xl border border-orange-100">
+            <Link
+              to="/perfil"
+              className="hidden sm:flex items-center gap-3 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-2 rounded-2xl border border-orange-100 hover:from-orange-100 hover:to-amber-100 transition-colors"
+              title="Mi perfil"
+            >
               {/* Avatar */}
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 shadow-sm">
                 {userInitial}
@@ -317,7 +341,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                   />
                 </div>
               </div>
-            </div>
+            </Link>
             <button
               onClick={handleLogout}
               className="p-2.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-150"
@@ -377,6 +401,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           )}
         </div>
       </main>
+
+      {/* Botón de feedback (beta) */}
+      <FeedbackButton />
 
       {/* ── Bottom nav (móvil) ── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/90 backdrop-blur-md border-t border-neutral-100 shadow-[0_-1px_12px_rgba(0,0,0,0.06)]">
@@ -464,12 +491,19 @@ const AuthExpiryWatcher = () => {
   return null;
 };
 
+// Tracker de pageviews — debe estar dentro del Router para usar useLocation.
+const PageviewTracker = () => {
+  useRoutePageviews();
+  return null;
+};
+
 function App() {
   return (
     <ErrorBoundary>
     <EditorProvider>
       <Router>
         <AuthExpiryWatcher />
+        <PageviewTracker />
         <Routes>
         <Route path="/login" element={<AuthScreen />} />
 
@@ -484,6 +518,7 @@ function App() {
                 <Route path="/cms-test" element={<CMSTestPage />} />
                 <Route path="/home" element={<HomeMenu />} />
                 <Route path="/membresia" element={<MembresiaPage />} />
+                <Route path="/perfil" element={<ProfilePage />} />
                 <Route path="/cocinar" element={<CookingSession />} />
                 <Route path="/mapa" element={<SkillTreeMap />} />
 

@@ -34,9 +34,10 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
-import { createServer } from 'http';
+import { createServer, IncomingMessage } from 'http';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 import crypto from 'crypto';
 import { GoogleGenAI } from '@google/genai';
 import * as dotenv from 'dotenv';
@@ -81,9 +82,41 @@ function getAI(): GoogleGenAI {
   return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 }
 
+// ── Helpers de seguridad ─────────────────────────────────────────────────────
+/**
+ * Comparación de strings en tiempo constante, segura ante:
+ * - longitudes distintas (en bytes, no chars — evita el bug con multibyte)
+ * - excepciones de timingSafeEqual
+ */
+function safeEqual(a: string, b: string): boolean {
+  try {
+    const bufA = Buffer.from(a, 'utf8');
+    const bufB = Buffer.from(b, 'utf8');
+    if (bufA.length !== bufB.length) return false;
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
+
+/** True si el origin está en la allowlist (o si allowlist es '*'). */
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (allowedOrigins === '*') return true;
+  if (!origin) return false;
+  return (allowedOrigins as string[]).includes(origin);
+}
+
 // ── Express ────────────────────────────────────────────────────────────────────
 const app = express();
 app.set('trust proxy', 1); // Railway está detrás de un proxy → necesario para rate-limit por IP
+app.disable('x-powered-by');
+
+// Headers de seguridad (CSP no aplica — servimos solo JSON/SSE; desactivamos
+// la CSP por defecto de helmet para no romper el stream SSE).
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 
 // CORS: lista blanca por CSV.
 const allowedOrigins = ALLOWED_ORIGIN === '*'
@@ -100,12 +133,31 @@ app.use(cors({
   },
 }));
 
+/**
+ * Guard de origen para endpoints CAROS (Gemini). CORS solo protege al
+ * navegador (no impide que la request llegue al servidor y gaste cuota).
+ * Este middleware RECHAZA en el servidor cualquier request cuyo Origin no
+ * esté en la allowlist, ANTES de llamar a Gemini. Eleva la barra contra
+ * abuso por curl/bots. Un atacante puede spoofear el Origin, pero combinado
+ * con el rate-limit por IP es una postura razonable para beta.
+ * En desarrollo (allowlist '*') no bloquea nada.
+ */
+function originGuard(req: Request, res: Response, next: NextFunction): void {
+  if (allowedOrigins === '*') return next();
+  const origin = req.header('origin');
+  if (isAllowedOrigin(origin)) return next();
+  res.status(403).json({ error: 'Origen no autorizado' });
+}
+
 // Webhook Hotmart necesita el body crudo para validar HMAC → captura el raw antes del parser JSON.
 app.use('/api/hotmart/webhook', express.json({
   limit: '256kb',
   verify: (req: Request & { rawBody?: Buffer }, _res, buf) => { req.rawBody = Buffer.from(buf); },
 }));
-app.use(express.json({ limit: '20mb' }));
+// Endpoint de imagen necesita payloads grandes; el resto NO.
+app.use('/api/evaluate', express.json({ limit: '15mb' }));
+// Límite global ajustado: el resto de endpoints no necesitan >256kb.
+app.use(express.json({ limit: '256kb' }));
 
 // ── Rate limiting ──────────────────────────────────────────────────────────────
 // Endpoints caros (Gemini): límite estricto.
@@ -138,6 +190,14 @@ app.get('/api/membership/check', (req, res) => {
 
 // ── POST /api/hotmart/webhook ── Recibe eventos de compra de Hotmart ───────────
 app.post('/api/hotmart/webhook', (req: Request & { rawBody?: Buffer }, res) => {
+  // FAIL-CLOSED: si NO hay ningún mecanismo de validación configurado, rechazar
+  // SIEMPRE. Antes, sin HMAC ni TOKEN, el webhook quedaba abierto y cualquiera
+  // podía otorgarse premium gratis con un POST.
+  if (!HOTMART_HMAC_SECRET && !HOTMART_TOKEN) {
+    console.error('❌ Webhook llamado pero NO hay HOTMART_HMAC_SECRET ni HOTMART_TOKEN configurados. Rechazando.');
+    return void res.status(503).json({ error: 'Webhook no configurado' });
+  }
+
   // 1. Validación HMAC (preferida, si está configurada)
   if (HOTMART_HMAC_SECRET) {
     const signature = (req.header('x-hotmart-hottok') ?? req.header('x-hotmart-signature') ?? '').toString();
@@ -146,16 +206,14 @@ app.post('/api/hotmart/webhook', (req: Request & { rawBody?: Buffer }, res) => {
       return void res.status(401).json({ error: 'Firma faltante' });
     }
     const computed = crypto.createHmac('sha256', HOTMART_HMAC_SECRET).update(req.rawBody).digest('hex');
-    const ok = signature.length === computed.length &&
-      crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(computed));
-    if (!ok) {
+    if (!safeEqual(signature, computed)) {
       console.warn('⚠️  Webhook con firma HMAC inválida');
       return void res.status(401).json({ error: 'Firma inválida' });
     }
   } else {
-    // 2. Fallback: hottok por query (legacy)
-    const hottok = req.query.hottok as string | undefined;
-    if (HOTMART_TOKEN && hottok !== HOTMART_TOKEN) {
+    // 2. Fallback: hottok por query (legacy) — comparación timing-safe.
+    const hottok = (req.query.hottok as string | undefined) ?? '';
+    if (!safeEqual(hottok, HOTMART_TOKEN)) {
       console.warn('⚠️  Webhook recibido con hottok inválido');
       return void res.status(401).json({ error: 'Token inválido' });
     }
@@ -191,13 +249,22 @@ app.post('/api/hotmart/webhook', (req: Request & { rawBody?: Buffer }, res) => {
   }
 });
 
+// Limiter estricto para endpoints sensibles (anti fuerza-bruta del ADMIN_SECRET).
+const adminLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 5, // 5 intentos/min/IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Espera un minuto.' },
+});
+
 // ── POST /api/membership/grant ── Admin: otorgar/revocar premium manualmente ──
-app.post('/api/membership/grant', (req, res) => {
+app.post('/api/membership/grant', adminLimiter, (req, res) => {
   const { email, secret, revoke } = req.body as { email?: string; secret?: string; revoke?: boolean };
 
-  // Comparación timing-safe del secret
-  if (!secret || !ADMIN_SECRET || secret.length !== ADMIN_SECRET.length ||
-      !crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(ADMIN_SECRET))) {
+  // Comparación timing-safe del secret (byte-safe + a prueba de excepciones).
+  if (!secret || !ADMIN_SECRET || !safeEqual(secret, ADMIN_SECRET)) {
+    console.warn('⚠️  Intento fallido de /api/membership/grant');
     return void res.status(403).json({ error: 'Acceso denegado' });
   }
 
@@ -214,7 +281,7 @@ app.post('/api/membership/grant', (req, res) => {
 });
 
 // ── POST /api/chat ── Chat de texto con streaming SSE ──────────────────────────
-app.post('/api/chat', aiLimiter, async (req, res) => {
+app.post('/api/chat', originGuard, aiLimiter, async (req, res) => {
   const { contents, systemInstruction } = req.body as {
     contents: Array<{ role: string; parts: [{ text: string }] }>;
     systemInstruction: string;
@@ -258,9 +325,11 @@ app.post('/api/chat', aiLimiter, async (req, res) => {
     res.write('data: [DONE]\n\n');
     console.log(`[chat ${reqId}] done bytes=${bytesSent} ms=${Date.now() - startedAt}`);
   } catch (err) {
+    // Log con detalle interno; al cliente solo mensaje genérico (no filtrar
+    // detalles del SDK/modelo).
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[chat ${reqId}] error: ${msg}`);
-    res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
+    res.write(`data: ${JSON.stringify({ error: 'No pudimos generar la respuesta. Intenta de nuevo.' })}\n\n`);
   } finally {
     clearInterval(heartbeat);
     res.end();
@@ -268,7 +337,7 @@ app.post('/api/chat', aiLimiter, async (req, res) => {
 });
 
 // ── POST /api/evaluate ── Evaluación de imagen con Gemini Vision ───────────────
-app.post('/api/evaluate', aiLimiter, async (req, res) => {
+app.post('/api/evaluate', originGuard, aiLimiter, async (req, res) => {
   const { imageBase64, levelName, criteria } = req.body as {
     imageBase64: string;
     levelName: string;
@@ -380,7 +449,40 @@ app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {
 
 // ── WebSocket /api/live ── Proxy de voz en tiempo real ────────────────────────
 const server = createServer(app);
-const wss = new WebSocketServer({ server, path: '/api/live' });
+
+// Límites del WS para evitar abuso de Gemini Live (lo más caro).
+const WS_MAX_CONNECTIONS_PER_IP = 3;     // sockets concurrentes por IP
+const WS_MAX_SESSION_MS         = 25 * 60_000; // duración máxima por socket (25 min)
+const wsConnectionsPerIp = new Map<string, number>();
+
+function clientIpFromReq(req: IncomingMessage): string {
+  const xff = (req.headers['x-forwarded-for'] as string | undefined) ?? '';
+  if (xff) return xff.split(',')[0].trim();
+  return req.socket.remoteAddress ?? 'unknown';
+}
+
+const wss = new WebSocketServer({
+  server,
+  path: '/api/live',
+  maxPayload: 2 * 1024 * 1024, // 2 MB por mensaje (chunks de audio son pequeños)
+  // Handshake guard: valida Origin + cap de conexiones por IP ANTES de aceptar.
+  verifyClient: (info, cb) => {
+    // Origin allowlist (en dev '*' deja pasar todo).
+    if (allowedOrigins !== '*') {
+      const origin = info.origin;
+      if (!isAllowedOrigin(origin)) {
+        return cb(false, 403, 'Origen no autorizado');
+      }
+    }
+    // Cap de conexiones concurrentes por IP.
+    const ip = clientIpFromReq(info.req);
+    const current = wsConnectionsPerIp.get(ip) ?? 0;
+    if (current >= WS_MAX_CONNECTIONS_PER_IP) {
+      return cb(false, 429, 'Demasiadas conexiones');
+    }
+    cb(true);
+  },
+});
 
 interface GeminiLiveSession {
   sendRealtimeInput(input: { audio?: { data: string; mimeType: string } }): void;
@@ -396,8 +498,19 @@ type BrowserMessage =
   | { type: 'audio'; data: string; mimeType?: string }
   | { type: 'clientContent'; turns: Array<{ role: string; parts: [{ text: string }] }>; turnComplete: boolean };
 
-wss.on('connection', (ws: WebSocket) => {
+wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   let geminiSession: GeminiLiveSession | null = null;
+
+  // Registrar la conexión para el cap por IP.
+  const ip = clientIpFromReq(req);
+  wsConnectionsPerIp.set(ip, (wsConnectionsPerIp.get(ip) ?? 0) + 1);
+
+  // Cierre forzado tras la duración máxima (evita sesiones eternas que
+  // consumen Gemini Live indefinidamente). El cap por-minutos del frontend
+  // es client-side; ESTE es el límite server-side real.
+  const maxDurationTimer = setTimeout(() => {
+    try { ws.close(1000, 'Sesión máxima alcanzada'); } catch { /* ok */ }
+  }, WS_MAX_SESSION_MS);
 
   const safeSend = (data: object) => {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data));
@@ -452,7 +565,8 @@ wss.on('connection', (ws: WebSocket) => {
               if (sc.inputTranscription?.text)   safeSend({ type: 'inputTranscription', text: sc.inputTranscription.text });
             },
             onerror: (e: unknown) => {
-              safeSend({ type: 'error', message: (e as Error)?.message ?? 'Error de conexión' });
+              console.error('[live] Gemini error:', (e as Error)?.message ?? e);
+              safeSend({ type: 'error', message: 'Error de conexión de voz' });
             },
             onclose: () => {
               geminiSession = null;
@@ -481,6 +595,11 @@ wss.on('connection', (ws: WebSocket) => {
   });
 
   const cleanup = () => {
+    clearTimeout(maxDurationTimer);
+    // Decrementar el contador por IP.
+    const n = (wsConnectionsPerIp.get(ip) ?? 1) - 1;
+    if (n <= 0) wsConnectionsPerIp.delete(ip);
+    else wsConnectionsPerIp.set(ip, n);
     if (geminiSession) {
       try { geminiSession.close(); } catch { /* ok */ }
       geminiSession = null;

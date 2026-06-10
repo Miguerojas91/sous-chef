@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { EditableText } from './cms/EditableText';
 import { BlockZone } from './cms/BlockZone';
+import { SafeText } from '../utils/safeText';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -286,11 +287,11 @@ export const LevelPage = ({
                 <h2 className={`font-black ${accentDark} text-base mb-1`}>
                   <EditableText elementKey={`lvl_${levelNum}_missionTitle`} defaultText={missionTitle} />
                 </h2>
-                {/* ✅ HTML rendering fixed: missionText supports <strong> tags */}
-                <div
-                  className={`${accentText} text-sm leading-relaxed`}
-                  dangerouslySetInnerHTML={{ __html: missionText }}
-                />
+                {/* Render seguro: soporta **negrita** y <strong> SIN innerHTML
+                    (elimina el vector XSS si missionText se vuelve dinámico). */}
+                <div className={`${accentText} text-sm leading-relaxed`}>
+                  <SafeText text={missionText} />
+                </div>
               </div>
             </div>
           </div>

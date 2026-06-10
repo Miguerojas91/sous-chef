@@ -16,11 +16,14 @@ import secrets
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+# PyJWT (reemplaza python-jose, que tiene CVE-2024-33663/33664 y está sin mantener).
+import jwt
+from jwt import PyJWTError as JWTError
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.core.database import get_db
+from app.core.database import AsyncSessionLocal, get_db, IS_POSTGRES
 from app.models import User
 
 # Si no hay JWT_SECRET en producción, fallar fast.
@@ -33,7 +36,8 @@ if not JWT_SECRET:
     print("⚠️  JWT_SECRET no configurada — usando secret efímero (solo desarrollo).")
 
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))
+# Access token CORTO (refresh token persistido en DB hace el resto del trabajo).
+JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "15"))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
@@ -88,3 +92,39 @@ async def require_admin(current: User = Depends(get_current_user)) -> User:
     if not getattr(current, "is_admin", False):
         raise HTTPException(status_code=403, detail="Se requieren privilegios de admin")
     return current
+
+
+async def get_user_db(current: User = Depends(get_current_user)):
+    """
+    Sesión de DB con Row-Level Security activo.
+
+    Setea las variables de sesión Postgres `app.current_user_id` y
+    `app.is_admin` (transacción-local), que son leídas por las políticas RLS
+    definidas en la migración `002_enable_rls.py`.
+
+    En SQLite (dev) las políticas no existen y `set_config` no se ejecuta;
+    la dependencia se comporta como un `get_db` normal.
+
+    Uso:
+        @router.get("/recetas/mias")
+        async def mis_recetas(db: AsyncSession = Depends(get_user_db)):
+            # Las queries solo verán filas donde user_id = current_user.id
+            ...
+    """
+    async with AsyncSessionLocal() as session:
+        if IS_POSTGRES:
+            # Abrimos una transacción explícita para que `set_config(..., true)`
+            # (transaction-local) cubra todas las queries del request.
+            async with session.begin():
+                await session.execute(
+                    text("SELECT set_config('app.current_user_id', :uid, true)"),
+                    {"uid": str(current.id)},
+                )
+                await session.execute(
+                    text("SELECT set_config('app.is_admin', :a, true)"),
+                    {"a": "true" if current.is_admin else "false"},
+                )
+                yield session
+        else:
+            # Dev/SQLite: sin RLS, comportamiento normal
+            yield session

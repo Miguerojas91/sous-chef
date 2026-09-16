@@ -1,9 +1,6 @@
 """
-seed_users.py
-
-Migración one-shot de los usuarios locales del frontend (`LOCAL_USERS` en
-`frontend/src/data/localUsers.ts`) a la base de datos del backend, con
-contraseñas hasheadas (bcrypt).
+Siembra usuarios en la base de datos del backend con contraseñas hasheadas
+(bcrypt). Los usuarios se leen de la variable de entorno SEED_USERS.
 
 Uso:
     # Asegúrate de tener DATABASE_URL apuntando a la DB destino y de
@@ -11,12 +8,8 @@ Uso:
     alembic upgrade head
     python seed_users.py
 
-Idempotente: si el username ya existe, lo deja como está (NO sobreescribe
+Idempotente: si el username ya existe, lo deja como está (no sobreescribe
 contraseñas).
-
-⚠️  Después de ejecutarlo, borra el archivo `localUsers.ts` o vacía la lista
-`LOCAL_USERS` para que las contraseñas plaintext no queden en el bundle del
-frontend.
 """
 import asyncio
 import json
@@ -30,9 +23,7 @@ from app.core.database import AsyncSessionLocal
 from app.models import User
 
 
-# Los usuarios a sembrar se leen de la variable de entorno SEED_USERS para NO
-# versionar contraseñas en el repo (las anteriores fueron purgadas — DEBES
-# rotarlas, ver SECURITY.md).
+# SEED_USERS viene del entorno para no versionar contraseñas en el repo.
 #
 # Formato de SEED_USERS (separar usuarios por ';', campos por ':'):
 #   "admin:NuevaPassFuerte:admin@x.com:1;Tatis:OtraPass:::0"

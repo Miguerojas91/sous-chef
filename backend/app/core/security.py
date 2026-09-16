@@ -1,13 +1,11 @@
 """
-app/core/security.py
-
 Helpers de autenticación: emisión y validación de JWT, dependency
 `get_current_user` para proteger endpoints.
 
 Variables de entorno:
-- JWT_SECRET (REQUERIDA en producción)
+- JWT_SECRET (requerida en producción)
 - JWT_ALGORITHM (default: HS256)
-- JWT_EXPIRE_MINUTES (default: 1440 = 24h)
+- JWT_EXPIRE_MINUTES (default: 15)
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -16,7 +14,6 @@ import secrets
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-# PyJWT (reemplaza python-jose, que tiene CVE-2024-33663/33664 y está sin mantener).
 import jwt
 from jwt import PyJWTError as JWTError
 from sqlalchemy import text
@@ -26,7 +23,6 @@ from sqlalchemy.future import select
 from app.core.database import AsyncSessionLocal, get_db, IS_POSTGRES
 from app.models import User
 
-# Si no hay JWT_SECRET en producción, fallar fast.
 JWT_SECRET = os.getenv("JWT_SECRET")
 if not JWT_SECRET:
     if os.getenv("ENVIRONMENT", "development") == "production":
@@ -36,7 +32,7 @@ if not JWT_SECRET:
     print("⚠️  JWT_SECRET no configurada — usando secret efímero (solo desarrollo).")
 
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-# Access token CORTO (refresh token persistido en DB hace el resto del trabajo).
+# Access token corto: el refresh token persistido en DB mantiene la sesión.
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "15"))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)

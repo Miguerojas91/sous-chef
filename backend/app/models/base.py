@@ -30,7 +30,7 @@ class Recipe(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = Column(String, index=True, nullable=False)
     description = Column(Text)
-    ingredients = Column(JSON, nullable=False)  # List of ingredients
+    ingredients = Column(JSON, nullable=False)
     difficulty = Column(Enum(DifficultyLevel), default=DifficultyLevel.MEDIUM)
     estimated_time_minutes = Column(Integer)
     
@@ -44,11 +44,10 @@ class RecipeStep(Base):
     step_number = Column(Integer, nullable=False)
     instruction = Column(Text, nullable=False)
     
-    # New fields for Voice-First/Privacy-First
-    didactic_explanation = Column(Text)  # The "Why" behind the step
-    safety_warning = Column(Text)        # Safety tip to inject
-    expected_visual_state = Column(Text) # Description for On-Demand Vision validation
-    timer_seconds = Column(Integer)      # Timer duration if applicable
+    didactic_explanation = Column(Text)  # el porqué del paso
+    safety_warning = Column(Text)        # aviso de seguridad que se inyecta en la voz
+    expected_visual_state = Column(Text) # referencia para validar la foto con visión
+    timer_seconds = Column(Integer)
 
     recipe = relationship("Recipe", back_populates="steps")
 
@@ -74,10 +73,10 @@ class CookingSession(Base):
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime, nullable=True)
     
-    # Log of interactons for the "State Machine" Context
+    # Historial de interacciones que da contexto a la sesión
     interaction_log = Column(JSON, default=[]) 
     
-    # Active Timers State: {"timer_id": {"label": "Pasta", "end_time": "ISO...", "duration": 600}}
+    # Temporizadores activos: {"timer_id": {"label": "Pasta", "end_time": "ISO...", "duration": 600}}
     active_timers = Column(JSON, default={})
 
     user = relationship("User", back_populates="sessions")

@@ -1,6 +1,4 @@
 """
-app/api/auth.py
-
 Endpoints de autenticación con:
 - Access token JWT corto (15 min default).
 - Refresh tokens persistidos con rotación + detección de reuso.
@@ -31,12 +29,11 @@ from app.models import User, RefreshToken
 router = APIRouter()
 
 
-# bcrypt acepta máximo 72 bytes de password — truncamos como recomienda upstream.
+# bcrypt acepta máximo 72 bytes de password: truncamos como recomienda upstream.
 def _bcrypt_safe_pw(password: str) -> bytes:
     return password.encode("utf-8")[:72]
 
 
-# --- Schemas ---
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
@@ -79,7 +76,6 @@ class TokenResponse(BaseModel):
     expires_in: int
 
 
-# --- Helpers ---
 def verify_password(plain: str, hashed: str) -> bool:
     try:
         return bcrypt.checkpw(_bcrypt_safe_pw(plain), hashed.encode("utf-8"))
@@ -130,7 +126,6 @@ async def _build_auth_response(
     )
 
 
-# --- Endpoints ---
 @router.post("/register", response_model=AuthResponse)
 @limiter.limit("5/minute")
 async def register(request: Request, response: Response, user: UserCreate, db: AsyncSession = Depends(get_db)):
@@ -168,7 +163,7 @@ async def register(request: Request, response: Response, user: UserCreate, db: A
 
 
 @router.post("/login", response_model=AuthResponse)
-@limiter.limit("10/minute")  # 10 intentos por IP por minuto
+@limiter.limit("10/minute")
 async def login(request: Request, response: Response, creds: UserLogin, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(User).where(User.username == creds.username))
     user = res.scalars().first()
@@ -211,7 +206,6 @@ async def refresh(request: Request, response: Response, body: RefreshRequest, db
         await db.commit()
         raise HTTPException(401, "Refresh token expirado")
 
-    # OK → rotar
     user = (await db.execute(select(User).where(User.id == row.user_id))).scalars().first()
     if not user:
         raise HTTPException(401, "Usuario no encontrado")
@@ -249,7 +243,7 @@ async def logout_all(
     current: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Revoca TODAS las sesiones del usuario (pánico/dispositivo perdido)."""
+    """Revoca todas las sesiones del usuario (dispositivo perdido)."""
     n = await revoke_all_for_user(db, current.id)
     await log_event(db, action=Action.LOGOUT, user_id=current.id,
                     meta={"all": True, "revoked": n}, request=request)

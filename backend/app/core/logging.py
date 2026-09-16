@@ -1,6 +1,4 @@
 """
-app/core/logging.py
-
 Logging estructurado (JSON) para producción + middleware de request ID.
 
 Cada log incluye:
@@ -96,7 +94,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
         token_rid = request_id_ctx.set(rid)
 
-        # user_id desde el JWT si viene autenticado (best-effort, sin verificar firma —
+        # user_id desde el JWT si viene autenticado (best-effort, sin verificar firma:
         # solo para correlación de logs, no para autorización).
         uid = ""
         auth = request.headers.get("authorization", "")

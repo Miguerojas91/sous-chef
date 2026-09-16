@@ -37,14 +37,13 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     xp = Column(Integer, default=0)
     
-    # Perfil alimenticio (JSON en string para DB SQLite/Postgres general, idealmente JSONB en Postgres)
+    # Perfil alimenticio como JSON serializado en texto (compatible con SQLite).
     allergies = Column(String, default="[]")
     dislikes = Column(String, default="[]")
     
-    # Relación con el progreso de habilidades
     completed_techniques = relationship("UserTechnique", back_populates="user")
     
-    # Progreso de Recetas Jefe superadas
+    # Recetas jefe superadas
     completed_bosses = relationship("UserBossChallenge", back_populates="user")
 
     @property
@@ -109,7 +108,7 @@ class Recipe(Base):
     boss_level = Column(Integer, nullable=True) # Nivel del jefe (ej: Jefe de Nivel 1)
     xp_reward = Column(Integer, default=50) # XP por completarla
     
-    # Ingredientes y pasos (almacenados como JSON stringifiers por simplicidad, o JSONB si es postgres nativo)
+    # Ingredientes y pasos como JSON serializado en texto.
     ingredients = Column(String) 
     instructions = Column(String)
     
@@ -160,14 +159,14 @@ class Page(Base):
 
 class RefreshToken(Base):
     """
-    Refresh token persistido (solo el HASH, nunca el token en claro).
+    Refresh token persistido (solo el hash, nunca el token en claro).
 
     Flujo:
     - /auth/login emite un access_token (JWT corto) + refresh_token opaco.
     - El cliente envía el refresh_token a /auth/refresh para rotar.
-    - Cada uso CONSUME el actual (revoked_at + replaced_by_id) y emite uno nuevo.
+    - Cada uso consume el actual (revoked_at + replaced_by_id) y emite uno nuevo.
     - Detección de reuso: si llega un refresh_token ya revocado, se invalidan
-      TODOS los tokens del usuario (señal de robo).
+      todos los tokens del usuario (señal de robo).
     """
     __tablename__ = "refresh_tokens"
 

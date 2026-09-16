@@ -1,33 +1,31 @@
 /**
- * proxy/src/index.ts
- *
  * Servidor proxy Express + WebSocket para Sous Chef.
  * Actúa como intermediario entre el navegador y la API de Gemini,
  * manteniendo las claves de API exclusivamente en el servidor.
  *
- * ── Endpoints HTTP ──────────────────────────────────────────────
- * GET  /health                    — Health check para Railway/Vercel.
- * GET  /api/membership/check      — Verifica si un email tiene premium.
- * POST /api/hotmart/webhook       — Recibe eventos de compra de Hotmart.
- * POST /api/membership/grant      — Admin: otorgar/revocar premium manualmente.
- * POST /api/chat                  — Chat de texto con streaming SSE (Gemini 2.5 Flash).
- * POST /api/evaluate              — Evaluación de imagen culinaria con Gemini Vision.
+ * Endpoints HTTP:
+ * GET  /health                    Health check para Railway/Vercel.
+ * GET  /api/membership/check      Verifica si un email tiene premium.
+ * POST /api/hotmart/webhook       Recibe eventos de compra de Hotmart.
+ * POST /api/membership/grant      Admin: otorgar/revocar premium manualmente.
+ * POST /api/chat                  Chat de texto con streaming SSE (Gemini 2.5 Flash).
+ * POST /api/evaluate              Evaluación de imagen culinaria con Gemini Vision.
  *
- * ── WebSocket ───────────────────────────────────────────────────
- * WS   /api/live                  — Proxy de voz en tiempo real (Gemini Live).
+ * WebSocket:
+ * WS   /api/live                  Proxy de voz en tiempo real (Gemini Live).
  *
- * Variables de entorno requeridas:
- * - `GEMINI_API_KEY`  — Clave de API de Google Generative AI. (REQUERIDA)
- * - `ADMIN_SECRET`    — Secret para endpoints de administración manual. (REQUERIDA en producción)
- * - `PORT`            — Puerto del servidor (default: 3001).
- * - `ALLOWED_ORIGIN`  — Origen(es) CORS permitido(s). CSV. Default: '*' SOLO en desarrollo.
- * - `HOTMART_TOKEN`   — Token de verificación de webhooks Hotmart.
- * - `HOTMART_HMAC_SECRET` — (Opcional) Secret HMAC para validar firma del body Hotmart.
- * - `PREMIUM_EMAILS`  — Lista CSV de emails premium (semilla inicial).
- * - `NODE_ENV`        — 'production' habilita validación estricta de env.
+ * Variables de entorno:
+ * - `GEMINI_API_KEY`: clave de API de Google Generative AI (requerida).
+ * - `ADMIN_SECRET`: secret para endpoints de administración manual (requerida en producción).
+ * - `PORT`: puerto del servidor (default: 3001).
+ * - `ALLOWED_ORIGIN`: origen(es) CORS permitido(s), CSV. Default '*' solo en desarrollo.
+ * - `HOTMART_TOKEN`: token de verificación de webhooks Hotmart.
+ * - `HOTMART_HMAC_SECRET`: (opcional) secret HMAC para validar la firma del body Hotmart.
+ * - `PREMIUM_EMAILS`: lista CSV de emails premium (semilla inicial).
+ * - `NODE_ENV`: 'production' habilita validación estricta de env.
  *
  * Seguridad:
- * - La clave de Gemini NUNCA se envía al navegador.
+ * - La clave de Gemini nunca se envía al navegador.
  * - El WebSocket proxy simplifica el protocolo Gemini Live a un subset
  *   sin revelar el proveedor de IA al cliente.
  */
@@ -45,7 +43,6 @@ import { membershipStore } from './membershipStore.js';
 
 dotenv.config();
 
-// ── Config ─────────────────────────────────────────────────────────────────────
 const NODE_ENV        = process.env.NODE_ENV ?? 'development';
 const IS_PROD         = NODE_ENV === 'production';
 const GEMINI_API_KEY  = process.env.GEMINI_API_KEY ?? '';
@@ -55,7 +52,6 @@ const HOTMART_TOKEN   = process.env.HOTMART_TOKEN ?? '';
 const HOTMART_HMAC_SECRET = process.env.HOTMART_HMAC_SECRET ?? '';
 const ADMIN_SECRET    = process.env.ADMIN_SECRET ?? '';
 
-// ── Validación de entorno (fail-fast) ─────────────────────────────────────────
 function validateEnv(): void {
   const missing: string[] = [];
   if (!GEMINI_API_KEY) missing.push('GEMINI_API_KEY');
@@ -70,11 +66,8 @@ function validateEnv(): void {
 }
 validateEnv();
 
-// Membership store (persistente en disco — ver membershipStore.ts)
-
-// Modelos (solo en el servidor)
 const TEXT_MODEL  = 'gemini-2.5-flash';
-// Modelo válido para Gemini Live (audio bidireccional). El anterior "3.1" no existe.
+// Modelo de Gemini Live (audio bidireccional).
 const VOICE_MODEL = process.env.VOICE_MODEL ?? 'gemini-2.0-flash-live-preview-04-09';
 
 function getAI(): GoogleGenAI {
@@ -82,10 +75,9 @@ function getAI(): GoogleGenAI {
   return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 }
 
-// ── Helpers de seguridad ─────────────────────────────────────────────────────
 /**
  * Comparación de strings en tiempo constante, segura ante:
- * - longitudes distintas (en bytes, no chars — evita el bug con multibyte)
+ * - longitudes distintas (en bytes, no chars: así no falla con multibyte)
  * - excepciones de timingSafeEqual
  */
 function safeEqual(a: string, b: string): boolean {
@@ -106,12 +98,11 @@ function isAllowedOrigin(origin: string | undefined): boolean {
   return (allowedOrigins as string[]).includes(origin);
 }
 
-// ── Express ────────────────────────────────────────────────────────────────────
 const app = express();
-app.set('trust proxy', 1); // Railway está detrás de un proxy → necesario para rate-limit por IP
+app.set('trust proxy', 1); // Railway está detrás de un proxy: necesario para rate-limit por IP
 app.disable('x-powered-by');
 
-// Headers de seguridad (CSP no aplica — servimos solo JSON/SSE; desactivamos
+// Headers de seguridad (CSP no aplica: servimos solo JSON/SSE; desactivamos
 // la CSP por defecto de helmet para no romper el stream SSE).
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -126,22 +117,14 @@ const allowedOrigins = ALLOWED_ORIGIN === '*'
 app.use(cors({
   origin: (origin, cb) => {
     if (allowedOrigins === '*') return cb(null, true);
-    // Permitir requests sin origin (curl, server-to-server) — útiles para webhooks
+    // Permitir requests sin origin (curl, server-to-server): útiles para webhooks
     if (!origin) return cb(null, true);
     if ((allowedOrigins as string[]).includes(origin)) return cb(null, true);
     cb(new Error(`CORS bloqueado: origen ${origin} no permitido`));
   },
 }));
 
-/**
- * Guard de origen para endpoints CAROS (Gemini). CORS solo protege al
- * navegador (no impide que la request llegue al servidor y gaste cuota).
- * Este middleware RECHAZA en el servidor cualquier request cuyo Origin no
- * esté en la allowlist, ANTES de llamar a Gemini. Eleva la barra contra
- * abuso por curl/bots. Un atacante puede spoofear el Origin, pero combinado
- * con el rate-limit por IP es una postura razonable para beta.
- * En desarrollo (allowlist '*') no bloquea nada.
- */
+// CORS no impide gastar cuota: se rechazan en servidor los Origin fuera de la allowlist.
 function originGuard(req: Request, res: Response, next: NextFunction): void {
   if (allowedOrigins === '*') return next();
   const origin = req.header('origin');
@@ -149,27 +132,24 @@ function originGuard(req: Request, res: Response, next: NextFunction): void {
   res.status(403).json({ error: 'Origen no autorizado' });
 }
 
-// Webhook Hotmart necesita el body crudo para validar HMAC → captura el raw antes del parser JSON.
+// Webhook Hotmart necesita el body crudo para validar HMAC: se captura antes del parser JSON.
 app.use('/api/hotmart/webhook', express.json({
   limit: '256kb',
   verify: (req: Request & { rawBody?: Buffer }, _res, buf) => { req.rawBody = Buffer.from(buf); },
 }));
-// Endpoint de imagen necesita payloads grandes; el resto NO.
+// Solo el endpoint de imagen necesita payloads grandes.
 app.use('/api/evaluate', express.json({ limit: '15mb' }));
-// Límite global ajustado: el resto de endpoints no necesitan >256kb.
 app.use(express.json({ limit: '256kb' }));
 
-// ── Rate limiting ──────────────────────────────────────────────────────────────
 // Endpoints caros (Gemini): límite estricto.
 const aiLimiter = rateLimit({
-  windowMs: 60_000, // 1 min
-  max: 20,          // 20 requests/min/IP
+  windowMs: 60_000,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Demasiadas solicitudes. Espera un momento e intenta de nuevo.' },
 });
 
-// Endpoints generales
 const generalLimiter = rateLimit({
   windowMs: 60_000,
   max: 120,
@@ -178,27 +158,24 @@ const generalLimiter = rateLimit({
 });
 app.use('/api/', generalLimiter);
 
-// Health check
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-// ── GET /api/membership/check ── Verifica si un email tiene membresía premium ──
+// GET /api/membership/check: verifica si un email tiene membresía premium
 app.get('/api/membership/check', (req, res) => {
   const email = (req.query.email as string ?? '').trim().toLowerCase();
   if (!email) return void res.json({ isPremium: false });
   res.json({ isPremium: membershipStore.has(email) });
 });
 
-// ── POST /api/hotmart/webhook ── Recibe eventos de compra de Hotmart ───────────
+// POST /api/hotmart/webhook: recibe eventos de compra de Hotmart
 app.post('/api/hotmart/webhook', (req: Request & { rawBody?: Buffer }, res) => {
-  // FAIL-CLOSED: si NO hay ningún mecanismo de validación configurado, rechazar
-  // SIEMPRE. Antes, sin HMAC ni TOKEN, el webhook quedaba abierto y cualquiera
-  // podía otorgarse premium gratis con un POST.
+  // Fail-closed: sin HMAC ni token configurados, se rechaza siempre.
   if (!HOTMART_HMAC_SECRET && !HOTMART_TOKEN) {
     console.error('❌ Webhook llamado pero NO hay HOTMART_HMAC_SECRET ni HOTMART_TOKEN configurados. Rechazando.');
     return void res.status(503).json({ error: 'Webhook no configurado' });
   }
 
-  // 1. Validación HMAC (preferida, si está configurada)
+  // Validación HMAC (preferida si está configurada).
   if (HOTMART_HMAC_SECRET) {
     const signature = (req.header('x-hotmart-hottok') ?? req.header('x-hotmart-signature') ?? '').toString();
     if (!signature || !req.rawBody) {
@@ -211,7 +188,7 @@ app.post('/api/hotmart/webhook', (req: Request & { rawBody?: Buffer }, res) => {
       return void res.status(401).json({ error: 'Firma inválida' });
     }
   } else {
-    // 2. Fallback: hottok por query (legacy) — comparación timing-safe.
+    // Fallback: hottok por query (legacy), comparación timing-safe.
     const hottok = (req.query.hottok as string | undefined) ?? '';
     if (!safeEqual(hottok, HOTMART_TOKEN)) {
       console.warn('⚠️  Webhook recibido con hottok inválido');
@@ -252,13 +229,13 @@ app.post('/api/hotmart/webhook', (req: Request & { rawBody?: Buffer }, res) => {
 // Limiter estricto para endpoints sensibles (anti fuerza-bruta del ADMIN_SECRET).
 const adminLimiter = rateLimit({
   windowMs: 60_000,
-  max: 5, // 5 intentos/min/IP
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Demasiados intentos. Espera un minuto.' },
 });
 
-// ── POST /api/membership/grant ── Admin: otorgar/revocar premium manualmente ──
+// POST /api/membership/grant: admin otorga o revoca premium manualmente
 app.post('/api/membership/grant', adminLimiter, (req, res) => {
   const { email, secret, revoke } = req.body as { email?: string; secret?: string; revoke?: boolean };
 
@@ -280,7 +257,7 @@ app.post('/api/membership/grant', adminLimiter, (req, res) => {
   res.json({ ok: true, email: key, isPremium: !revoke });
 });
 
-// ── POST /api/chat ── Chat de texto con streaming SSE ──────────────────────────
+// POST /api/chat: chat de texto con streaming SSE
 app.post('/api/chat', originGuard, aiLimiter, async (req, res) => {
   const { contents, systemInstruction } = req.body as {
     contents: Array<{ role: string; parts: [{ text: string }] }>;
@@ -336,7 +313,7 @@ app.post('/api/chat', originGuard, aiLimiter, async (req, res) => {
   }
 });
 
-// ── POST /api/evaluate ── Evaluación de imagen con Gemini Vision ───────────────
+// POST /api/evaluate: evaluación de imagen con Gemini Vision
 app.post('/api/evaluate', originGuard, aiLimiter, async (req, res) => {
   const { imageBase64, levelName, criteria } = req.body as {
     imageBase64: string;
@@ -414,14 +391,13 @@ EJEMPLOS:
       feedback?: string;
     };
 
-    // Si el modelo dice que NO es imagen culinaria, forzar 0 sin importar 'stars'
+    // Si el modelo dice que no es imagen culinaria, forzar 0 sin importar 'stars'
     const isCulinaryImage = parsed.isCulinaryImage === true;
     let stars = isCulinaryImage
       ? Math.min(3, Math.max(1, Math.round(Number(parsed.stars) || 1)))
       : 0;
     const feedback = (parsed.feedback || '').toString().slice(0, 500);
 
-    // Si stars=0 (no culinaria) pero el modelo no devolvió feedback, usar default
     if (!isCulinaryImage) stars = 0;
 
     res.json({
@@ -447,7 +423,7 @@ app.use((err: Error, _req: Request, res: Response, next: NextFunction) => {
   next(err);
 });
 
-// ── WebSocket /api/live ── Proxy de voz en tiempo real ────────────────────────
+// WebSocket /api/live: proxy de voz en tiempo real
 const server = createServer(app);
 
 // Límites del WS para evitar abuso de Gemini Live (lo más caro).
@@ -465,7 +441,7 @@ const wss = new WebSocketServer({
   server,
   path: '/api/live',
   maxPayload: 2 * 1024 * 1024, // 2 MB por mensaje (chunks de audio son pequeños)
-  // Handshake guard: valida Origin + cap de conexiones por IP ANTES de aceptar.
+  // Handshake guard: valida Origin y cap de conexiones por IP antes de aceptar.
   verifyClient: (info, cb) => {
     // Origin allowlist (en dev '*' deja pasar todo).
     if (allowedOrigins !== '*') {
@@ -474,7 +450,6 @@ const wss = new WebSocketServer({
         return cb(false, 403, 'Origen no autorizado');
       }
     }
-    // Cap de conexiones concurrentes por IP.
     const ip = clientIpFromReq(info.req);
     const current = wsConnectionsPerIp.get(ip) ?? 0;
     if (current >= WS_MAX_CONNECTIONS_PER_IP) {
@@ -501,13 +476,11 @@ type BrowserMessage =
 wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   let geminiSession: GeminiLiveSession | null = null;
 
-  // Registrar la conexión para el cap por IP.
   const ip = clientIpFromReq(req);
   wsConnectionsPerIp.set(ip, (wsConnectionsPerIp.get(ip) ?? 0) + 1);
 
-  // Cierre forzado tras la duración máxima (evita sesiones eternas que
-  // consumen Gemini Live indefinidamente). El cap por-minutos del frontend
-  // es client-side; ESTE es el límite server-side real.
+  // Cierre forzado tras la duración máxima para no consumir Gemini Live sin fin.
+  // El cap por minutos del frontend es client-side; este es el límite real.
   const maxDurationTimer = setTimeout(() => {
     try { ws.close(1000, 'Sesión máxima alcanzada'); } catch { /* ok */ }
   }, WS_MAX_SESSION_MS);
@@ -596,7 +569,6 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
 
   const cleanup = () => {
     clearTimeout(maxDurationTimer);
-    // Decrementar el contador por IP.
     const n = (wsConnectionsPerIp.get(ip) ?? 1) - 1;
     if (n <= 0) wsConnectionsPerIp.delete(ip);
     else wsConnectionsPerIp.set(ip, n);
@@ -610,7 +582,6 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
   ws.on('error', cleanup);
 });
 
-// ── Arranque ───────────────────────────────────────────────────────────────────
 server.listen(PORT, () => {
   console.log(`🍳 Sous Chef proxy corriendo en puerto ${PORT} (env=${NODE_ENV})`);
   console.log(`   CORS: ${allowedOrigins === '*' ? '*' : (allowedOrigins as string[]).join(', ')}`);

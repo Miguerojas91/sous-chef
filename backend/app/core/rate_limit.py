@@ -1,6 +1,4 @@
 """
-app/core/rate_limit.py
-
 Rate limiter compartido (slowapi). Se aplica con `@limiter.limit("N/minute")`.
 
 Detrás de Railway/Vercel respetamos `X-Forwarded-For` para identificar la IP

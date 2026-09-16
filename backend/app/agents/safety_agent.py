@@ -8,19 +8,12 @@ class SafetyAlert(BaseModel):
 
 class SafetyAgent:
     """
-    Specialized agent for Proactive Safety.
-    
-    PRIVACY-FIRST:
-    - Does NOT access video stream continuously.
-    - Injects safety reminders into the voice flow based on recipe context and timers.
-    - E.g., "Check the heat, it's been 5 minutes on high."
+    Recordatorios de seguridad en el flujo de voz según el paso y los
+    temporizadores. No accede al video de forma continua, por privacidad.
     """
     def __init__(self):
         pass
 
     async def generate_safety_check(self, recipe_context: dict, elapsed_time: int) -> Optional[SafetyAlert]:
-        """
-        Determines if a safety reminder is needed based on the current step and time.
-        """
-        # Placeholder logic: Check high-risk steps (frying, pressure cooking)
+        """Sin implementar: nunca devuelve alerta."""
         return None

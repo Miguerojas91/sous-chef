@@ -1,7 +1,5 @@
 """
-app/core/observability.py
-
-Inicialización de Sentry (errores) — opcional, env-gated.
+Inicialización de Sentry (errores): opcional, env-gated.
 
 Variables:
 - SENTRY_DSN          → activa Sentry. Sin esto, no se carga.

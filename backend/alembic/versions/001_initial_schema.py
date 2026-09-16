@@ -6,7 +6,7 @@ Create Date: 2026-05-04
 
 Crea el schema completo de Sous Chef. Compatible con SQLite y Postgres.
 
-NOTA: Si ya tienes datos creados con `Base.metadata.create_all` (modo dev),
+Si ya tienes datos creados con `Base.metadata.create_all` (modo dev),
 borra `sous.db` antes de aplicar esta migración (o stampea con
 `alembic stamp 001_initial_schema` para marcarla como aplicada sin recrear).
 """
@@ -21,7 +21,6 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # ── users ──────────────────────────────────────────────────────────────────
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),
@@ -34,7 +33,6 @@ def upgrade() -> None:
         sa.Column("dislikes", sa.String(), nullable=False, server_default="[]"),
     )
 
-    # ── techniques ─────────────────────────────────────────────────────────────
     op.create_table(
         "techniques",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),
@@ -48,7 +46,6 @@ def upgrade() -> None:
         sa.Column("masterclass_video_url", sa.String(), nullable=True),
     )
 
-    # ── recipes ────────────────────────────────────────────────────────────────
     op.create_table(
         "recipes",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),
@@ -66,21 +63,18 @@ def upgrade() -> None:
         sa.Column("instructions", sa.String()),
     )
 
-    # ── technique_prerequisites (M2M) ──────────────────────────────────────────
     op.create_table(
         "technique_prerequisites",
         sa.Column("technique_id", sa.Integer(), sa.ForeignKey("techniques.id"), primary_key=True),
         sa.Column("prerequisite_id", sa.Integer(), sa.ForeignKey("techniques.id"), primary_key=True),
     )
 
-    # ── recipe_techniques (M2M) ────────────────────────────────────────────────
     op.create_table(
         "recipe_techniques",
         sa.Column("recipe_id", sa.Integer(), sa.ForeignKey("recipes.id"), primary_key=True),
         sa.Column("technique_id", sa.Integer(), sa.ForeignKey("techniques.id"), primary_key=True),
     )
 
-    # ── user_techniques ────────────────────────────────────────────────────────
     op.create_table(
         "user_techniques",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),
@@ -89,7 +83,6 @@ def upgrade() -> None:
         sa.Column("is_validated", sa.Boolean(), server_default=sa.false()),
     )
 
-    # ── user_boss_challenges ───────────────────────────────────────────────────
     op.create_table(
         "user_boss_challenges",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),
@@ -100,7 +93,6 @@ def upgrade() -> None:
         sa.Column("ai_feedback", sa.String(), nullable=True),
     )
 
-    # ── pages (CMS) ────────────────────────────────────────────────────────────
     op.create_table(
         "pages",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),

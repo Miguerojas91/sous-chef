@@ -1,6 +1,4 @@
 """
-app/api/endpoints.py
-
 Endpoints generales del usuario autenticado.
 Usan `get_user_db` para que las queries respeten RLS (ver migración 002).
 """

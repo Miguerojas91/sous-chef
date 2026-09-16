@@ -1,6 +1,4 @@
 """
-app/core/security_headers.py
-
 Middleware que añade headers de seguridad estándar:
 - HSTS (forzar HTTPS por 1 año, incluye subdominios).
 - X-Content-Type-Options: nosniff.
@@ -11,7 +9,7 @@ Middleware que añade headers de seguridad estándar:
 - Content-Security-Policy: restrictivo. Editar `_DEFAULT_CSP` si la API sirve
   HTML (no es el caso por defecto).
 
-En desarrollo (`ENVIRONMENT != production`) HSTS NO se setea (rompe el dev en
+En desarrollo (`ENVIRONMENT != production`) HSTS no se setea (rompe el dev en
 http://localhost). El resto sí.
 """
 import os

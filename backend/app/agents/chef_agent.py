@@ -15,12 +15,8 @@ class ChefResponse(BaseModel):
 
 class ChefAgent:
     """
-    Orchestrator agent responsible for the conversation flow and recipe guidance.
-    
-    VOICE-FIRST PHILOSOPHY:
-    - Acts as a cooking teacher, not a GPS.
-    - Explains the 'why' behind steps (didactic).
-    - Manages the state machine of the cooking session.
+    Agente que guía la conversación y los pasos de la receta en la sesión de
+    cocina. Explica el porqué de cada paso en lugar de solo dictar instrucciones.
     """
     def __init__(self):
         api_key = os.getenv("OPENAI_API_KEY")
@@ -43,18 +39,10 @@ class ChefAgent:
         )
 
     async def manage_timers(self, current_timers: Dict[str, Any], new_command: str) -> Dict[str, Any]:
-        """
-        Parses commands to start/stop/check timers.
-        Returns updated timers state.
-        e.g., 'Set a timer for 10 minutes for the pasta'
-        """
-        # Placeholder for NLU logic
+        """Sin implementar: devuelve los temporizadores sin cambios."""
         return current_timers
 
     async def get_next_step_narrative(self, step_instruction: str, didactic_info: str, context: Dict[str, Any]) -> str:
-        """
-        Generates the voice narrative for a specific recipe step.
-        """
         response = await self.client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -65,9 +53,6 @@ class ChefAgent:
         return response.choices[0].message.content
 
     async def process_voice_command(self, transcript: str, context: Dict[str, Any]) -> ChefResponse:
-        """
-        Processes transcribed voice commands to control flow.
-        """
         if not self.client:
              return ChefResponse(
                 message=f"I heard you say: '{transcript}'. (Configure OPENAI_API_KEY to get real AI responses)",
@@ -75,8 +60,7 @@ class ChefAgent:
             )
 
         dynamic_system_prompt = self.system_prompt
-        
-        # Check if it's a milprep session
+
         if context.get("is_milprep"):
             weekly_recipes = context.get("weekly_recipes", [])
             grocery_list = context.get("grocery_list", {})
@@ -104,7 +88,6 @@ class ChefAgent:
             ], # type: ignore
             response_format={"type": "json_object"}
         )
-        # Simple parsing for demo purposes - in prod use Pydantic parsing
         import json
         data = json.loads(response.choices[0].message.content)
         

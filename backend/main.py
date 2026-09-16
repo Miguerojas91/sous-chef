@@ -1,16 +1,14 @@
 """
-backend/main.py
-
 Entrada del API FastAPI de Sous Chef.
 
 Variables de entorno:
-- ENVIRONMENT          — 'production' habilita comportamiento estricto.
-- ALLOWED_ORIGINS      — CSV de orígenes permitidos para CORS.
-- JWT_SECRET           — REQUERIDA en producción.
-- DATABASE_URL         — String de conexión async (asyncpg/sqlite+aiosqlite).
-- RATE_LIMIT_REDIS     — (Opcional) URI de Redis para rate limit compartido.
-- SENTRY_DSN           — (Opcional) Activar reporte de errores a Sentry.
-- LOG_LEVEL            — (Opcional) DEBUG/INFO/WARNING (default INFO).
+- ENVIRONMENT: 'production' habilita comportamiento estricto.
+- ALLOWED_ORIGINS: CSV de orígenes permitidos para CORS.
+- JWT_SECRET: requerida en producción.
+- DATABASE_URL: string de conexión async (asyncpg/sqlite+aiosqlite).
+- RATE_LIMIT_REDIS: (opcional) URI de Redis para rate limit compartido.
+- SENTRY_DSN: (opcional) activa el reporte de errores a Sentry.
+- LOG_LEVEL: (opcional) DEBUG/INFO/WARNING (default INFO).
 """
 import logging
 import os
@@ -27,7 +25,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 load_dotenv()
 
-# ── Logging y observabilidad (antes de importar el resto) ─────────────────────
+# Logging y Sentry se configuran antes de importar el resto de la app.
 from app.core.logging import configure_logging, RequestContextMiddleware
 configure_logging()
 
@@ -59,13 +57,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── Orden de middlewares (Starlette ejecuta del último al primero por dispatch) ─
-# El primero que añadimos será el más cercano a la app (corre LAST en request,
-# FIRST en response). Por eso seguimos este orden:
-# 1. RequestContextMiddleware  → asigna request_id, debe correr antes que todo
-# 2. SecurityHeadersMiddleware → añade headers a la response
-# 3. SlowAPIMiddleware         → cuenta hits hacia el rate limit
-# 4. CORSMiddleware            → último (más afuera) para que maneje OPTIONS
+# Starlette envuelve los middlewares en orden inverso: el último añadido es el
+# más externo. CORS se añade al final para que responda OPTIONS antes que el
+# rate limit y los demás.
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -100,16 +94,15 @@ app.add_middleware(
 )
 
 
-# ── Health checks ─────────────────────────────────────────────────────────────
 @app.get("/health")
 async def health_basic():
-    """Liveness — el proceso responde."""
+    """Liveness: el proceso responde."""
     return {"status": "ok"}
 
 
 @app.get("/health/ready")
 async def health_ready():
-    """Readiness — el proceso puede atender tráfico (DB accesible)."""
+    """Readiness: el proceso puede atender tráfico (DB accesible)."""
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))

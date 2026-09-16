@@ -8,24 +8,19 @@ class VisualAnalysisResult(BaseModel):
     detected_ingredients: List[str]
     cooking_stage: Optional[str] = None
     potential_issues: List[str] = []
-    is_passed: bool = False # For Module 2 (Boss Validation)
+    is_passed: bool = False # desafío jefe (módulo 2)
 
 class VisionAgent:
     """
-    Specialized agent for ON-DEMAND visual analysis.
-    
-    - Activated only when user explicitly requests validation.
-    - Compares user's photo vs. 'Gold Standard' or expected state described in recipe.
-    - Specially configured to evaluate Module 2 Boss challenges.
+    Análisis visual bajo demanda: solo corre cuando el usuario pide validar.
+    Compara la foto con el estado esperado de la receta y evalúa los desafíos
+    jefe del módulo 2.
     """
     def __init__(self, model_name: str = "gpt-4o"):
         self.model_name = model_name
         self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     async def validate_boss_challenge(self, image_data: bytes, required_techniques: List[str]) -> VisualAnalysisResult:
-        """
-        Validates a Boss Challenge indicating if the user successfully applied the techniques.
-        """
         import base64
         import json
         base64_image = base64.b64encode(image_data).decode('utf-8')

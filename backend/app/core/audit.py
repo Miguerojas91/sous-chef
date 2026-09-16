@@ -1,11 +1,9 @@
 """
-app/core/audit.py
-
 Helper para registrar eventos en la tabla `audit_log`.
 
 `log_event` se puede llamar desde cualquier endpoint con la sesión actual.
 Si la sesión cae, el `INSERT` se aborta sin afectar el flujo principal
-(usamos `await db.flush()` dentro de un try/except — el endpoint puede
+(usamos `await db.flush()` dentro de un try/except; el endpoint puede
 hacer commit más adelante).
 """
 import json
@@ -61,7 +59,7 @@ async def log_event(
     meta: Optional[dict[str, Any]] = None,
     request: Optional[Request] = None,
 ) -> None:
-    """Registra un evento. Nunca lanza — fallar el log no debe romper la app."""
+    """Registra un evento. Nunca lanza: fallar el log no debe romper la app."""
     try:
         row = AuditLog(
             user_id=user_id,

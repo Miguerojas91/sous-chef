@@ -1,10 +1,8 @@
 """
-app/api/websockets.py
-
 WebSocket de cocina en tiempo real con los agentes ChefAgent/SafetyAgent.
 
 Seguridad:
-- El handshake EXIGE un JWT válido (query param `?token=...`). Sin token o
+- El handshake exige un JWT válido (query param `?token=...`). Sin token o
   con token inválido se rechaza con código 1008 antes de aceptar la conexión.
   Esto evita que cualquiera consuma cuota de los agentes de IA.
 - `json.loads` está envuelto en try/except (input no-JSON no tumba la sesión).
@@ -59,7 +57,7 @@ class ConnectionManager:
         session_context = {"timers": {}, "step": 1}
         while True:
             data = await websocket.receive_text()
-            # Input malformado NO debe tumbar la conexión.
+            # Input malformado no debe tumbar la conexión.
             try:
                 message = json.loads(data)
             except (json.JSONDecodeError, TypeError):
@@ -78,7 +76,7 @@ class ConnectionManager:
                     session_context.update(ctx)
                 continue
 
-            user_text = str(message.get("text", ""))[:2000]  # cap de longitud
+            user_text = str(message.get("text", ""))[:2000]
 
             chef_response = await self.chef_agent.process_voice_command(user_text, session_context)
             safety_alert = await self.safety_agent.generate_safety_check(session_context, elapsed_time=300)

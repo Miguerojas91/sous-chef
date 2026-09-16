@@ -6,7 +6,7 @@ Create Date: 2026-05-04
 
 Crea dos tablas nuevas:
 
-- `refresh_tokens`: hash + metadata de refresh tokens (NUNCA almacenamos el
+- `refresh_tokens`: hash + metadata de refresh tokens (nunca almacenamos el
   token en claro; se compara con hash al rotar).
 - `audit_log`: registro append-only de acciones sensibles
   (login, logout, register, premium_grant, etc.).
@@ -28,13 +28,12 @@ def _is_postgres() -> bool:
 
 
 def upgrade() -> None:
-    # ── refresh_tokens ─────────────────────────────────────────────────────────
     op.create_table(
         "refresh_tokens",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"),
                   index=True, nullable=False),
-        # SHA-256 del token en hex (64 chars). NO guardamos el token plano.
+        # SHA-256 del token en hex (64 chars). No guardamos el token plano.
         sa.Column("token_hash", sa.String(length=128), unique=True, index=True, nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
@@ -46,7 +45,6 @@ def upgrade() -> None:
         sa.Column("ip", sa.String(length=64), nullable=True),
     )
 
-    # ── audit_log ──────────────────────────────────────────────────────────────
     op.create_table(
         "audit_log",
         sa.Column("id", sa.Integer(), primary_key=True, index=True),
@@ -63,7 +61,6 @@ def upgrade() -> None:
                   server_default=sa.func.current_timestamp()),
     )
 
-    # ── RLS (solo Postgres) ────────────────────────────────────────────────────
     if not _is_postgres():
         return
 
@@ -83,8 +80,8 @@ def upgrade() -> None:
             );
     """)
 
-    # audit_log: el usuario puede LEER sus propias entradas. Solo admin puede
-    # actualizar/borrar (idealmente nadie — append-only). INSERT abierto porque
+    # audit_log: el usuario puede leer sus propias entradas. Solo admin puede
+    # actualizar/borrar (idealmente nadie: append-only). INSERT abierto porque
     # los hooks de auth corren con sesión sin user_id seteado.
     op.execute("ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE audit_log FORCE ROW LEVEL SECURITY")

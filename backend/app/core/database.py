@@ -1,6 +1,4 @@
 """
-app/core/database.py
-
 Conexión SQLAlchemy async. Soporta tanto SQLite (dev) como Postgres (prod).
 RLS solo aplica en Postgres.
 """
@@ -33,6 +31,6 @@ Base = declarative_base()
 
 
 async def get_db():
-    """Sesión sin RLS — para endpoints públicos (login, register, health)."""
+    """Sesión sin RLS, para endpoints públicos (login, register, health)."""
     async with AsyncSessionLocal() as session:
         yield session

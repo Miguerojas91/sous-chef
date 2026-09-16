@@ -1,19 +1,11 @@
 /**
- * proxy/src/membershipStore.ts
- *
  * Almacén persistente de membresías premium. Usa un archivo JSON en disco
  * (path configurable por env `PREMIUM_DB_PATH`, default `./premium.json`).
  *
- * En Railway, este archivo persistirá entre redeploys SOLO si la ruta apunta
+ * En Railway, este archivo persistirá entre redeploys solo si la ruta apunta
  * a un Volume montado (p. ej. `PREMIUM_DB_PATH=/data/premium.json`).
  * Si no hay volumen, sigue funcionando como cache en memoria + seed por env
  * (PREMIUM_EMAILS), pero se perderá al redesplegar.
- *
- * API:
- *  - has(email)
- *  - add(email)
- *  - remove(email)
- *  - list()
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -36,7 +28,7 @@ function loadFromDisk(): void {
         for (const e of arr) emails.add(e.trim().toLowerCase());
       }
     } else {
-      // Crear el archivo si el directorio existe (toca disco para detectar volume).
+      // Crea directorio y archivo si faltan; escribir en disco detecta si hay volumen.
       const dir = path.dirname(DB_PATH);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });

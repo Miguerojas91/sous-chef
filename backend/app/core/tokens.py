@@ -1,18 +1,16 @@
 """
-app/core/tokens.py
-
 Servicio de refresh tokens. Patrón "rotación + detección de reuso":
 
 - Al hacer login emitimos `access_token` (JWT corto, ~15 min) + `refresh_token`
   opaco (32 bytes URL-safe). El cliente guarda ambos.
 - En `/auth/refresh` el cliente manda el refresh_token; el server:
     1) busca por hash;
-    2) si está revocado → ALERT: posible reuso. Revoca TODA la cadena del user.
+    2) si está revocado → posible reuso: revoca toda la cadena del usuario.
     3) si está expirado → 401.
     4) si OK → marca el actual como revoked_at=now, replaced_by_id=<nuevo>,
        emite refresh_token nuevo y access_token nuevo.
 
-NUNCA almacenamos el refresh_token en claro: solo SHA-256 hex.
+Nunca almacenamos el refresh_token en claro: solo SHA-256 hex.
 """
 import hashlib
 import secrets
@@ -100,7 +98,7 @@ async def lookup_refresh_token(db: AsyncSession, token_plain: str) -> tuple[str,
     now = datetime.now(timezone.utc)
     if row.revoked_at is not None:
         return RefreshOutcome.REUSE_DETECTED, row
-    # expires_at puede venir naïve desde SQLite — normalizamos
+    # expires_at puede venir naïve desde SQLite: normalizamos
     exp = row.expires_at if row.expires_at.tzinfo else row.expires_at.replace(tzinfo=timezone.utc)
     if exp < now:
         return RefreshOutcome.EXPIRED, row

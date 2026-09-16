@@ -1,20 +1,34 @@
+"""
+Comprueba que el login del admin funciona con la contraseña dada.
+
+Uso: ADMIN_USERNAME=... ADMIN_PASSWORD=... python verify_user.py
+"""
 import asyncio
-from passlib.context import CryptContext
-from app.core.database import AsyncSessionLocal
-from app.models import User
+import os
+import sys
+
 from sqlalchemy import select
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.api.auth import verify_password
+from app.core.database import AsyncSessionLocal
+from app.models import User
 
-async def verify():
+
+async def verify() -> None:
+    username = os.environ.get("ADMIN_USERNAME", "").strip()
+    password = os.environ.get("ADMIN_PASSWORD", "")
+    if not username or not password:
+        sys.exit("Faltan ADMIN_USERNAME o ADMIN_PASSWORD en el entorno.")
+
     async with AsyncSessionLocal() as session:
-        result = await session.execute(select(User).where(User.username == "miguel"))
+        result = await session.execute(select(User).where(User.username == username))
         user = result.scalar_one_or_none()
         if not user:
-            print("ERROR: usuario no encontrado")
+            print("Usuario no encontrado.")
             return
-        ok = pwd_context.verify("Miguel40.", user.hashed_password)
-        print(f"Usuario: {user.username} ({user.email}) | Admin: {user.is_admin}")
-        print(f"Password OK: {ok}")
+        print(f"Usuario: {user.username} | Admin: {user.is_admin}")
+        print(f"Contraseña correcta: {verify_password(password, user.hashed_password)}")
 
-asyncio.run(verify())
+
+if __name__ == "__main__":
+    asyncio.run(verify())

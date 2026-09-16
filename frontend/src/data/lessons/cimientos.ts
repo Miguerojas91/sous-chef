@@ -1,0 +1,659 @@
+import type { AcademyLevel } from './types';
+
+export const CIMIENTOS: AcademyLevel = {
+  id: 'cimientos',
+  name: 'Cimientos',
+  tag: 'Básico',
+  world: 1,
+  lessons: [
+    {
+      id: 'higiene',
+      emoji: '🧼',
+      title: 'Higiene y Seguridad en la Cocina',
+      duration: '15:00',
+      description: 'Los principios para trabajar en una cocina segura: zona de peligro de temperatura, contaminación cruzada y protocolos HACCP básicos.',
+      topics: ['Zona de peligro de temperatura', 'Contaminación cruzada', 'Lavado de manos correcto', 'Almacenamiento seguro de alimentos'],
+      content: {
+        intro: 'Cocinar seguro es la base de todo lo demás. Muchas intoxicaciones empiezan en la cocina de la casa, por descuidos fáciles de evitar. En esta lección aprendes a protegerte a ti y a quienes comen lo que preparas.',
+        sections: [
+          {
+            type: 'text',
+            title: 'La Zona de Peligro de Temperatura',
+            content: 'Los patógenos (bacterias, virus, parásitos) se multiplican de forma exponencial entre 4°C y 60°C. A 37°C (temperatura corporal), una bacteria puede duplicarse cada 20 minutos. En 8 horas, una sola bacteria se convierte en más de 16 millones.',
+          },
+          {
+            type: 'table',
+            title: 'Temperaturas críticas',
+            content: [
+              { col1: 'Por debajo de 4°C', col2: 'Refrigeración segura: el crecimiento se frena mucho, pero no se detiene' },
+              { col1: '4°C a 60°C', col2: 'Zona de peligro: multiplicación activa' },
+              { col1: '60°C a 74°C', col2: 'Zona de cocción: los patógenos empiezan a morir' },
+              { col1: 'Por encima de 74°C', col2: 'Cocción segura: destrucción de la mayoría de patógenos' },
+            ],
+          },
+          {
+            type: 'warning',
+            content: 'Nunca dejes alimentos cocidos a temperatura ambiente por más de 2 horas. En días calurosos (>32°C), ese límite se reduce a 1 hora.',
+          },
+          {
+            type: 'text',
+            title: 'Contaminación Cruzada',
+            content: 'La contaminación cruzada ocurre cuando patógenos de un alimento se transfieren a otro, generalmente de alimentos crudos a cocidos. Es una de las causas más comunes de intoxicación en casa.',
+          },
+          {
+            type: 'list',
+            title: 'Reglas para evitar contaminación cruzada',
+            content: [
+              'Usa tablas de corte separadas: roja para carnes, verde para verduras, azul para pescados',
+              'Nunca cortes vegetales frescos en la misma tabla donde cortaste pollo crudo',
+              'Lava y desinfecta la tabla entre cada tipo de alimento',
+              'Guarda carnes crudas en el estante inferior del refrigerador, siempre selladas',
+              'Nunca uses el mismo utensilio para alimentos crudos y cocidos sin lavarlo',
+            ],
+          },
+          {
+            type: 'steps',
+            title: 'Técnica correcta de lavado de manos',
+            content: [
+              'Moja las manos con agua tibia',
+              'Aplica jabón y frota durante al menos 20 segundos. Incluye el dorso, entre los dedos y debajo de las uñas',
+              'Enjuaga completamente con agua corriente',
+              'Seca con papel desechable (no tela reutilizable)',
+              'Cierra el grifo con el papel para evitar recontaminación',
+            ],
+          },
+          {
+            type: 'tip',
+            content: 'Lava tus manos cada vez que cambies de tarea: después de manipular carne cruda, antes de tocar alimentos listos para consumir, después de estornudar o tocar tu cara, y al inicio de cualquier sesión de cocina.',
+          },
+          {
+            type: 'text',
+            title: 'Almacenamiento Seguro',
+            content: 'El sistema PEPS (Primero en Entrar, Primero en Salir) garantiza que los alimentos más antiguos se usen antes. Etiqueta todo con fecha de entrada y usa siempre el producto más antiguo al frente.',
+          },
+          {
+            type: 'list',
+            title: 'Tiempos máximos de refrigeración (4°C)',
+            content: [
+              'Carnes crudas de res/cerdo: 3 a 5 días',
+              'Pollo crudo: 1 a 2 días',
+              'Pescado crudo: 1 a 2 días',
+              'Sobras cocidas: 3 a 4 días',
+              'Huevos: 3 a 5 semanas en cáscara',
+            ],
+          },
+        ],
+        keyPoints: [
+          'La zona de peligro va de 4°C a 60°C: nunca dejes comida ahí más de 2 horas',
+          'Usa tablas separadas por color para cada tipo de alimento',
+          'El lavado de manos dura mínimo 20 segundos con jabón',
+          'PEPS: lo más viejo se usa primero',
+          'Pollo crudo solo dura 1 a 2 días en el refrigerador',
+        ],
+        quiz: [
+          {
+            q: '¿Cuál es la temperatura máxima de la zona de peligro?',
+            options: ['40°C', '55°C', '60°C', '74°C'],
+            correct: 2,
+            explanation: 'La zona de peligro termina a 60°C. Por encima de esa temperatura los patógenos comienzan a morir. La cocción segura generalmente requiere llegar a 74°C o más.',
+          },
+          {
+            q: '¿Cuánto tiempo máximo puedes dejar alimentos cocidos a temperatura ambiente?',
+            options: ['30 minutos', '1 hora', '2 horas', '4 horas'],
+            correct: 2,
+            explanation: 'El límite es 2 horas a temperatura normal. En ambientes calurosos (>32°C) se reduce a 1 hora porque las bacterias se multiplican más rápido.',
+          },
+          {
+            q: '¿Cuánto tiempo debe durar el lavado correcto de manos?',
+            options: ['5 segundos', '10 segundos', '20 segundos', '60 segundos'],
+            correct: 2,
+            explanation: '20 segundos es el mínimo recomendado por organizaciones de salud mundial. Un truco: canta "Cumpleaños Feliz" dos veces, eso dura unos 20 segundos.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'cuchillo',
+      emoji: '🔪',
+      title: 'Anatomía del Cuchillo de Chef',
+      duration: '08:45',
+      description: 'Las partes del cuchillo de chef, los tipos de acero y cómo mantener el filo con piedra y chaira.',
+      topics: ['Partes del cuchillo', 'Acero inoxidable vs. carbono', 'Afilado con piedra', 'Técnica de la chaira'],
+      content: {
+        intro: 'El cuchillo de chef es la herramienta que más vas a usar. Un cuchillo bien afilado y bien sostenido corta con menos fuerza, menos fatiga y menos riesgo de accidente. Conocer cada parte te ayuda a cuidarlo durante años.',
+        sections: [
+          {
+            type: 'list',
+            title: 'Las partes del cuchillo de chef',
+            content: [
+              'Punta (tip): el extremo delgado, ideal para cortes de precisión y trabajo fino',
+              'Filo (edge): el borde cortante. Su ángulo determina qué tan afilado puede estar',
+              'Lomo (spine): el lado opuesto al filo, más grueso. Sirve de guía al cortar',
+              'Talón (heel): la parte más ancha del filo, para cortar cosas duras',
+              'Guarda (bolster): el engrosamiento entre la hoja y el mango, protege los dedos',
+              'Mango (handle): donde agarra la mano. Puede ser madera, plástico o composite',
+              'Remaches (rivets): fijan la espiga al mango en cuchillos de construcción clásica',
+              'Espiga (tang): la extensión de la hoja dentro del mango. Espiga completa = mejor balance',
+            ],
+          },
+          {
+            type: 'text',
+            title: 'Acero inoxidable vs. Acero al carbono',
+            content: 'La elección del acero afecta directamente cómo se afila el cuchillo, cuánto mantiene el filo y qué cuidados necesita. Ninguno es mejor en todo: depende de tu uso y de cuánto mantenimiento le vas a dar.',
+          },
+          {
+            type: 'table',
+            title: 'Comparación de aceros',
+            content: [
+              { col1: 'Acero inoxidable', col2: 'Acero al carbono' },
+              { col1: 'Resiste la oxidación y manchas', col2: 'Se oxida si no se seca bien' },
+              { col1: 'Más fácil de mantener', col2: 'Requiere más cuidado' },
+              { col1: 'Filo bueno pero no excepcional', col2: 'Filo más fino y duradero' },
+              { col1: 'Ideal para uso doméstico', col2: 'Preferido por chefs profesionales' },
+            ],
+          },
+          {
+            type: 'steps',
+            title: 'Cómo afilar con piedra de agua',
+            content: [
+              'Sumerge la piedra en agua 10 minutos antes de usarla (para piedras de agua)',
+              'Coloca la piedra sobre un paño húmedo antideslizante en la mesa',
+              'Sostén el cuchillo a 15 a 20° respecto a la piedra (aproximadamente el grosor de dos monedas apiladas)',
+              'Desliza el filo hacia adelante con presión suave y constante, como si quisieras "afeitar" la piedra',
+              'Haz 10 pasadas por cada lado, alternando para mantener la simetría',
+              'Termina con la piedra de grano fino para pulir el filo',
+              'Limpia el cuchillo con un paño y prueba el filo cortando papel: debe hacerlo limpiamente',
+            ],
+          },
+          {
+            type: 'tip',
+            content: 'La chaira no afila el cuchillo: lo realinea. Usa la chaira antes de cada sesión de cocina para mantener el filo recto. Usa la piedra cuando el cuchillo ya no corta bien ni después de pasar la chaira.',
+          },
+          {
+            type: 'steps',
+            title: 'Técnica correcta con la chaira',
+            content: [
+              'Sostén la chaira verticalmente con la punta apoyada en la tabla de corte',
+              'Apoya el talón del cuchillo en la parte superior de la chaira a 15 a 20°',
+              'Desliza el cuchillo hacia abajo y hacia ti, manteniendo el ángulo constante',
+              'Alterna lado izquierdo y derecho: 5 pasadas por cada lado',
+            ],
+          },
+          {
+            type: 'warning',
+            content: 'Un cuchillo desafilado es más peligroso que uno afilado. El filo romo requiere más fuerza, lo que aumenta la probabilidad de que resbale. Afila tus cuchillos con regularidad.',
+          },
+        ],
+        keyPoints: [
+          'La espiga completa (full tang) garantiza mejor balance y durabilidad',
+          'El ángulo de afilado correcto es 15 a 20° para la mayoría de cuchillos occidentales',
+          'La chaira realinea el filo y la piedra lo afila: son herramientas diferentes',
+          'El acero al carbono mantiene mejor filo pero necesita más cuidado que el inoxidable',
+          'Nunca pongas cuchillos buenos en el lavavajillas: destruye el filo y el mango',
+        ],
+        quiz: [
+          {
+            q: '¿Cuál es la función principal de la chaira?',
+            options: ['Afilar el cuchillo removiendo acero', 'Realinear el filo sin remover material', 'Pulir el acabado de la hoja', 'Endurecer el acero'],
+            correct: 1,
+            explanation: 'La chaira realinea los microscópicos dientes del filo que se doblan con el uso. No remueve acero como la piedra de afilar. Se usa frecuentemente (antes de cada uso), mientras que la piedra se usa ocasionalmente.',
+          },
+          {
+            q: '¿A qué ángulo se afila un cuchillo de chef occidental?',
+            options: ['5 a 10°', '15 a 20°', '25 a 30°', '45°'],
+            correct: 1,
+            explanation: '15 a 20° es el ángulo estándar para cuchillos occidentales. Los cuchillos japoneses se afilan entre 10 y 15° (filo más fino pero más frágil).',
+          },
+          {
+            q: '¿Qué significa que un cuchillo tiene "espiga completa" (full tang)?',
+            options: ['Que está hecho de acero al carbono', 'Que la hoja se extiende a lo largo de todo el mango', 'Que tiene un guarda de metal', 'Que es de fabricación japonesa'],
+            correct: 1,
+            explanation: 'La espiga completa significa que el metal de la hoja se extiende hasta el final del mango. Esto da mejor balance, mayor durabilidad y se considera un indicador de calidad en cuchillos profesionales.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'juliana',
+      emoji: '🥕',
+      title: 'Corte Juliana: Técnica y Práctica',
+      duration: '14:30',
+      description: 'La juliana es un corte en bastones de 3 mm × 3 mm × 6 cm, muy usado en cocina profesional. Aprende a laminar, apilar y cortar bastones parejos. Es la base del Nivel 1 del Modo Aventura.',
+      topics: [
+          'Medidas: 3mm × 3mm × 6cm',
+          'Técnica del corte base para estabilizar',
+          'Laminado y apilado de 3 a 4 láminas',
+          'Garra de gato y posición de los nudillos',
+          'Aplicaciones: salteados, sopas, guarniciones',
+      ],
+      content: {
+        intro: 'La juliana es el corte en bastones básico de la cocina clásica: 3 mm × 3 mm × 6 cm. Aparece en ensaladas, salteados, sopas y guarniciones. Cuando te sale bien, tienes la base de muchas preparaciones.',
+        sections: [
+          {
+            type: 'text',
+            title: '¿Por qué importan las medidas exactas?',
+            content: 'Cortar parejo sirve para cocinar parejo. Si los bastones tienen diferente grosor, los delgados se queman mientras los gruesos quedan crudos. Con bastones de 3 mm, todo se cocina igual en 2 a 3 minutos de salteado.',
+          },
+          {
+            type: 'table',
+            title: 'Variantes del corte en bastón',
+            content: [
+              { col1: 'Juliana clásica', col2: '3mm × 3mm × 6cm: la más usada' },
+              { col1: 'Juliana fina (allumette)', col2: '1.5mm × 1.5mm × 6cm: para guarniciones delicadas' },
+              { col1: 'Jardinera', col2: '5mm × 5mm × 4cm: para guisos y estofados' },
+              { col1: 'Bastón (batonnet)', col2: '6mm × 6mm × 6cm: base del dado grande' },
+            ],
+          },
+          {
+            type: 'steps',
+            title: 'Técnica paso a paso con zanahoria',
+            content: [
+              'Lava y pela la zanahoria. Córtala en segmentos de 6 cm de largo',
+              'Corta una cara plana en el segmento para estabilizarlo sobre la tabla. Nunca cortes un cilindro que rueda',
+              'Lamina el segmento en planchas de 3 mm de grosor, manteniendo presión constante con los nudillos doblados en garra',
+              'Apila 3 a 4 láminas y alinéalas con precisión',
+              'Corta las láminas apiladas en bastones de 3 mm, de nuevo con la garra de gato guiando el cuchillo',
+              'Revisa: coloca 10 bastones juntos. Si los bordes son parejos, la técnica es correcta',
+            ],
+          },
+          {
+            type: 'tip',
+            title: 'La garra de gato',
+            content: 'Dobla los dedos hacia adentro formando una garra. Los nudillos guían el cuchillo y el filo nunca toca las yemas. Esto te permite mover la mano hacia atrás con velocidad y seguridad, controlando el grosor de cada lámina.',
+          },
+          {
+            type: 'list',
+            title: 'Errores comunes y cómo corregirlos',
+            content: [
+              'Bastones de grosor irregular → revisa que las láminas tengan grosor uniforme antes de apilar',
+              'La pila se desmorona al cortar → asegúrate de que las láminas están bien alineadas y planas',
+              'El cuchillo se atasca → afila el cuchillo o usa más longitud de hoja con movimiento de arrastre',
+              'Los bastones tienen diferentes longitudes → usa un segmento de exactamente 6 cm como guía inicial',
+            ],
+          },
+          {
+            type: 'list',
+            title: 'Aplicaciones de la juliana',
+            content: [
+              'Ramen y pho: zanahoria juliana como topping clásico',
+              'Pad Thai y salteados asiáticos: zanahoria, pepino y puerro',
+              'Ensalada de col (coleslaw): repollo en juliana fina',
+              'Consommé garnish: vegetales en juliana como brunoise de la sopa',
+              'Primavera rolls y spring rolls: zanahoria, pepino, pimiento',
+            ],
+          },
+        ],
+        keyPoints: [
+          'La medida es 3mm × 3mm × 6cm: cortar parejo hace que todo se cocine igual',
+          'Siempre crea una base plana antes de laminar para evitar que el alimento ruede',
+          'La garra de gato protege los dedos y controla el grosor del corte',
+          'Lamina primero, apila y alinea, luego corta en bastones',
+          'La juliana es la base del brunoise: si te sale bien la juliana, el brunoise es un paso más',
+        ],
+        quiz: [
+          {
+            q: '¿Cuáles son las medidas exactas de la Juliana clásica?',
+            options: ['1mm × 1mm × 4cm', '3mm × 3mm × 6cm', '5mm × 5mm × 5cm', '2mm × 2mm × 8cm'],
+            correct: 1,
+            explanation: '3mm × 3mm × 6cm es la medida estándar de la Juliana clásica en cocina profesional. Con estas medidas todo se cocina igual y el plato se ve parejo.',
+          },
+          {
+            q: '¿Por qué es importante crear una base plana antes de cortar?',
+            options: ['Para que el corte sea más decorativo', 'Para estabilizar el alimento y evitar que ruede', 'Para reducir el desperdicio', 'Porque lo exige la técnica francesa'],
+            correct: 1,
+            explanation: 'La base plana estabiliza el alimento sobre la tabla de corte. Sin ella, el vegetal (especialmente los cilíndricos como zanahoria o pepino) rueda, lo que hace el corte peligroso e impreciso.',
+          },
+          {
+            q: '¿Qué es la "garra de gato" en el corte?',
+            options: ['Una herramienta especial para corte fino', 'La posición de los dedos doblados que guía el cuchillo', 'Una técnica para afilar cuchillos', 'El movimiento de arrastre del cuchillo'],
+            correct: 1,
+            explanation: 'La garra de gato es la posición donde los dedos se doblan hacia adentro, exponiendo los nudillos como guía del cuchillo. Protege las yemas y permite control preciso del grosor.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'temperaturas',
+      emoji: '🌡️',
+      title: 'Temperaturas Seguras de Cocción',
+      duration: '12:20',
+      description: 'Las temperaturas internas seguras para aves, cerdo, carne de res y mariscos, y cómo verificarlas con termómetro.',
+      topics: ['Carnes rojas: 63°C mínimo', 'Aves: 74°C mínimo', 'Mariscos: 63°C mínimo', 'Uso correcto del termómetro'],
+      content: {
+        intro: 'Las temperaturas internas de cocción son la última línea de defensa contra patógenos alimentarios. Cocinar a ojo es impreciso. Un termómetro de cocina es la única forma de saber con certeza si un alimento es seguro.',
+        sections: [
+          {
+            type: 'table',
+            title: 'Temperaturas internas mínimas seguras',
+            content: [
+              { col1: 'Aves (pollo, pavo)', col2: '74°C (165°F), sin excepción' },
+              { col1: 'Carnes molidas (res, cerdo)', col2: '71°C (160°F)' },
+              { col1: 'Res, cordero (entero)', col2: '63°C (145°F) + 3 min reposo' },
+              { col1: 'Cerdo (entero)', col2: '63°C (145°F) + 3 min reposo' },
+              { col1: 'Pescados y mariscos', col2: '63°C (145°F)' },
+              { col1: 'Huevos (preparaciones)', col2: '71°C (160°F)' },
+              { col1: 'Rellenos y guisos', col2: '74°C (165°F)' },
+            ],
+          },
+          {
+            type: 'warning',
+            content: 'Con las aves no hay excepciones. A diferencia de la carne de res, que puede servirse a 63°C (término medio), el pollo siempre debe llegar a 74°C en su parte más gruesa, que suele ser el muslo cerca del hueso.',
+          },
+          {
+            type: 'steps',
+            title: 'Cómo usar correctamente el termómetro',
+            content: [
+              'Inserta el termómetro en la parte más gruesa del alimento',
+              'Evita tocar huesos, grasa o el fondo del sartén: dan lecturas falsas',
+              'Espera 5 a 10 segundos hasta que la lectura se estabilice',
+              'En aves enteras, mide en el muslo entre el hueso y la parte gruesa',
+              'Para hamburguesas o carnes molidas, inserta desde el lado hasta el centro',
+              'Limpia el termómetro entre mediciones para evitar contaminación cruzada',
+            ],
+          },
+          {
+            type: 'text',
+            title: 'El tiempo de reposo',
+            content: 'Cuando retiras la carne del fuego, la temperatura interna continúa subiendo 3 a 5°C por conducción residual (carryover cooking). El reposo también permite que los jugos se redistribuyan. Para carnes enteras, deja reposar 5 a 10 minutos antes de cortar.',
+          },
+          {
+            type: 'tip',
+            content: 'Para el pollo, si no tienes termómetro, inserta un cuchillo en la parte más gruesa y presiona. Si los jugos salen completamente transparentes (sin rastro rosado), está cocido. Pero un termómetro es siempre más confiable.',
+          },
+          {
+            type: 'list',
+            title: 'Temperaturas de servicio para alimentos calientes y fríos',
+            content: [
+              'Alimentos calientes: mantener a 60°C o más durante el servicio',
+              'Alimentos fríos: mantener a 4°C o menos',
+              'Buffets: cambiar los recipientes cada 2 horas si no tienen control de temperatura',
+              'Recalentar sobras: llevar a 74°C antes de servir',
+            ],
+          },
+        ],
+        keyPoints: [
+          'Aves siempre a 74°C, sin excepción',
+          'La carne de res entera puede servirse a 63°C (punto medio-bien) con 3 min de reposo',
+          'Inserta el termómetro en la parte más gruesa, lejos de huesos',
+          'El carryover cooking sube la temperatura 3 a 5°C después de retirar del fuego',
+          'Recalentar siempre a 74°C, no "hasta que esté caliente"',
+        ],
+        quiz: [
+          {
+            q: '¿A qué temperatura interna debe llegar el pollo?',
+            options: ['63°C', '68°C', '71°C', '74°C'],
+            correct: 3,
+            explanation: '74°C (165°F) es la temperatura mínima para aves sin excepción. A diferencia de otras carnes, el pollo no tiene un "término medio" seguro. Siempre debe cocinarse completamente.',
+          },
+          {
+            q: '¿Por qué no debes tocar el hueso al medir temperatura?',
+            options: ['Porque el hueso no conduce calor', 'Porque el hueso da lecturas más altas y engañosas', 'Porque daña el termómetro', 'Porque el hueso siempre está más frío que la carne'],
+            correct: 1,
+            explanation: 'El hueso conduce el calor de forma diferente a la carne y suele dar lecturas más altas. Podrías creer que el alimento está listo cuando la carne todavía no alcanzó la temperatura segura.',
+          },
+          {
+            q: '¿Qué es el "carryover cooking"?',
+            options: ['Una técnica de cocción lenta', 'El aumento de temperatura que continúa después de retirar del fuego', 'Cocinar múltiples alimentos al mismo tiempo', 'Recalentar comida del día anterior'],
+            correct: 1,
+            explanation: 'El carryover cooking es el calor residual que sigue cocinando la carne después de retirarla del fuego. Por eso se retiran los cortes 3 a 5°C antes de la temperatura objetivo y se deja reposar.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'miseenplace',
+      emoji: '🥩',
+      title: 'Mise en Place: Organiza tu Estación',
+      duration: '10:00',
+      description: 'El principio de "cada cosa en su lugar" que ordena el trabajo en una cocina profesional. Aprende a organizar tu estación para cocinar sin carreras.',
+      topics: ['Concepto francés de mise en place', 'Organización de la estación', 'Orden de preparación', 'Gestión del tiempo en cocina'],
+      content: {
+        intro: 'Mise en place es una de las bases de la cocina profesional. En francés significa "cada cosa en su lugar": tener todo listo antes de cocinar para no correr a mitad de la receta. En los restaurantes se hace antes de encender el primer fuego.',
+        sections: [
+          {
+            type: 'text',
+            title: 'El concepto y su origen',
+            content: 'El sistema fue formalizado por Auguste Escoffier en el siglo XIX para gestionar las brigadas de grandes hoteles parisinos. La idea es simple: todo lo que vas a necesitar durante la cocción debe estar listo, medido, cortado y en su lugar antes de empezar a cocinar. Así, cuando el tiempo importa, solo cocinas: no buscas ni preparas.',
+          },
+          {
+            type: 'steps',
+            title: 'Cómo organizar tu mise en place',
+            content: [
+              'Lee la receta completa antes de tocar cualquier ingrediente, para entender el orden de todo',
+              'Prepara y limpia tu estación de trabajo (tabla, cuchillo, trapos)',
+              'Saca todos los ingredientes y verifica que los tienes todos',
+              'Pesa, mide y organiza los ingredientes en bowls o recipientes por orden de uso',
+              'Prepara las herramientas: sartenes, ollas, espátulas, termómetro',
+              'Corta y procesa todos los vegetales, carnes y proteínas antes de encender el fuego',
+              'Prepara salsas base, fondos o cualquier componente previo',
+            ],
+          },
+          {
+            type: 'tip',
+            content: 'En cocina profesional, cuando el chef grita "¡servicio!" o empieza el turno, todo ya debe estar listo. Durante el servicio solo se cocina: no se busca ni se mide nada.',
+          },
+          {
+            type: 'list',
+            title: 'Beneficios concretos de la mise en place',
+            content: [
+              'Elimina los errores por olvido de ingredientes a mitad de la cocción',
+              'Reduce el tiempo que pasas frente a la estufa',
+              'Permite cocinar múltiples platos simultáneamente sin perder el control',
+              'Reduce el estrés: sabes qué viene después',
+              'Identifica faltantes antes de que sea tarde para ir al mercado',
+            ],
+          },
+          {
+            type: 'text',
+            title: 'La mise en place mental',
+            content: 'Además de la física, existe la mise en place mental: visualizar la receta completa antes de ejecutarla. Los chefs experimentados "cocinan" la receta en su cabeza identificando los puntos críticos, los timings simultáneos y posibles problemas antes de empezar.',
+          },
+          {
+            type: 'warning',
+            content: 'El error más común al aprender cocina: empezar a saltear cuando los vegetales aún no están cortados. El aceite se quema, la cocción falla. Mise en place primero, fuego después.',
+          },
+        ],
+        keyPoints: [
+          'Mise en place significa "cada cosa en su lugar" antes de encender el fuego',
+          'Lee la receta completa antes de tocar cualquier ingrediente',
+          'Mide, corta y organiza todo en recipientes por orden de uso',
+          'Prepara las herramientas igual que los ingredientes',
+          'La mise en place mental (visualizar) es tan importante como la física',
+        ],
+        quiz: [
+          {
+            q: '¿Qué significa "mise en place"?',
+            options: ['Receta completa', 'Cada cosa en su lugar', 'Lista de ingredientes', 'Estación de trabajo'],
+            correct: 1,
+            explanation: '"Mise en place" es francés para "cada cosa en su lugar". El concepto implica tener todo preparado, medido y organizado antes de comenzar a cocinar.',
+          },
+          {
+            q: '¿Cuándo debes leer la receta completa?',
+            options: ['Mientras cocinas', 'Antes de tocar cualquier ingrediente', 'Solo al inicio de la cocción', 'Cuando no sabes qué sigue'],
+            correct: 1,
+            explanation: 'Leer la receta completa antes de empezar te permite entender el flujo, identificar técnicas especiales, anticipar timings y verificar que tienes todos los ingredientes.',
+          },
+          {
+            q: '¿Cuál es el error más común relacionado con la mise en place?',
+            options: ['Medir ingredientes con anticipación', 'Empezar a cocinar antes de terminar de preparar', 'Usar demasiados recipientes', 'Preparar ingredientes en orden inverso'],
+            correct: 1,
+            explanation: 'Empezar a cocinar (encender el fuego, saltear) antes de tener todos los ingredientes listos es el error más frecuente. El aceite se sobrecalienta y la cocción sale mal.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'proteinas',
+      emoji: '🐟',
+      title: 'Manejo y Conservación de Proteínas',
+      duration: '18:10',
+      description: 'Cómo comprar, almacenar y preparar carnes, pescados y mariscos para que lleguen frescos y seguros al plato.',
+      topics: ['Temperatura de refrigeración', 'FIFO: primero en entrar, primero en salir', 'Descongelación segura', 'Signos de frescura y putrefacción'],
+      content: {
+        intro: 'Las proteínas animales suelen ser lo más caro de la compra y lo más riesgoso si se manejan mal. Aquí aprendes a comprar, guardar y preparar carnes, aves y pescados para que lleguen frescos y seguros al plato.',
+        sections: [
+          {
+            type: 'list',
+            title: 'Señales de frescura en carnes',
+            content: [
+              'Res: color rojo cereza brillante (no café ni grisáceo), sin olor fuerte',
+              'Cerdo: color rosado pálido a rosado oscuro, sin pegajosidad',
+              'Aves: piel de color marfil o amarillo claro, sin manchas grises, sin olor amoniacal',
+              'Pescado: ojos brillantes y salientes (no hundidos), agallas rojas, escamas adheridas, olor a mar (no a amoniaco)',
+              'Mariscos vivos: deben moverse o cerrarse al tocarlos',
+            ],
+          },
+          {
+            type: 'table',
+            title: 'Almacenamiento en refrigerador (4°C)',
+            content: [
+              { col1: 'Res entera o en trozo', col2: '3 a 5 días' },
+              { col1: 'Carne molida de res', col2: '1 a 2 días' },
+              { col1: 'Pollo entero o en piezas', col2: '1 a 2 días' },
+              { col1: 'Pescado fresco', col2: '1 a 2 días (idealmente 24h)' },
+              { col1: 'Mariscos (crudos)', col2: '1 a 2 días' },
+              { col1: 'Embutidos abiertos', col2: '3 a 5 días' },
+            ],
+          },
+          {
+            type: 'steps',
+            title: 'Descongelación segura (3 métodos)',
+            content: [
+              'Refrigerador (preferido): 12 a 24h para piezas pequeñas, 24 a 48h para piezas grandes. Seguro y preserva textura',
+              'Agua fría: sumergir en bolsa sellada en agua fría, cambiar el agua cada 30 minutos. 1 a 3 horas para piezas normales',
+              'Microondas: solo si vas a cocinar inmediatamente después, porque el microondas crea zonas calientes que favorecen bacterias',
+              'Nunca en el mesón a temperatura ambiente: es la forma más peligrosa y más usada',
+            ],
+          },
+          {
+            type: 'warning',
+            content: 'No recongelar proteínas descongeladas a menos que las hayas cocinado primero. Al descongelar y recongelar se forman cristales de hielo que destruyen la textura y se facilita la multiplicación bacteriana.',
+          },
+          {
+            type: 'text',
+            title: 'El sistema PEPS para proteínas',
+            content: 'Primero En entrar, Primero en Salir (FIFO en inglés). Cuando recibas proteínas nuevas, coloca las antiguas al frente del refrigerador. Etiqueta con fecha de compra. En restaurantes, las normas sanitarias suelen exigirlo.',
+          },
+          {
+            type: 'tip',
+            content: 'Almacena las carnes crudas siempre en el estante inferior del refrigerador, dentro de bolsas o recipientes sellados. Esto evita que los jugos goteen sobre otros alimentos y contaminen frutas, vegetales o alimentos listos para comer.',
+          },
+        ],
+        keyPoints: [
+          'El pescado fresco huele a mar, no a amoniaco: si huele fuerte, está pasado',
+          'Pollo y pescado solo duran 1 a 2 días en refrigeración',
+          'Nunca descongeles en el mesón a temperatura ambiente',
+          'Las carnes crudas van en el estante inferior del refrigerador',
+          'No recongelar sin cocinar primero',
+        ],
+        quiz: [
+          {
+            q: '¿Cuánto tiempo máximo dura el pollo crudo en el refrigerador?',
+            options: ['4 a 5 días', '3 días', '1 a 2 días', '1 semana'],
+            correct: 2,
+            explanation: 'El pollo crudo solo dura 1 a 2 días en el refrigerador a 4°C. Si no lo vas a usar en ese tiempo, congélalo inmediatamente.',
+          },
+          {
+            q: '¿Cuál es el método de descongelación más seguro?',
+            options: ['Mesón a temperatura ambiente', 'Agua caliente', 'Refrigerador (12 a 24h)', 'Microondas siempre'],
+            correct: 2,
+            explanation: 'El refrigerador es el método más seguro porque mantiene la proteína en temperatura fría durante todo el proceso. El mesón es el más peligroso porque pasa tiempo en la zona de peligro (4 a 60°C).',
+          },
+          {
+            q: '¿Qué significa PEPS en el contexto de almacenamiento?',
+            options: ['Proteína En Perfectas condiciones Siempre', 'Primero En entrar, Primero en Salir', 'Proceso Estándar de Proteínas y Seguridad', 'Procedimiento para Evaluar Proteínas Seguras'],
+            correct: 1,
+            explanation: 'PEPS (FIFO en inglés) significa que los alimentos más antiguos se usan antes que los nuevos. Es un sistema de rotación que garantiza que nada se venza.',
+          },
+        ],
+      },
+    },
+    {
+      id: 'fondos',
+      emoji: '🥣',
+      title: 'Fondos Básicos de Cocina',
+      duration: '22:00',
+      description: 'Los 4 fondos clásicos y cómo prepararlos. De ellos salen las salsas madre de la cocina francesa.',
+      topics: ['Fondo blanco de ternera', 'Fondo oscuro', 'Fumet de pescado', 'Fondo de verduras vegetariano'],
+      content: {
+        intro: 'Los fondos son la base de la cocina clásica europea. Con un fondo bien hecho, tus salsas, guisos y consomés tienen mucho más sabor que con agua o cubitos.',
+        sections: [
+          {
+            type: 'text',
+            title: 'Qué es un fondo y por qué importa',
+            content: 'Un fondo es un líquido de cocción concentrado, resultante de hervir huesos, carcasas o espinas con vegetales aromáticos y hierbas a fuego suave durante horas. Es lo que da cuerpo y sabor a las salsas, sopas y guisos.',
+          },
+          {
+            type: 'table',
+            title: 'Los 4 fondos clásicos',
+            content: [
+              { col1: 'Fondo Blanco (Fond Blanc)', col2: 'Huesos crudos de ternera o pollo + mirepoix. Base de salsas blancas (velouté, crema)' },
+              { col1: 'Fondo Oscuro (Fond Brun)', col2: 'Huesos de res tostados + mirepoix caramelizado. Base de salsas oscuras (demi-glace)' },
+              { col1: 'Fumet de Pescado', col2: 'Espinas de pescado blanco + vino blanco. Solo 20 a 30 min de cocción' },
+              { col1: 'Fondo de Vegetales', col2: 'Vegetales de temporada. Base de cocina vegetariana y vegana' },
+            ],
+          },
+          {
+            type: 'steps',
+            title: 'Fondo Blanco de Pollo: técnica básica',
+            content: [
+              'Blanquea los huesos: cubrirlos con agua fría, llevar a hervor, botar el agua. Esto limpia impurezas',
+              'Cubre los huesos limpios con agua fría (nunca caliente)',
+              'Lleva a hervor muy suave (80 a 90°C), retirando la espuma gris que sube (skimming)',
+              'Agrega mirepoix: 2 partes cebolla, 1 parte zanahoria, 1 parte apio',
+              'Agrega bouquet garni: laurel, tomillo, perejil, pimienta en grano',
+              'Cocina a fuego muy bajo sin tapar: 3 a 4 horas para pollo, 6 a 8 para ternera',
+              'Cuela, enfría en baño de hielo, refrigera. Retira la capa de grasa solidificada',
+            ],
+          },
+          {
+            type: 'tip',
+            content: 'Para un fondo limpio, empieza con agua fría y nunca lo hiervas fuerte. El hervor suave extrae gelatina sin enturbiar el líquido. Un fondo turbio no es malo de sabor, pero sí de presentación.',
+          },
+          {
+            type: 'steps',
+            title: 'Fondo Oscuro: el paso extra del tostado',
+            content: [
+              'Tuesta los huesos en horno a 200°C hasta dorarlos (30 a 40 min). Así se produce la reacción de Maillard, que da color oscuro y sabor profundo',
+              'Carameliza el mirepoix en una olla con poco aceite',
+              'Agrega pasta de tomate y cocina 2 min para reducir acidez',
+              'Desglasa con vino tinto, rasca el fondo de la olla',
+              'Continúa igual que el fondo blanco: agua fría, fuego suave, colar',
+            ],
+          },
+          {
+            type: 'warning',
+            content: 'El fumet de pescado no debe cocinarse más de 30 minutos. Las espinas de pescado liberan compuestos amargos después de ese tiempo. Es el único fondo que tiene un límite de tiempo tan corto.',
+          },
+        ],
+        keyPoints: [
+          'Empieza siempre con agua fría: el agua caliente enturbia el fondo',
+          'El hervor debe ser apenas perceptible (80 a 90°C), nunca burbujeo violento',
+          'El tostado de huesos es lo que da color oscuro y sabor profundo al fondo oscuro',
+          'El fumet solo se cocina 20 a 30 min máximo o amarga',
+          'Después de colar, enfría en baño de hielo para evitar la zona de peligro',
+        ],
+        quiz: [
+          {
+            q: '¿Por qué se comienza un fondo con agua fría?',
+            options: ['Para ahorrar energía', 'Para extraer gradualmente la gelatina sin enturbiar', 'Porque el agua caliente quema los huesos', 'No importa la temperatura inicial'],
+            correct: 1,
+            explanation: 'El agua fría extrae las proteínas y la gelatina de los huesos de forma gradual. El agua caliente las coagula de golpe, dispersándolas en el líquido y causando turbidez.',
+          },
+          {
+            q: '¿Cuánto tiempo máximo debe cocinarse el fumet de pescado?',
+            options: ['1 hora', '2 horas', '30 minutos', '45 minutos'],
+            correct: 2,
+            explanation: 'El fumet de pescado solo requiere 20 a 30 minutos. Más tiempo libera compuestos amargos de las espinas que arruinan el sabor del fondo.',
+          },
+          {
+            q: '¿Qué proceso le da el color oscuro al Fond Brun?',
+            options: ['Agregar salsa de soya', 'Tostar los huesos en el horno (reacción de Maillard)', 'Cocinar durante más horas', 'Agregar pasta de tomate'],
+            correct: 1,
+            explanation: 'Los huesos se tuestan en horno a 200°C antes de hacer el fondo. Esta reacción de Maillard crea cientos de compuestos de sabor y el color café oscuro característico.',
+          },
+        ],
+      },
+    },
+  ],
+};

@@ -64,9 +64,6 @@ const RECIPE = {
 
 export const BrunoiseLevel = () => (
   <LevelPage
-    worldName="Isla del Cuchillo" worldEmoji="🔪"
-    levelNum={2} levelName="Brunoise" levelEmoji="🧅" xpReward={50}
-    world={1}
     missionText="Cortar <strong>una cebolla o pimiento entero</strong> en <strong>cubos brunoise parejos</strong>: 2–3 mm × 2–3 mm × 2–3 mm. Fotografía el resultado disperso en la tabla para que se vea la uniformidad."
     missionTags={[
       { icon: '⏱️', label: '~20 min' },

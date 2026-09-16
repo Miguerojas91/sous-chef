@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, Compass, Map as MapIcon, Globe, BookOpen, CalendarDays } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { EditableText } from './cms/EditableText';
+import { hasCookingInProgress } from '../utils/cookingSessionStore';
 
 interface Module {
   /** Clave de CMS: no cambiar. */
@@ -28,14 +29,6 @@ const modules: Module[] = [
   { id: 'academia',    path: '/academia', icon: BookOpen,     title: 'La Academia',       subtitle: 'Clases cortas con quiz' },
   { id: 'milprep',     path: '/milprep',  icon: CalendarDays, title: 'Mealprep',          subtitle: 'Cocina una vez, come toda la semana' },
 ];
-
-function hasCookingInProgress(): boolean {
-  try {
-    return !!localStorage.getItem('sous_cooking_meta') && !!localStorage.getItem('sous_chat_cooking');
-  } catch {
-    return false;
-  }
-}
 
 export const HomeMenu = () => {
   const resume = hasCookingInProgress();

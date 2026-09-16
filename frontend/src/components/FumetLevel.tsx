@@ -66,9 +66,6 @@ const RECIPE = {
 
 export const FumetLevel = () => (
   <LevelPage
-    worldName="Mar de Sabores" worldEmoji="🌊"
-    levelNum={11} levelName="Fumet de Pescado" levelEmoji="🐟" xpReward={100}
-    world={3}
     missionText="Preparar un <strong>fumet de pescado blanco</strong> limpio y translúcido: color paja, aroma marino limpio, sin amargores. Fotografía el fumet colado en un vaso o tazón claro."
     missionTags={[
       { icon: '⏱️', label: '20 minutos exactos' },

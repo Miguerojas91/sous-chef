@@ -21,6 +21,7 @@ import {
   addUsedSeconds as addVoiceSeconds,
   hasReachedCap as voiceCapReached,
   getRemainingSeconds as voiceRemainingSeconds,
+  getMonthKey,
 } from '../utils/voiceUsage';
 
 /**
@@ -151,12 +152,6 @@ function getProxyWsUrl(): string {
   return `${proto}//${location.host}/api/live`;
 }
 
-/** YYYY-MM en la zona del cliente; detecta cuándo una sesión cruza de mes. */
-function getMonthKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
 /** `customSystemPrompt` reemplaza el prompt genérico del chef (Mealprep, Sabores, Cocinemos). */
 export function useGeminiLive(customSystemPrompt?: string) {
   const [voiceState, setVoiceState]           = useState<VoiceState>('idle');
@@ -188,7 +183,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
   const isReconnectingRef   = useRef(false);
   /** Copia para leer el transcript desde closures. */
   const transcriptRef       = useRef<VoiceTranscriptEntry[]>([]);
-  const lastVoiceTimeRef    = useRef<number>(Date.now());
+  const lastVoiceTimeRef    = useRef(0);
   const wakeFrameCountRef   = useRef(0);
   const nativeRateRef       = useRef(44100);
   const silenceIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -227,7 +222,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
   const requestWakeLock = useCallback(async () => {
     if ('wakeLock' in navigator) {
       try {
-        wakeLockRef.current = await (navigator as unknown as { wakeLock: { request(t: string): Promise<WakeLockSentinel> } }).wakeLock.request('screen');
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
       } catch { /* fallback a NoSleep */ }
     }
     try {
@@ -545,6 +540,10 @@ export function useGeminiLive(customSystemPrompt?: string) {
     wantsVoiceRef.current   = true;
     customPromptRef.current = customSystemPrompt;
     isReconnectingRef.current = false;
+    // Los frames llegan antes de que abra la sesión: sin reiniciar estos relojes,
+    // un chat abierto hace más de 15 s (o una sesión vieja) dormía la voz al instante.
+    lastVoiceTimeRef.current = Date.now();
+    sessionStartRef.current = 0;
     setVoiceStateSync('connecting');
     setCurrentChefText(''); setVoiceError(null);
     currentModelTextRef.current = '';

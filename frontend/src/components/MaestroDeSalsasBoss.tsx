@@ -66,14 +66,7 @@ const RECIPE: BossRecipe = {
 
 export const MaestroDeSalsasBoss = () => (
   <BossPage
-    bossName="Maestro de Salsas"
-    bossEmoji="🫕"
     bossSubtitle="Guardián del Mar de Sabores"
-    levelNum={12}
-    worldName="Mar de Sabores"
-    worldEmoji="🌊"
-    xpReward={300}
-    world={3}
     quote="Fondo blanco de pollo, jus de huesos tostados y fumet de 20 minutos. Muéstrame los tres en el vaso y después usa uno en un plato terminado."
     requirement="Requisito: fondo blanco, fondo oscuro y fumet"
     nextWorld="Pico del Maestro desbloqueado"

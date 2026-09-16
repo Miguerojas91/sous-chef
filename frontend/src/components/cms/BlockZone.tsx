@@ -3,7 +3,7 @@
  * bloques; se guardan en localStorage bajo `cms_zone_{zoneId}`.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useEditor } from '../../context/EditorContext';
 import { ChevronUp, ChevronDown, Trash2, Type, Image as ImageIcon, LayoutList, MessageSquare, Plus } from 'lucide-react';
 import { EditableText } from './EditableText';
@@ -15,16 +15,25 @@ const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visibl
 const ICON_BTN = `w-11 h-11 flex items-center justify-center rounded-control text-neutral-600 transition-colors ${FOCUS_RING}`;
 const ADD_BTN = `min-h-11 flex items-center gap-1.5 px-3 bg-neutral-50 text-neutral-800 rounded-control hover:bg-brand-50 hover:text-brand-800 transition-colors font-semibold text-xs ${FOCUS_RING}`;
 
+function loadBlocks(zoneId: string): CMSBlock[] {
+    try {
+        const stored = localStorage.getItem(`cms_zone_${zoneId}`);
+        return stored ? (JSON.parse(stored) as CMSBlock[]) : [];
+    } catch (e) {
+        console.error('Error parsing BlockZone JSON', e);
+        return [];
+    }
+}
+
 export const BlockZone: React.FC<{ zoneId: string }> = ({ zoneId }) => {
     const { isEditMode } = useEditor();
-    const [blocks, setBlocks] = useState<CMSBlock[]>([]);
-
-    useEffect(() => {
-        const stored = localStorage.getItem(`cms_zone_${zoneId}`);
-        if (stored) {
-            try { setBlocks(JSON.parse(stored)); } catch (e) { console.error('Error parsing BlockZone JSON', e); }
-        }
-    }, [zoneId]);
+    const [blocks, setBlocks] = useState<CMSBlock[]>(() => loadBlocks(zoneId));
+    // Si cambia la zona, se cargan sus bloques en el mismo render (sin efecto).
+    const [loadedZone, setLoadedZone] = useState(zoneId);
+    if (loadedZone !== zoneId) {
+        setLoadedZone(zoneId);
+        setBlocks(loadBlocks(zoneId));
+    }
 
     const saveBlocks = (newBlocks: CMSBlock[]) => {
         setBlocks(newBlocks);

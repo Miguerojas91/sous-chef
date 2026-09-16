@@ -64,9 +64,6 @@ const RECIPE = {
 
 export const FermentacionLevel = () => (
   <LevelPage
-    worldName="Pico del Maestro" worldEmoji="🏔️"
-    levelNum={15} levelName="Fermentación" levelEmoji="🍞" xpReward={150}
-    world={4}
     missionText="Preparar un <strong>chucrut casero fermentado</strong>: repollo completamente sumergido, sin moho (o solo moho blanco superficial retirado), con sabor ácido y textura crujiente. Fotografía el frasco y una pequeña muestra del día 5."
     missionTags={[
       { icon: '📅', label: '5–7 días' },

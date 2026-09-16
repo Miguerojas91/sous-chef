@@ -62,9 +62,6 @@ const RECIPE = {
 
 export const AltaCocinaLevel = () => (
   <LevelPage
-    worldName="Castillo del Chef" worldEmoji="👑"
-    levelNum={19} levelName="Alta Cocina" levelEmoji="🥂" xpReward={200}
-    world={5}
     missionText="Crear un <strong>plato de alta cocina completo</strong>: máximo 5 elementos, punto focal claro, salsa en trazo o punto, garnish funcional. Fotografía el plato emplatado sobre fondo negro o blanco."
     missionTags={[
       { icon: '🎨', label: 'Emplatado' },

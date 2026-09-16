@@ -64,14 +64,7 @@ const RECIPE: BossRecipe = {
 
 export const FlambeadorBoss = () => (
   <BossPage
-    bossName="El Flambeador"
-    bossEmoji="🍳"
     bossSubtitle="Señor del Valle del Fuego"
-    levelNum={8}
-    worldName="Valle del Fuego"
-    worldEmoji="🔥"
-    xpReward={250}
-    world={2}
     quote="Sofrito de base, costra caoba en la carne y una salsa montada con mantequilla fría. Si la mantequilla entra con el fuego alto, la salsa se corta y empiezas de nuevo."
     requirement="Requisito: sofrito, Maillard y emulsión"
     nextWorld="Mar de Sabores desbloqueado"

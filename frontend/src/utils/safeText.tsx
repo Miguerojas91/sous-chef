@@ -4,7 +4,7 @@
  */
 import React from 'react';
 
-export function renderSafeText(input: string): React.ReactNode[] {
+function renderSafeText(input: string): React.ReactNode[] {
   if (!input) return [];
 
   const normalized = input

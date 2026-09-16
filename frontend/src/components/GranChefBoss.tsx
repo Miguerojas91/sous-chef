@@ -70,21 +70,13 @@ const RECIPE: BossRecipe = {
 
 export const GranChefBoss = () => (
   <BossPage
-    bossName="El Gran Chef"
-    bossEmoji="👨‍🍳"
     bossSubtitle="Guardián del Castillo del Chef"
-    levelNum={20}
-    worldName="Castillo del Chef"
-    worldEmoji="👑"
-    xpReward={1000}
-    world={5}
     quote="Cinco tiempos: esferas de dashi, huevo a 63 °C, lubina con la piel dorada, entrecot con jus y crema catalana quemada al momento. En cada plato quiero reconocer qué técnica usaste."
     requirement="Requisito: al menos 8 técnicas del Modo Aventura"
     nextWorld="Completaste los 20 niveles del mapa."
     victoryTitle="¡Recorrido completo!"
     victoryDesc="Del corte de la Isla del Cuchillo al azúcar quemado del postre, cada técnica se ve en tu menú. El Gran Chef lo sirve en su mesa."
     returnLabel="Ver el mapa"
-    isFinalBoss
     challenges={CHALLENGES}
     tips={TIPS}
     mainRecipe={RECIPE}

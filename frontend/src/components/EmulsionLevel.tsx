@@ -62,9 +62,6 @@ const RECIPE = {
 
 export const EmulsionLevel = () => (
   <LevelPage
-    worldName="Valle del Fuego" worldEmoji="🔥"
-    levelNum={7} levelName="Emulsión" levelEmoji="🥚" xpReward={75}
-    world={2}
     missionText="Preparar una <strong>mayonesa o alioli casero</strong> con emulsión estable: textura firme, cremosa, sin cortar. Fotografía el resultado en un cuenco con una cuchara que muestre la consistencia."
     missionTags={[
       { icon: '⏱️', label: '~15 min' },

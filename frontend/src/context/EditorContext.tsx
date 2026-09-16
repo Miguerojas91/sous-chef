@@ -1,6 +1,7 @@
 /** Modo edición del CMS. Solo usuarios con `is_admin: true` pueden activarlo. */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { onUserStateChange } from '../utils/events';
 
 interface EditorContextType {
   isAdmin: boolean;
@@ -31,8 +32,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setIsAdmin(admin);
       if (!admin) setIsEditMode(false);
     };
-    window.addEventListener('userStateChange', sync);
-    return () => window.removeEventListener('userStateChange', sync);
+    return onUserStateChange(sync);
   }, []);
 
   const toggleEditMode = useCallback(() => {

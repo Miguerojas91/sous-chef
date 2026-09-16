@@ -67,9 +67,6 @@ const RECIPE = {
 
 export const SofritoLevel = () => (
   <LevelPage
-    worldName="Valle del Fuego" worldEmoji="🔥"
-    levelNum={5} levelName="Sofrito" levelEmoji="🧄" xpReward={75}
-    world={2}
     missionText="Preparar un <strong>sofrito base</strong>: cebolla bien pochada, ajo integrado sin quemar, pimiento suave y tomate reducido a punto brillante. Fotografía el sofrito en la sartén al final."
     missionTags={[
       { icon: '⏱️', label: '~30 min' },

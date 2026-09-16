@@ -22,7 +22,8 @@ import {
 import { isPremiumUser } from '../utils/membership';
 import { getCountry } from '../data/countries';
 import { CountryPicker } from './CountryPicker';
-import { PreferencesEditor, summarizePreferences } from './PreferencesEditor';
+import { PreferencesEditor } from './PreferencesEditor';
+import { summarizePreferences } from '../data/recipeFilters';
 import { getVoiceUsageSummary } from '../utils/voiceUsage';
 import { track, resetIdentity, Events } from '../utils/analytics';
 import { ScreenHeader } from './ui/ScreenHeader';

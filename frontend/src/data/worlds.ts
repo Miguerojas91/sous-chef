@@ -1,4 +1,4 @@
-/** Mundos del Modo Aventura y sus clases de color (tokens `world-N`). */
+/** Clases de color de cada mundo del Modo Aventura (tokens `world-N`). */
 
 export type WorldId = 1 | 2 | 3 | 4 | 5;
 
@@ -12,14 +12,3 @@ export const WORLD_CLASSES: Record<WorldId, {
   4: { bg: 'bg-world-4', text: 'text-world-4', soft: 'bg-world-4-soft', line: 'border-world-4-line', border: 'border-world-4' },
   5: { bg: 'bg-world-5', text: 'text-world-5', soft: 'bg-world-5-soft', line: 'border-world-5-line', border: 'border-world-5' },
 };
-
-const WORLD_BY_NAME: Record<string, WorldId> = {
-  'Isla del Cuchillo': 1,
-  'Valle del Fuego': 2,
-  'Mar de Sabores': 3,
-  'Pico del Maestro': 4,
-  'Castillo del Chef': 5,
-};
-
-export const resolveWorld = (world: WorldId | undefined, worldName: string): WorldId =>
-  world ?? WORLD_BY_NAME[worldName] ?? 1;

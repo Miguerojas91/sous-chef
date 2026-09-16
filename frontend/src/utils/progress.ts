@@ -1,3 +1,4 @@
+import { emitUserStateChange } from './events';
 /**
  * Progreso del Modo Aventura en localStorage. Todo falla en silencio: sin
  * almacenamiento el juego sigue, solo no guarda.
@@ -34,6 +35,6 @@ export function addXP(amount: number): void {
     const user = JSON.parse(raw) as Record<string, unknown>;
     user.xp = ((user.xp as number) ?? 0) + amount;
     localStorage.setItem('user', JSON.stringify(user));
-    window.dispatchEvent(new Event('userStateChange'));
+    emitUserStateChange();
   } catch { /* ignorar */ }
 }

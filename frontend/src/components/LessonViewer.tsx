@@ -1,33 +1,28 @@
 /**
  * Visor de clase a pantalla completa: lectura, quiz y resultados.
- * Se renderiza desde App.tsx, por eso no usa portal. No es un Dialog (no es
- * una hoja), pero se comporta como uno: rol, Escape y foco.
- *
- * levelColor/levelBg/levelBorder llegan como clases completas de Tailwind
- * desde los datos de la Academia.
+ * No es un Dialog (no es una hoja), pero se comporta como uno vía useModal.
+ * Va en portal porque la Academia vive dentro del área desplazable del layout.
  */
 
 import { useState, useRef, useEffect, useId } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ChevronRight, CheckCircle, AlertTriangle,
   Lightbulb, List, BookOpen, Award, RotateCcw, X,
 } from 'lucide-react';
-import { LESSON_CONTENT } from '../data/LessonContent';
-import type { LessonSection } from '../data/LessonContent';
+import { findLesson, LEVEL_CLASSES } from '../data/academy';
+import type { AcademyLevel, Lesson, LessonSection } from '../data/academy';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { useModal } from '../hooks/useModal';
 import { ScreenHeader } from './ui/ScreenHeader';
 
+type LevelClasses = (typeof LEVEL_CLASSES)[keyof typeof LEVEL_CLASSES];
+
 interface LessonViewerProps {
-  lessonTitle: string;
-  lessonEmoji: string;
-  lessonDuration: string;
-  levelName: string;
-  levelColor: string;
-  levelBg: string;
-  levelBorder: string;
+  lessonId: string;
   isCompleted: boolean;
   onClose: () => void;
-  onComplete: (lessonTitle: string) => void;
+  onComplete: (lessonId: string) => void;
 }
 
 const PRIMARY_BTN =
@@ -35,24 +30,22 @@ const PRIMARY_BTN =
 
 const FOOTER = 'flex-shrink-0 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-white border-t border-neutral-200';
 
-const Section = ({ s, lc, lb, lbr }: {
-  s: LessonSection; lc: string; lb: string; lbr: string;
-}) => {
+const Section = ({ s, cls }: { s: LessonSection; cls: LevelClasses }) => {
   if (s.type === 'text') return (
     <div className="mb-5">
-      {s.title && <h3 className={`font-bold text-base mb-2 ${lc}`}>{s.title}</h3>}
-      <p className="text-neutral-800 leading-relaxed text-sm">{s.content as string}</p>
+      {s.title && <h3 className={`font-bold text-base mb-2 ${cls.text}`}>{s.title}</h3>}
+      <p className="text-neutral-800 leading-relaxed text-sm">{s.content}</p>
     </div>
   );
 
   if (s.type === 'list') return (
     <div className="mb-5">
-      {s.title && <h3 className={`font-bold text-base mb-2 ${lc}`}>{s.title}</h3>}
+      {s.title && <h3 className={`font-bold text-base mb-2 ${cls.text}`}>{s.title}</h3>}
       <ul className="space-y-2">
-        {(s.content as string[]).map((item, i) => (
+        {s.content.map((item, i) => (
           <li key={i} className="flex items-start gap-2 text-sm text-neutral-800">
             {/* bg-current toma el color del nivel desde la clase de texto. */}
-            <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-current ${lc}`} aria-hidden />
+            <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-current ${cls.text}`} aria-hidden />
             <span className="min-w-0">{item}</span>
           </li>
         ))}
@@ -62,11 +55,11 @@ const Section = ({ s, lc, lb, lbr }: {
 
   if (s.type === 'steps') return (
     <div className="mb-5">
-      {s.title && <h3 className={`font-bold text-base mb-3 ${lc}`}>{s.title}</h3>}
+      {s.title && <h3 className={`font-bold text-base mb-3 ${cls.text}`}>{s.title}</h3>}
       <ol className="space-y-2">
-        {(s.content as string[]).map((step, i) => (
+        {s.content.map((step, i) => (
           <li key={i} className="flex items-start gap-3 text-sm">
-            <span className={`flex-shrink-0 w-6 h-6 rounded-full ${lb} ${lc} font-bold flex items-center justify-center text-xs border ${lbr}`} aria-hidden>{i + 1}</span>
+            <span className={`flex-shrink-0 w-6 h-6 rounded-full ${cls.soft} ${cls.text} font-bold flex items-center justify-center text-xs border ${cls.line}`} aria-hidden>{i + 1}</span>
             <span className="text-neutral-800 leading-relaxed pt-0.5 min-w-0">{step}</span>
           </li>
         ))}
@@ -75,11 +68,11 @@ const Section = ({ s, lc, lb, lbr }: {
   );
 
   if (s.type === 'tip') return (
-    <div className={`mb-5 flex gap-3 p-3 rounded-card ${lb} border ${lbr}`}>
-      <Lightbulb className={`w-4 h-4 flex-shrink-0 mt-0.5 ${lc}`} aria-hidden />
+    <div className={`mb-5 flex gap-3 p-3 rounded-card ${cls.soft} border ${cls.line}`}>
+      <Lightbulb className={`w-4 h-4 flex-shrink-0 mt-0.5 ${cls.text}`} aria-hidden />
       <p className="text-sm text-neutral-800 leading-relaxed min-w-0">
         {s.title && <span className="font-semibold">{s.title}. </span>}
-        {s.content as string}
+        {s.content}
       </p>
     </div>
   );
@@ -87,42 +80,45 @@ const Section = ({ s, lc, lb, lbr }: {
   if (s.type === 'warning') return (
     <div className="mb-5 flex gap-3 p-3 rounded-card bg-amber-50 border border-amber-200">
       <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-800" aria-hidden />
-      <p className="text-sm text-amber-800 leading-relaxed min-w-0">{s.content as string}</p>
+      <p className="text-sm text-amber-800 leading-relaxed min-w-0">{s.content}</p>
     </div>
   );
 
-  if (s.type === 'table') {
-    const rows = s.content as { col1: string; col2: string }[];
-    return (
-      <div className="mb-5 overflow-x-auto">
-        {s.title && <h3 className={`font-bold text-base mb-2 ${lc}`}>{s.title}</h3>}
-        <table className="w-full text-sm border-collapse">
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i} className={i % 2 === 0 ? 'bg-white' : lb}>
-                <td className={`py-2 px-3 font-semibold border ${lbr} text-neutral-900 w-2/5`}>{row.col1}</td>
-                <td className={`py-2 px-3 border ${lbr} text-neutral-700`}>{row.col2}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
+  if (s.type === 'table') return (
+    <div className="mb-5 overflow-x-auto">
+      {s.title && <h3 className={`font-bold text-base mb-2 ${cls.text}`}>{s.title}</h3>}
+      <table className="w-full text-sm border-collapse">
+        <tbody>
+          {s.content.map((row, i) => (
+            <tr key={i} className={i % 2 === 0 ? 'bg-white' : cls.soft}>
+              <td className={`py-2 px-3 font-semibold border ${cls.line} text-neutral-900 w-2/5`}>{row.col1}</td>
+              <td className={`py-2 px-3 border ${cls.line} text-neutral-700`}>{row.col2}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return null;
 };
 
-export const LessonViewer = ({
-  lessonTitle, lessonEmoji, lessonDuration,
-  levelName, levelColor, levelBg, levelBorder,
-  isCompleted, onClose, onComplete,
-}: LessonViewerProps) => {
+export const LessonViewer = ({ lessonId, ...rest }: LessonViewerProps) => {
+  const found = findLesson(lessonId);
+  if (!found) return null;
+  return createPortal(<LessonPanel lesson={found.lesson} level={found.level} {...rest} />, document.body);
+};
+
+const LessonPanel = ({ lesson, level, isCompleted, onClose, onComplete }: Omit<LessonViewerProps, 'lessonId'> & {
+  lesson: Lesson;
+  level: AcademyLevel;
+}) => {
+  const { title: lessonTitle, emoji: lessonEmoji, duration: lessonDuration, content: data } = lesson;
+  const cls = LEVEL_CLASSES[level.world];
+
   // Mientras la clase está abierta el usuario lee, a veces con las manos
   // ocupadas. El componente se desmonta al cerrar y el lock se libera solo.
   useWakeLock(true, { mediaSessionTitle: `Lección: ${lessonTitle}` });
-
-  const key = lessonTitle.replace(/\s+/g, '');
-  const data = LESSON_CONTENT[key];
 
   const [phase, setPhase] = useState<'reading' | 'quiz' | 'done'>('reading');
   const [quizIdx, setQuizIdx] = useState(0);
@@ -144,27 +140,12 @@ export const LessonViewer = ({
   };
 
   // Escape hace lo mismo que el botón de cerrar visible: en el quiz vuelve a
-  // la lectura, en las demás fases cierra el visor. Se guarda en ref para no
-  // re-suscribir el listener en cada render.
-  const escapeRef = useRef<() => void>(onClose);
-  useEffect(() => {
-    escapeRef.current = data && phase === 'quiz' ? resetQuiz : onClose;
+  // la lectura, en las demás fases cierra el visor. El foco inicial va al
+  // contenedor para que el lector de pantalla anuncie el título.
+  useModal(rootRef, {
+    onEscape: data && phase === 'quiz' ? resetQuiz : onClose,
+    initialFocusRef: rootRef,
   });
-
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    rootRef.current?.focus();
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      escapeRef.current();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      previouslyFocused?.focus?.();
-    };
-  }, []);
 
   const question = data?.quiz[quizIdx];
 
@@ -222,7 +203,7 @@ export const LessonViewer = ({
           <ScreenHeader
             className="pt-[env(safe-area-inset-top)]"
             title={<span id={titleId}>{lessonTitle}</span>}
-            subtitle={`${levelName} · ${lessonDuration}`}
+            subtitle={`${level.name} · ${lessonDuration}`}
             actions={
               <>
                 {isCompleted && (
@@ -235,20 +216,20 @@ export const LessonViewer = ({
 
           <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-5">
             <div className="max-w-2xl mx-auto">
-              <p className={`mb-6 p-4 rounded-card ${levelBg} border ${levelBorder} text-sm font-semibold text-neutral-900 leading-relaxed`}>
+              <p className={`mb-6 p-4 rounded-card ${cls.soft} border ${cls.line} text-sm font-semibold text-neutral-900 leading-relaxed`}>
                 {data.intro}
               </p>
               {data.sections.map((section, i) => (
-                <Section key={i} s={section} lc={levelColor} lb={levelBg} lbr={levelBorder} />
+                <Section key={i} s={section} cls={cls} />
               ))}
               <div className="mt-6 mb-4">
-                <h3 className={`flex items-center gap-2 mb-3 font-bold text-base ${levelColor}`}>
+                <h3 className={`flex items-center gap-2 mb-3 font-bold text-base ${cls.text}`}>
                   <List className="w-4 h-4" aria-hidden /> Puntos clave
                 </h3>
-                <ul className={`rounded-card border ${levelBorder} overflow-hidden`}>
+                <ul className={`rounded-card border ${cls.line} overflow-hidden`}>
                   {data.keyPoints.map((pt, i) => (
-                    <li key={i} className={`flex items-start gap-3 px-4 py-3 ${i % 2 === 0 ? 'bg-white' : levelBg} ${i !== 0 ? `border-t ${levelBorder}` : ''}`}>
-                      <CheckCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${levelColor}`} aria-hidden />
+                    <li key={i} className={`flex items-start gap-3 px-4 py-3 ${i % 2 === 0 ? 'bg-white' : cls.soft} ${i !== 0 ? `border-t ${cls.line}` : ''}`}>
+                      <CheckCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${cls.text}`} aria-hidden />
                       <p className="text-sm text-neutral-800 min-w-0">{pt}</p>
                     </li>
                   ))}
@@ -277,7 +258,7 @@ export const LessonViewer = ({
                   {data.quiz.map((_, i) => (
                     <span
                       key={i}
-                      className={`w-2 h-2 rounded-full ${i < quizIdx ? 'bg-emerald-700' : i === quizIdx ? `bg-current ${levelColor}` : 'bg-neutral-300'}`}
+                      className={`w-2 h-2 rounded-full ${i < quizIdx ? 'bg-emerald-700' : i === quizIdx ? `bg-current ${cls.text}` : 'bg-neutral-300'}`}
                     />
                   ))}
                 </div>
@@ -289,7 +270,7 @@ export const LessonViewer = ({
           <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-6">
             <div className="max-w-2xl mx-auto">
               <h3 className="flex items-start gap-2 text-base font-extrabold text-neutral-900 leading-snug mb-6">
-                <BookOpen className={`w-5 h-5 flex-shrink-0 ${levelColor}`} aria-hidden />
+                <BookOpen className={`w-5 h-5 flex-shrink-0 ${cls.text}`} aria-hidden />
                 <span className="min-w-0">{question.q}</span>
               </h3>
               <div className="space-y-3">
@@ -377,14 +358,14 @@ export const LessonViewer = ({
               >
                 <div className={`h-full rounded-full ${passed ? 'bg-emerald-700' : 'bg-amber-700'}`} style={{ width: `${pct}%` }} />
               </div>
-              <div className={`w-full max-w-sm text-left rounded-card ${levelBg} border ${levelBorder} p-4 mb-6`}>
-                <h3 className={`flex items-center gap-2 mb-3 text-sm font-semibold ${levelColor}`}>
+              <div className={`w-full max-w-sm text-left rounded-card ${cls.soft} border ${cls.line} p-4 mb-6`}>
+                <h3 className={`flex items-center gap-2 mb-3 text-sm font-semibold ${cls.text}`}>
                   <List className="w-4 h-4" aria-hidden /> Para recordar
                 </h3>
                 <ul className="space-y-2">
                   {data.keyPoints.slice(0, 3).map((pt, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-neutral-800">
-                      <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-current ${levelColor}`} aria-hidden />
+                      <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 bg-current ${cls.text}`} aria-hidden />
                       <span className="min-w-0">{pt}</span>
                     </li>
                   ))}
@@ -401,7 +382,7 @@ export const LessonViewer = ({
               )}
               <button
                 type="button"
-                onClick={() => { onComplete(lessonTitle); onClose(); }}
+                onClick={() => { onComplete(lesson.id); onClose(); }}
                 className={`${PRIMARY_BTN} max-w-sm`}
               >
                 <CheckCircle className="w-4 h-4" aria-hidden />

@@ -5,6 +5,7 @@
  */
 
 import type { LocalUser } from '../data/localUsers';
+import { emitUserStateChange } from './events';
 
 const BACKEND_URL = ((import.meta.env.VITE_BACKEND_URL as string | undefined) ?? '')
   .trim()
@@ -35,7 +36,7 @@ export const setUserCountry = (countryCode: string): void => {
   if (!user) return;
   const next = { ...user, country: countryCode };
   localStorage.setItem(USER_KEY, JSON.stringify(next));
-  window.dispatchEvent(new Event('userStateChange'));
+  emitUserStateChange();
 };
 
 /** Cae a `dietaryPreferences` para usuarios guardados antes de `preferences`. */
@@ -48,10 +49,10 @@ export const setUserPreferences = (ids: string[]): void => {
   const user = getUser();
   if (!user) return;
   // Se borra el campo antiguo para que no queden dos fuentes distintas.
-  const { dietaryPreferences: _legacy, ...rest } = user;
-  const next = { ...rest, preferences: ids };
+  const next = { ...user, preferences: ids };
+  delete next.dietaryPreferences;
   localStorage.setItem(USER_KEY, JSON.stringify(next));
-  window.dispatchEvent(new Event('userStateChange'));
+  emitUserStateChange();
 };
 
 export const getUserAllergies = (): string[] => getUser()?.allergies ?? [];
@@ -61,7 +62,7 @@ export const setUserAllergies = (allergies: string[]): void => {
   if (!user) return;
   const next = { ...user, allergies };
   localStorage.setItem(USER_KEY, JSON.stringify(next));
-  window.dispatchEvent(new Event('userStateChange'));
+  emitUserStateChange();
 };
 
 export const getUserDislikes = (): string[] => getUser()?.dislikes ?? [];
@@ -71,7 +72,7 @@ export const setUserDislikes = (dislikes: string[]): void => {
   if (!user) return;
   const next = { ...user, dislikes };
   localStorage.setItem(USER_KEY, JSON.stringify(next));
-  window.dispatchEvent(new Event('userStateChange'));
+  emitUserStateChange();
 };
 
 /** @deprecated Usa `getUserPreferences`. */
@@ -83,14 +84,14 @@ export const setSession = (user: LocalUser, token?: string, refreshToken?: strin
   localStorage.setItem(USER_KEY, JSON.stringify(user));
   if (token) localStorage.setItem(TOKEN_KEY, token);
   if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
-  window.dispatchEvent(new Event('userStateChange'));
+  emitUserStateChange();
 };
 
 export const clearSession = (): void => {
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_KEY);
-  window.dispatchEvent(new Event('userStateChange'));
+  emitUserStateChange();
 };
 
 export const authHeaders = (): Record<string, string> => {

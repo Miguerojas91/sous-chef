@@ -63,9 +63,6 @@ const RECIPE = {
 
 export const FondoOscuroLevel = () => (
   <LevelPage
-    worldName="Mar de Sabores" worldEmoji="🌊"
-    levelNum={10} levelName="Fondo Oscuro" levelEmoji="🥣" xpReward={100}
-    world={3}
     missionText="Preparar un <strong>fondo oscuro/jus de res</strong> con huesos tostados: color marrón profundo, rico en gelatina y sabor complejo. Fotografía el jus reducido en una cuchara o vaso corto mostrando su color oscuro y brillante."
     missionTags={[
       { icon: '⏱️', label: '6–8 horas' },

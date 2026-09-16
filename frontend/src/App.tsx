@@ -1,8 +1,7 @@
 /**
  * Router, layout raíz y guardias de ruta de Sous Chef.
  *
- * `showToast(msg, type)` se puede llamar desde cualquier archivo: despacha el
- * evento `sous:toast` que escucha `Layout`, sin context ni props.
+ * Los avisos se emiten con `showToast` de `utils/events`; `Layout` los muestra.
  *
  * Guardias:
  * - `ProtectedRoute`: sin sesión, a `/login`.
@@ -15,7 +14,6 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { LessonViewer } from './components/LessonViewer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ChefHat, Home, Compass, Map as MapIcon, Globe, BookOpen, LogOut, CalendarDays, ShieldAlert, X } from 'lucide-react';
 import { useState, useEffect, useRef, lazy, Suspense, memo, type ComponentType } from 'react';
@@ -27,20 +25,19 @@ import { HomeMenu } from './components/HomeMenu';
 import { isPremiumUser } from './utils/membership';
 import { clearSession, backendLogout, getUserCountry, setUserCountry, getUser } from './utils/auth';
 import { isLevelUnlocked } from './data/levelsData';
+import { LEVELS } from './data/adventure';
 import { CountryPicker } from './components/CountryPicker';
 import { initAnalytics, identify, resetIdentity, track, Events } from './utils/analytics';
 import { useRoutePageviews } from './hooks/useAnalytics';
 import { FeedbackButton } from './components/FeedbackButton';
+import { showToast, onToast, onUserStateChange } from './utils/events';
+import type { ToastDetail } from './utils/events';
 
 initAnalytics();
 
 // React.lazy espera un export `default` y los componentes exportan con nombre.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function lazyNamed(loader: () => Promise<any>, exportName: string) {
-  return lazy(async () => {
-    const mod = await loader();
-    return { default: mod[exportName] as ComponentType<Record<string, never>> };
-  });
+function lazyNamed<K extends string, M extends Record<K, ComponentType>>(loader: () => Promise<M>, exportName: K) {
+  return lazy(async () => ({ default: (await loader())[exportName] }));
 }
 
 const CookingSession = lazyNamed(() => import('./components/CookingSession'), 'CookingSession');
@@ -52,27 +49,13 @@ const MembresiaPage  = lazyNamed(() => import('./components/MembresiaPage'),  'M
 const ProfilePage    = lazyNamed(() => import('./components/ProfilePage'),    'ProfilePage');
 const CMSTestPage    = lazyNamed(() => import('./components/cms/CMSTestPage'),'CMSTestPage');
 
-// Niveles y jefes de los mundos 1 a 5.
-const JulianaLevel    = lazyNamed(() => import('./components/JulianaLevel'),    'JulianaLevel');
-const BrunoiseLevel   = lazyNamed(() => import('./components/BrunoiseLevel'),   'BrunoiseLevel');
-const ChiffonadeLevel = lazyNamed(() => import('./components/ChiffonadeLevel'), 'ChiffonadeLevel');
-const ChefVegetalBoss = lazyNamed(() => import('./components/ChefVegetalBoss'), 'ChefVegetalBoss');
-const SofritoLevel   = lazyNamed(() => import('./components/SofritoLevel'),   'SofritoLevel');
-const MaillardLevel  = lazyNamed(() => import('./components/MaillardLevel'),  'MaillardLevel');
-const EmulsionLevel  = lazyNamed(() => import('./components/EmulsionLevel'),  'EmulsionLevel');
-const FlambeadorBoss = lazyNamed(() => import('./components/FlambeadorBoss'), 'FlambeadorBoss');
-const FondoBlancoLevel    = lazyNamed(() => import('./components/FondoBlancoLevel'),    'FondoBlancoLevel');
-const FondoOscuroLevel    = lazyNamed(() => import('./components/FondoOscuroLevel'),    'FondoOscuroLevel');
-const FumetLevel          = lazyNamed(() => import('./components/FumetLevel'),          'FumetLevel');
-const MaestroDeSalsasBoss = lazyNamed(() => import('./components/MaestroDeSalsasBoss'), 'MaestroDeSalsasBoss');
-const SousVideLevel       = lazyNamed(() => import('./components/SousVideLevel'),       'SousVideLevel');
-const EsferificacionLevel = lazyNamed(() => import('./components/EsferificacionLevel'), 'EsferificacionLevel');
-const FermentacionLevel   = lazyNamed(() => import('./components/FermentacionLevel'),   'FermentacionLevel');
-const AlquimistaBoss      = lazyNamed(() => import('./components/AlquimistaBoss'),      'AlquimistaBoss');
-const MenuDegustacionLevel = lazyNamed(() => import('./components/MenuDegustacionLevel'), 'MenuDegustacionLevel');
-const MarinajeLevel        = lazyNamed(() => import('./components/MarinajeLevel'),        'MarinajeLevel');
-const AltaCocinaLevel      = lazyNamed(() => import('./components/AltaCocinaLevel'),      'AltaCocinaLevel');
-const GranChefBoss         = lazyNamed(() => import('./components/GranChefBoss'),         'GranChefBoss');
+// Niveles y jefes del Modo Aventura. Se crean una sola vez, fuera del render,
+// para que React.lazy no vuelva a cargar el componente en cada pintado.
+const ADVENTURE_ROUTES = LEVELS.map(level => ({
+  path: level.path,
+  premium: level.world.premium,
+  Component: lazy(async () => ({ default: await level.load() })),
+}));
 
 const RouteFallback = () => (
   <div role="status" aria-live="polite" className="flex items-center justify-center h-full min-h-[60vh]">
@@ -92,17 +75,7 @@ const navLinks = [
   { to: '/milprep',  icon: CalendarDays, label: 'Mealprep',          shortLabel: 'Mealprep', exact: false },
 ];
 
-interface LessonEventData {
-  title: string; emoji: string; duration: string;
-  levelName: string; levelColor: string; levelBg: string; levelBorder: string;
-  isCompleted: boolean;
-}
-
-interface ToastData { msg: string; type: 'info' | 'warning' | 'success' | 'error' }
-
-export function showToast(msg: string, type: ToastData['type'] = 'info') {
-  window.dispatchEvent(new CustomEvent('sous:toast', { detail: { msg, type } }));
-}
+type ToastData = ToastDetail;
 
 // Los avisos importantes (tope de voz, contenido bloqueado) duran más: se leen
 // con las manos ocupadas y a distancia.
@@ -154,54 +127,52 @@ const ToastRedirect = ({ to, msg, type }: { to: string; msg: string; type: Toast
   return null;
 };
 
+
+interface HeaderUserData {
+  username: string; rank: string; xp: number; nextRankXp: number; levelProgress: number; is_admin: boolean;
+}
+
+// Rango y progreso del encabezado a partir del usuario guardado.
+function readUserData(): HeaderUserData {
+  const fallback: HeaderUserData = { username: 'Cargando…', rank: 'Iniciado', xp: 0, nextRankXp: 500, levelProgress: 0, is_admin: false };
+  try {
+    const user = JSON.parse(localStorage.getItem('user') ?? 'null');
+    if (!user) return fallback;
+    let rank = 'Iniciado';
+    let nextXp = 500;
+    let base = 0;
+    if (user.xp >= 500) { rank = 'Cocinero de Partida'; nextXp = 1500; base = 500; }
+    if (user.xp >= 1500) { rank = 'Sous Chef'; nextXp = 5000; base = 1500; }
+    if (user.xp >= 5000) { rank = 'Chef de Cuisine'; nextXp = 15000; base = 5000; }
+    if (user.xp >= 15000) { rank = 'Maestría Culinaria'; nextXp = 50000; base = 15000; }
+    const progress = ((user.xp - base) / (nextXp - base)) * 100;
+    return {
+      username: user.username,
+      rank,
+      xp: user.xp,
+      nextRankXp: nextXp,
+      levelProgress: Math.min(progress, 100),
+      is_admin: user.is_admin || false,
+    };
+  } catch (e) {
+    console.error(e);
+    return fallback;
+  }
+}
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin, isEditMode, toggleEditMode } = useEditor();
   const location = useLocation();
   const navigate = useNavigate();
   const [toast, setToast] = useState<ToastData | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const [activeLesson, setActiveLesson] = useState<LessonEventData | null>(null);
 
   // Solo usuarios anteriores al registro con país: el registro nuevo ya lo pide.
   const [showCountryPicker, setShowCountryPicker] = useState(() => !getUserCountry());
 
-  const [userData, setUserData] = useState({
-    username: 'Cargando…',
-    rank: 'Iniciado',
-    xp: 0,
-    nextRankXp: 500,
-    levelProgress: 0,
-    is_admin: false,
-  });
-
-  const loadUserData = () => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) return;
-    try {
-      const user = JSON.parse(userStr);
-      let rank = 'Iniciado';
-      let nextXp = 500;
-      let base = 0;
-      if (user.xp >= 500) { rank = 'Cocinero de Partida'; nextXp = 1500; base = 500; }
-      if (user.xp >= 1500) { rank = 'Sous Chef'; nextXp = 5000; base = 1500; }
-      if (user.xp >= 5000) { rank = 'Chef de Cuisine'; nextXp = 15000; base = 5000; }
-      if (user.xp >= 15000) { rank = 'Maestría Culinaria'; nextXp = 50000; base = 15000; }
-      const progress = ((user.xp - base) / (nextXp - base)) * 100;
-      setUserData({
-        username: user.username,
-        rank,
-        xp: user.xp,
-        nextRankXp: nextXp,
-        levelProgress: progress > 100 ? 100 : progress,
-        is_admin: user.is_admin || false,
-      });
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const [userData, setUserData] = useState(readUserData);
 
   useEffect(() => {
-    loadUserData();
     // El username es el distinct_id de PostHog; no se envía correo ni nombre real.
     const u = getUser();
     if (u?.username) {
@@ -213,8 +184,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         has_allergies: ((u.allergies ?? []).length > 0),
       });
     }
-    window.addEventListener('userStateChange', loadUserData);
-    return () => window.removeEventListener('userStateChange', loadUserData);
+    return onUserStateChange(() => setUserData(readUserData()));
   }, []);
 
   const scheduleToastClose = (type: ToastData['type']) => {
@@ -223,19 +193,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      const { msg, type = 'info' } = (e as CustomEvent<ToastData>).detail;
+    const off = onToast(({ msg, type = 'info' }) => {
       setToast({ msg, type });
       scheduleToastClose(type);
-    };
-    window.addEventListener('sous:toast', handler);
-    return () => { window.removeEventListener('sous:toast', handler); clearTimeout(toastTimer.current); };
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: Event) => setActiveLesson((e as CustomEvent<LessonEventData>).detail);
-    window.addEventListener('sous:openLesson', handler);
-    return () => window.removeEventListener('sous:openLesson', handler);
+    });
+    return () => { off(); clearTimeout(toastTimer.current); };
   }, []);
 
   const handleLogout = async () => {
@@ -271,24 +233,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           onSelect={handleCountrySelect}
           onSkip={handleCountrySkip}
           onDismiss={() => setShowCountryPicker(false)}
-        />
-      )}
-
-      {activeLesson && (
-        <LessonViewer
-          lessonTitle={activeLesson.title}
-          lessonEmoji={activeLesson.emoji}
-          lessonDuration={activeLesson.duration}
-          levelName={activeLesson.levelName}
-          levelColor={activeLesson.levelColor}
-          levelBg={activeLesson.levelBg}
-          levelBorder={activeLesson.levelBorder}
-          isCompleted={activeLesson.isCompleted}
-          onClose={() => setActiveLesson(null)}
-          onComplete={(title) => {
-            window.dispatchEvent(new CustomEvent('sous:lessonComplete', { detail: { title } }));
-            setActiveLesson(null);
-          }}
         />
       )}
 
@@ -499,35 +443,10 @@ function App() {
                 <Route path="/cocinar" element={<CookingSession />} />
                 <Route path="/mapa" element={<SkillTreeMap />} />
 
-                {/* Mundo 1: Isla del Cuchillo */}
-                <Route path="/mapa/juliana"    element={<LevelRoute path="/mapa/juliana"><JulianaLevel /></LevelRoute>} />
-                <Route path="/mapa/brunoise"   element={<LevelRoute path="/mapa/brunoise"><BrunoiseLevel /></LevelRoute>} />
-                <Route path="/mapa/chiffonade" element={<LevelRoute path="/mapa/chiffonade"><ChiffonadeLevel /></LevelRoute>} />
-                <Route path="/mapa/chef-vegetal" element={<LevelRoute path="/mapa/chef-vegetal"><ChefVegetalBoss /></LevelRoute>} />
-
-                {/* Mundo 2: Valle del Fuego */}
-                <Route path="/mapa/sofrito"    element={<LevelRoute path="/mapa/sofrito"><SofritoLevel /></LevelRoute>} />
-                <Route path="/mapa/maillard"   element={<LevelRoute path="/mapa/maillard"><MaillardLevel /></LevelRoute>} />
-                <Route path="/mapa/emulsion"   element={<LevelRoute path="/mapa/emulsion"><EmulsionLevel /></LevelRoute>} />
-                <Route path="/mapa/flambeador" element={<LevelRoute path="/mapa/flambeador"><FlambeadorBoss /></LevelRoute>} />
-
-                {/* Mundo 3: Mar de Sabores (Premium) */}
-                <Route path="/mapa/fondo-blanco"   element={<PremiumRoute><LevelRoute path="/mapa/fondo-blanco"><FondoBlancoLevel /></LevelRoute></PremiumRoute>} />
-                <Route path="/mapa/fondo-oscuro"   element={<PremiumRoute><LevelRoute path="/mapa/fondo-oscuro"><FondoOscuroLevel /></LevelRoute></PremiumRoute>} />
-                <Route path="/mapa/fumet"          element={<PremiumRoute><LevelRoute path="/mapa/fumet"><FumetLevel /></LevelRoute></PremiumRoute>} />
-                <Route path="/mapa/maestro-salsas" element={<PremiumRoute><LevelRoute path="/mapa/maestro-salsas"><MaestroDeSalsasBoss /></LevelRoute></PremiumRoute>} />
-
-                {/* Mundo 4: Pico del Maestro (Premium) */}
-                <Route path="/mapa/sous-vide"      element={<PremiumRoute><LevelRoute path="/mapa/sous-vide"><SousVideLevel /></LevelRoute></PremiumRoute>} />
-                <Route path="/mapa/esferificacion" element={<PremiumRoute><LevelRoute path="/mapa/esferificacion"><EsferificacionLevel /></LevelRoute></PremiumRoute>} />
-                <Route path="/mapa/fermentacion"   element={<PremiumRoute><LevelRoute path="/mapa/fermentacion"><FermentacionLevel /></LevelRoute></PremiumRoute>} />
-                <Route path="/mapa/alquimista"     element={<PremiumRoute><LevelRoute path="/mapa/alquimista"><AlquimistaBoss /></LevelRoute></PremiumRoute>} />
-
-                {/* Mundo 5: Castillo del Chef (Premium) */}
-                <Route path="/mapa/menu-degustacion" element={<PremiumRoute><LevelRoute path="/mapa/menu-degustacion"><MenuDegustacionLevel /></LevelRoute></PremiumRoute>} />
-                <Route path="/mapa/maridaje"         element={<PremiumRoute><LevelRoute path="/mapa/maridaje"><MarinajeLevel /></LevelRoute></PremiumRoute>} />
-                <Route path="/mapa/alta-cocina"      element={<PremiumRoute><LevelRoute path="/mapa/alta-cocina"><AltaCocinaLevel /></LevelRoute></PremiumRoute>} />
-                <Route path="/mapa/gran-chef"        element={<PremiumRoute><LevelRoute path="/mapa/gran-chef"><GranChefBoss /></LevelRoute></PremiumRoute>} />
+                {ADVENTURE_ROUTES.map(({ path, premium, Component }) => {
+                  const level = <LevelRoute path={path}><Component /></LevelRoute>;
+                  return <Route key={path} path={path} element={premium ? <PremiumRoute>{level}</PremiumRoute> : level} />;
+                })}
 
                 <Route path="/sabores" element={<FlavorsModule />} />
                 <Route path="/academia" element={<AcademyModule />} />

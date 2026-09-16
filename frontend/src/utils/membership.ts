@@ -1,3 +1,4 @@
+import { emitUserStateChange } from './events';
 /** Membresía Premium: se consulta al proxy (la clave de Hotmart no sale del servidor) y se cachea en localStorage. */
 
 const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) ?? '')
@@ -37,6 +38,6 @@ export function updatePremiumStatus(isPremium: boolean): void {
     const user = JSON.parse(localStorage.getItem('user') ?? '{}') as Record<string, unknown>;
     user.isPremium = isPremium;
     localStorage.setItem('user', JSON.stringify(user));
-    window.dispatchEvent(new Event('userStateChange'));
+    emitUserStateChange();
   } catch { /* no crítico: se vuelve a sincronizar en el próximo login */ }
 }

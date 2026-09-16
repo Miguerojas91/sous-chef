@@ -62,9 +62,6 @@ const RECIPE = {
 
 export const SousVideLevel = () => (
   <LevelPage
-    worldName="Pico del Maestro" worldEmoji="🏔️"
-    levelNum={13} levelName="Sous-Vide" levelEmoji="🌡️" xpReward={150}
-    world={4}
     missionText="Preparar una <strong>proteína sous-vide</strong> a la temperatura correcta y sellarla con costra Maillard. Fotografía la pieza cortada para mostrar el punto de cocción del interior."
     missionTags={[
       { icon: '🌡️', label: 'Temperatura exacta' },

@@ -62,9 +62,6 @@ const RECIPE = {
 
 export const EsferificacionLevel = () => (
   <LevelPage
-    worldName="Pico del Maestro" worldEmoji="🏔️"
-    levelNum={14} levelName="Esferificación" levelEmoji="⚗️" xpReward={150}
-    world={4}
     missionText="Crear <strong>esferas redondas</strong> mediante esferificación directa: membrana fina, interior líquido que explote en boca, sin huecos ni forma irregular. Fotografía las esferas en una cuchara o plato."
     missionTags={[
       { icon: '⚗️', label: 'Cocina molecular' },

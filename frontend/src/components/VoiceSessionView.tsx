@@ -2,17 +2,18 @@
  * Pantalla de voz manos libres, compartida por Cocinemos, Sabores del Mundo y
  * Mealprep. Recibe el estado de `useGeminiLive` y ocupa la pantalla completa
  * (`fixed inset-0`) para que la barra de navegación no quede debajo del pulgar
- * mientras se cocina.
+ * mientras se cocina. Se comporta como capa modal: foco dentro y Escape vuelve
+ * al texto.
  */
-import { useState } from 'react';
+import { useId, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Crown, MessageSquare } from 'lucide-react';
 import type { VoiceState, VoiceTranscriptEntry } from '../hooks/useGeminiLive';
 import { SILENCE_TIMEOUT_MS } from '../hooks/useGeminiLive';
+import { useModal } from '../hooks/useModal';
 import { friendlyVoiceError } from '../utils/friendlyError';
 import { isPremiumUser } from '../utils/membership';
-import { FREE_CAP_SECONDS, PRO_CAP_SECONDS } from '../utils/voiceUsage';
-import { ConfirmDialog } from './ui/Dialog';
+import { capReachedMessage } from '../utils/voiceUsage';
 
 const SILENCE_LIMIT_S = SILENCE_TIMEOUT_MS / 1000;
 // La cuenta atrás solo aparece en los últimos segundos; antes sería ruido.
@@ -30,55 +31,72 @@ interface VoiceSessionViewProps {
   onTest: () => void;
   /** Vuelve al chat de texto sin borrar la conversación. */
   onExitVoice: () => void;
-  /** Termina la sesión completa (borra el historial). Se confirma antes. */
-  onEndSession?: () => void;
+  /** Pide terminar la sesión; quien la muestra se encarga de confirmar. */
+  onRequestEnd?: () => void;
 }
 
-export const VoiceSessionView = ({
-  title, voiceState, transcript, currentChefText, voiceError, silenceSeconds,
-  onRetry, onWakeUp, onTest, onExitVoice, onEndSession,
-}: VoiceSessionViewProps) => {
-  const [confirmEnd, setConfirmEnd] = useState(false);
+export const VoiceSessionView = (props: VoiceSessionViewProps) => {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  // El panel es el mismo en todos los estados para que useModal no quede
+  // apuntando a un nodo desmontado.
+  useModal(panelRef, { onEscape: props.onExitVoice, initialFocusRef: panelRef });
+  const capReached = props.voiceState === 'cap-reached';
 
-  if (voiceState === 'cap-reached') {
-    const premium = isPremiumUser();
-    const freeMin = FREE_CAP_SECONDS / 60;
-    const premiumMin = PRO_CAP_SECONDS / 60;
-    return (
-      <div className="fixed inset-0 z-[80] h-dvh bg-neutral-50 flex items-center justify-center p-6 overflow-y-auto">
-        <div className="bg-white rounded-card border border-neutral-200 max-w-sm w-full p-6 text-center">
-          <Crown className="w-10 h-10 text-brand-700 mx-auto mb-3" aria-hidden />
-          <h2 className="text-xl font-extrabold text-neutral-900 mb-2">
-            {premium ? `Ya usaste tus ${premiumMin} minutos de este mes` : `Ya usaste tus ${freeMin} minutos de voz gratis`}
-          </h2>
-          <p className="text-sm text-neutral-600 mb-5 leading-relaxed">
-            {premium
-              ? 'Los minutos de voz se renuevan el día 1. Mientras tanto puedes seguir por texto, que no tiene límite.'
-              : `Puedes seguir por texto, que no tiene límite, o pasarte a Premium para tener ${premiumMin} minutos de voz al mes.`}
-          </p>
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={onExitVoice}
-              className="w-full min-h-11 px-4 rounded-control bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors"
-            >
-              Seguir por texto
-            </button>
-            {!premium && (
-              <Link
-                to="/membresia"
-                onClick={onExitVoice}
-                className="w-full min-h-11 px-4 rounded-control border border-neutral-300 text-neutral-900 hover:bg-neutral-50 font-semibold text-sm flex items-center justify-center"
-              >
-                Ver Premium · $9.99 al mes
-              </Link>
-            )}
-          </div>
-        </div>
+  return (
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      tabIndex={-1}
+      className={`fixed inset-0 z-[80] h-dvh outline-none ${
+        capReached
+          ? 'bg-neutral-50 flex items-center justify-center p-6 overflow-y-auto'
+          : 'flex flex-col bg-neutral-950 text-white'
+      }`}
+    >
+      {capReached
+        ? <CapReachedCard titleId={titleId} onExitVoice={props.onExitVoice} />
+        : <VoiceSession {...props} titleId={titleId} />}
+    </div>
+  );
+};
+
+const CapReachedCard = ({ titleId, onExitVoice }: { titleId: string; onExitVoice: () => void }) => {
+  const premium = isPremiumUser();
+  const copy = capReachedMessage(premium);
+  return (
+    <div className="bg-white rounded-card border border-neutral-200 max-w-sm w-full p-6 text-center">
+      <Crown className="w-10 h-10 text-brand-700 mx-auto mb-3" aria-hidden />
+      <h2 id={titleId} className="text-xl font-extrabold text-neutral-900 mb-2">{copy.title}</h2>
+      <p className="text-sm text-neutral-600 mb-5 leading-relaxed">{copy.detail}</p>
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={onExitVoice}
+          className="w-full min-h-11 px-4 rounded-control bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors"
+        >
+          Seguir por texto
+        </button>
+        {!premium && (
+          <Link
+            to="/membresia"
+            onClick={onExitVoice}
+            className="w-full min-h-11 px-4 rounded-control border border-neutral-300 text-neutral-900 hover:bg-neutral-50 font-semibold text-sm flex items-center justify-center"
+          >
+            Ver Premium · $9.99 al mes
+          </Link>
+        )}
       </div>
-    );
-  }
+    </div>
+  );
+};
 
+const VoiceSession = ({
+  title, titleId, voiceState, transcript, currentChefText, voiceError, silenceSeconds,
+  onRetry, onWakeUp, onTest, onExitVoice, onRequestEnd,
+}: VoiceSessionViewProps & { titleId: string }) => {
   const isConnecting = voiceState === 'connecting';
   const isSpeaking = voiceState === 'speaking';
   const isListening = voiceState === 'listening';
@@ -108,13 +126,13 @@ export const VoiceSessionView = ({
     'ring-neutral-700';
 
   return (
-    <div className="fixed inset-0 z-[80] h-dvh flex flex-col bg-neutral-950 text-white">
+    <>
       <header className="flex items-center gap-2 min-h-12 px-4 pt-[env(safe-area-inset-top)] border-b border-neutral-800 flex-shrink-0">
-        <h1 className="flex-1 min-w-0 truncate text-base font-extrabold">{title}</h1>
-        {onEndSession && (
+        <h1 id={titleId} className="flex-1 min-w-0 truncate text-base font-extrabold">{title}</h1>
+        {onRequestEnd && (
           <button
             type="button"
-            onClick={() => setConfirmEnd(true)}
+            onClick={onRequestEnd}
             className="min-h-11 px-3 -mr-2 rounded-control text-sm font-semibold text-neutral-300 hover:bg-neutral-800"
           >
             Terminar sesión
@@ -206,18 +224,6 @@ export const VoiceSessionView = ({
           Volver al texto
         </button>
       </footer>
-
-      {confirmEnd && onEndSession && (
-        <ConfirmDialog
-          tone="dark"
-          title="¿Terminar la sesión?"
-          description="Se borra toda esta conversación."
-          confirmLabel="Terminar"
-          destructive
-          onCancel={() => setConfirmEnd(false)}
-          onConfirm={() => { setConfirmEnd(false); onEndSession(); }}
-        />
-      )}
-    </div>
+    </>
   );
 };

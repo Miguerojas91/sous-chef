@@ -18,7 +18,8 @@ interface UsageStore {
   [yearMonth: string]: number; // segundos consumidos en ese mes
 }
 
-function thisMonthKey(): string {
+/** YYYY-MM en la zona del cliente. El uso se cuenta por este mes. */
+export function getMonthKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
@@ -57,7 +58,7 @@ export function getCapSeconds(): number {
 
 export function getUsedSecondsThisMonth(): number {
   const store = loadStore();
-  return store[thisMonthKey()] ?? 0;
+  return store[getMonthKey()] ?? 0;
 }
 
 export function getRemainingSeconds(): number {
@@ -76,12 +77,35 @@ export function hasReachedCap(): boolean {
 export function addUsedSeconds(seconds: number): void {
   if (seconds <= 0 || !Number.isFinite(seconds)) return;
   const store = loadStore();
-  const key = thisMonthKey();
+  const key = getMonthKey();
   const current = store[key] ?? 0;
   const cap = getCapSeconds();
   store[key] = Math.min(cap, current + Math.floor(seconds));
   saveStore(store);
   window.dispatchEvent(new Event('sous:voice-usage-changed'));
+}
+
+/**
+ * Textos del tope de voz alcanzado: `short` para el toast y `title`/`detail`
+ * para la pantalla de voz.
+ */
+export function capReachedMessage(premium: boolean): { title: string; short: string; detail: string } {
+  const freeMin = FREE_CAP_SECONDS / 60;
+  const premiumMin = PRO_CAP_SECONDS / 60;
+  const title = premium
+    ? `Ya usaste tus ${premiumMin} minutos de voz de este mes`
+    : `Ya usaste tus ${freeMin} minutos de voz gratis`;
+  return premium
+    ? {
+        title,
+        short: `${title}. Se renuevan el día 1.`,
+        detail: 'Los minutos de voz se renuevan el día 1. Mientras tanto puedes seguir por texto, que no tiene límite.',
+      }
+    : {
+        title,
+        short: `${title}. Con Premium tienes ${premiumMin} al mes.`,
+        detail: `Puedes seguir por texto, que no tiene límite, o pasarte a Premium para tener ${premiumMin} minutos de voz al mes.`,
+      };
 }
 
 export interface VoiceUsageSummary {
@@ -112,7 +136,7 @@ export function getVoiceUsageSummary(): VoiceUsageSummary {
 /** Reinicia el consumo del mes actual. Solo para QA; no exponer en la UI. */
 export function resetCurrentMonth(): void {
   const store = loadStore();
-  delete store[thisMonthKey()];
+  delete store[getMonthKey()];
   saveStore(store);
   window.dispatchEvent(new Event('sous:voice-usage-changed'));
 }

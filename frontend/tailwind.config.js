@@ -1,3 +1,5 @@
+import { WORLD_TOKENS } from './src/data/worldTokens.ts';
+
 /** @type {import('tailwindcss').Config} */
 export default {
     content: [
@@ -21,16 +23,11 @@ export default {
                     800: '#9a3412',
                     900: '#7c2d12',
                 },
-                // Un color sólido por mundo del Modo Aventura. DEFAULT soporta
-                // texto blanco con contraste AA; soft es el fondo de sección y
-                // line el borde. El mundo 4 era violeta: pasa a pizarra.
-                world: {
-                    1: { DEFAULT: '#047857', soft: '#ecfdf5', line: '#a7f3d0' },
-                    2: { DEFAULT: '#b91c1c', soft: '#fef2f2', line: '#fecaca' },
-                    3: { DEFAULT: '#1d4ed8', soft: '#eff6ff', line: '#bfdbfe' },
-                    4: { DEFAULT: '#334155', soft: '#f1f5f9', line: '#cbd5e1' },
-                    5: { DEFAULT: '#92400e', soft: '#fffbeb', line: '#fde68a' },
-                },
+                // Un color sólido por mundo del Modo Aventura (`world-N`,
+                // `world-N-soft`, `world-N-line`). Los hex viven en worldTokens.ts.
+                world: Object.fromEntries(
+                    Object.entries(WORLD_TOKENS).map(([id, t]) => [id, { DEFAULT: t.main, soft: t.soft, line: t.line }]),
+                ),
                 danger: '#b91c1c',
             },
             fontFamily: {

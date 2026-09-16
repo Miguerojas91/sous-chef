@@ -64,9 +64,6 @@ const RECIPE = {
 
 export const ChiffonadeLevel = () => (
   <LevelPage
-    worldName="Isla del Cuchillo" worldEmoji="🔪"
-    levelNum={3} levelName="Chiffonade" levelEmoji="🌿" xpReward={50}
-    world={1}
     missionText="Cortar <strong>un manojo de albahaca o espinacas</strong> en chiffonade <strong>uniforme y fino</strong>: tiras de 1–2 mm de ancho, sin magullar ni oxidar las hojas. Fotografía el resultado esponjado sobre la tabla."
     missionTags={[
       { icon: '⏱️', label: '~15 min' },

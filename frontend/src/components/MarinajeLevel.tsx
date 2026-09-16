@@ -62,9 +62,6 @@ const RECIPE = {
 
 export const MarinajeLevel = () => (
   <LevelPage
-    worldName="Castillo del Chef" worldEmoji="👑"
-    levelNum={18} levelName="Maridaje" levelEmoji="🍷" xpReward={200}
-    world={5}
     missionText="Crear y documentar <strong>3 pairings de comida y bebida</strong> con justificación técnica. Fotografía los 3 pairings presentados en mesa y escribe una breve nota de cata en la foto."
     missionTags={[
       { icon: '🍷', label: '3 pairings' },

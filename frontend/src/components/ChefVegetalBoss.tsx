@@ -62,14 +62,7 @@ const RECIPE: BossRecipe = {
 
 export const ChefVegetalBoss = () => (
   <BossPage
-    bossName="Chef Vegetal"
-    bossEmoji="🥦"
     bossSubtitle="Guardián de la Isla del Cuchillo"
-    levelNum={4}
-    worldName="Isla del Cuchillo"
-    worldEmoji="🔪"
-    xpReward={200}
-    world={1}
     quote="Juliana, brunoise y chiffonade en la misma tabla. Si los bastones, los cubos y las tiras salen parejos, te abro el paso al Valle del Fuego."
     requirement="Requisito: juliana, brunoise y chiffonade"
     nextWorld="Valle del Fuego desbloqueado"

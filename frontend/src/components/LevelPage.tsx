@@ -1,23 +1,21 @@
 /**
  * Base de los niveles normales del Modo Aventura. Cada nivel (JulianaLevel,
- * BrunoiseLevel, etc.) pasa sus pasos, errores y criterios; aquí vive la lógica común.
+ * BrunoiseLevel, etc.) pasa su contenido: misión, pasos, errores, receta y
+ * criterios. Nombre, emoji, XP, número y mundo salen de `data/adventure.ts`
+ * según la ruta actual.
  *
  * - Aprende: acordeón de pasos. Los pasos hechos persisten en `sous_steps_{ruta}`.
- * - Evalúa: el usuario sube una foto y `evaluateImage()` la puntúa vía el proxy.
+ * - Evalúa: el usuario sube una foto y `usePhotoEvaluation` la puntúa.
  *   Con 1 estrella o más se guarda la puntuación y, solo la primera vez, el XP.
  *   Con 0 estrellas se muestra el motivo y no se marca el nivel.
- *
- * El color sale del token `world-N`. Si el nivel no pasa `world`, se deduce de
- * `worldName`. Las props de color antiguas (gradientFrom, accentBg...) se aceptan
- * pero ya no se usan.
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { evaluateImage } from '../services/gemini';
-import type { EvaluationResult } from '../services/gemini';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getLevelStars, saveLevelStars, addXP } from '../utils/progress';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { usePhotoEvaluation } from '../hooks/usePhotoEvaluation';
+import type { EvaluationCriterion } from '../hooks/usePhotoEvaluation';
 import { track, Events } from '../utils/analytics';
 import {
   BookOpen, Upload, CheckCircle, Star, ChevronRight, Lightbulb,
@@ -27,9 +25,8 @@ import { EditableText } from './cms/EditableText';
 import { BlockZone } from './cms/BlockZone';
 import { SafeText } from '../utils/safeText';
 import { ScreenHeader } from './ui/ScreenHeader';
-import { WORLD_CLASSES, resolveWorld } from '../data/worlds';
-import type { WorldId } from '../data/worlds';
-
+import { WORLD_CLASSES } from '../data/worlds';
+import { requireLevel } from '../data/adventure';
 
 export interface LevelStep {
   num: number;
@@ -46,28 +43,6 @@ export interface LevelError {
 }
 
 export interface LevelPageProps {
-  worldName: string;
-  worldEmoji: string;
-  levelNum: number;
-  levelName: string;
-  levelEmoji: string;
-  xpReward: number;
-
-  /** Mundo del nivel; define el color. Si falta, se deduce de `worldName`. */
-  world?: WorldId;
-
-  /** @deprecated el color sale de `world`. Se ignoran. */
-  gradientFrom?: string;
-  gradientTo?: string;
-  accentBg?: string;
-  accentBorder?: string;
-  accentText?: string;
-  accentDark?: string;
-  stepActiveBg?: string;
-  stepActiveTxt?: string;
-  btnBg?: string;
-  btnShadow?: string;
-
   missionTitle?: string;
   missionText: string;
   missionTags: { icon: string; label: string }[];
@@ -86,13 +61,12 @@ export interface LevelPageProps {
 
   challengeTitle?: string;
   challengeHint?: string;
-  evaluationCriteria?: { stars: string; label: string }[];
+  evaluationCriteria?: EvaluationCriterion[];
 
   backPath?: string;
 }
 
 export const LevelPage = ({
-  worldName, levelNum, levelName, levelEmoji, xpReward, world,
   missionTitle = 'Tu misión', missionText, missionTags,
   steps, errors, recipe,
   challengeTitle = 'Sube tu reto',
@@ -100,6 +74,12 @@ export const LevelPage = ({
   evaluationCriteria,
   backPath = '/mapa',
 }: LevelPageProps) => {
+  const location = useLocation();
+  const level = requireLevel(location.pathname);
+  const { num: levelNum, title: levelName, emoji: levelEmoji, xp: xpReward } = level;
+  const worldName = level.world.name;
+  const w = WORLD_CLASSES[level.world.id];
+
   // El usuario tiene las manos en la tabla o la sartén: la pantalla no debe apagarse.
   useWakeLock(true, { mediaSessionTitle: `Cocinando: ${levelName}` });
 
@@ -109,11 +89,9 @@ export const LevelPage = ({
   }, []);
 
   const navigate = useNavigate();
-  const location = useLocation();
   const fileRef = useRef<HTMLInputElement>(null);
-  const w = WORLD_CLASSES[resolveWorld(world, worldName)];
 
-  const stepsKey = `sous_steps_${location.pathname}`;
+  const stepsKey = `sous_steps_${level.path}`;
   const [activeStep, setActiveStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(() => {
     try {
@@ -121,12 +99,30 @@ export const LevelPage = ({
       return raw ? new Set<number>(JSON.parse(raw) as number[]) : new Set();
     } catch { return new Set(); }
   });
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [uploadState, setUploadState] = useState<'idle' | 'reviewing' | 'approved' | 'rejected'>('idle');
-  const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
   const [xpEarned, setXpEarned] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const [showRecipe, setShowRecipe] = useState(false);
+
+  const photo = usePhotoEvaluation({
+    subject: levelName,
+    criteria: evaluationCriteria ?? [],
+    onSubmit: () => track(Events.LevelPhotoSubmitted, { level: levelName, world: worldName }),
+    onFail: () => track(Events.LevelEvalFailed, { level: levelName, stars: 0 }),
+    onPass: (result) => {
+      const isFirstCompletion = getLevelStars(level.path) === 0;
+      saveLevelStars(level.path, result.stars);
+      if (isFirstCompletion) addXP(xpReward);
+      setXpEarned(isFirstCompletion ? xpReward : 0);
+      track(Events.LevelCompleted, {
+        level: levelName,
+        world: worldName,
+        stars: result.stars,
+        first_completion: isFirstCompletion,
+        xp_earned: isFirstCompletion ? xpReward : 0,
+      });
+    },
+  });
+  const { image: uploadedImage, status: uploadState, result: evaluationResult } = photo;
 
   const allStepsComplete = completedSteps.size === steps.length;
   const progress = steps.length ? (completedSteps.size / steps.length) * 100 : 0;
@@ -141,54 +137,15 @@ export const LevelPage = ({
     });
   };
 
-  const handleFile = (file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const imageData = e.target?.result as string;
-      setUploadedImage(imageData);
-      setUploadState('reviewing');
-      track(Events.LevelPhotoSubmitted, { level: levelName, world: worldName });
-      let result: EvaluationResult;
-      try {
-        result = await evaluateImage(imageData, levelName, evaluationCriteria || []);
-      } catch {
-        result = { stars: 0, feedback: 'No pudimos conectar con el evaluador. Revisa tu conexión e intenta de nuevo.' };
-      }
-      setEvaluationResult(result);
-      if (!result.stars || result.stars < 1) {
-        // Foto inválida o sin comida: no se guarda progreso ni XP.
-        setUploadState('rejected');
-        track(Events.LevelEvalFailed, { level: levelName, stars: 0 });
-      } else {
-        const isFirstCompletion = getLevelStars(location.pathname) === 0;
-        saveLevelStars(location.pathname, result.stars);
-        if (isFirstCompletion) addXP(xpReward);
-        setXpEarned(isFirstCompletion ? xpReward : 0);
-        setUploadState('approved');
-        track(Events.LevelCompleted, {
-          level: levelName,
-          world: worldName,
-          stars: result.stars,
-          first_completion: isFirstCompletion,
-          xp_earned: isFirstCompletion ? xpReward : 0,
-        });
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
+    if (file) photo.submit(file);
   };
 
   const resetPhoto = () => {
-    setUploadedImage(null);
-    setUploadState('idle');
-    setEvaluationResult(null);
+    photo.reset();
     setXpEarned(0);
   };
 
@@ -461,13 +418,12 @@ export const LevelPage = ({
               <p className="text-neutral-800 text-sm mt-1">{challengeHint}</p>
             </div>
 
-            {/* capture abre la cámara trasera en móvil; en escritorio se ignora. */}
             <input
               ref={fileRef}
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handleFile(f); }}
+              onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) photo.submit(f); }}
             />
 
             <div className="p-4">

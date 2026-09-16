@@ -63,9 +63,6 @@ const RECIPE = {
 
 export const MaillardLevel = () => (
   <LevelPage
-    worldName="Valle del Fuego" worldEmoji="🔥"
-    levelNum={6} levelName="Reacción de Maillard" levelEmoji="🥩" xpReward={75}
-    world={2}
     missionText="Dorar una proteína (carne, pollo o incluso tofu) con <strong>costra Maillard pareja</strong>: color marrón dorado uniforme, crujiente al tacto, sin zonas grises. Fotografía la pieza en la sartén o en el plato."
     missionTags={[
       { icon: '⏱️', label: '~20 min' },

@@ -48,9 +48,6 @@ const ERRORS = [
 
 export const JulianaLevel = () => (
   <LevelPage
-    worldName="Isla del Cuchillo" worldEmoji="🔪"
-    levelNum={1} levelName="Corte Juliana" levelEmoji="🥕" xpReward={50}
-    world={1}
     missionText="Cortar <strong>una zanahoria o calabacín entero</strong> en bastones <strong>Juliana uniformes</strong>: 3 mm × 3 mm × 6 cm. Fotografía tu resultado en la tabla y súbelo para completar el nivel."
     missionTags={[
       { icon: '⏱️', label: '~20 min' },

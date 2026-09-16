@@ -1,11 +1,10 @@
 /**
- * Mapa del Modo Aventura: un SVG de ~2950 px de alto con 5 mundos y 20 niveles
- * unidos por una carretera en S.
+ * Mapa del Modo Aventura: un SVG de ~2950 px de alto con los mundos y niveles de
+ * `data/adventure.ts` unidos por una carretera en S.
  *
- * - Un nivel se desbloquea cuando el anterior tiene al menos 1 estrella.
- * - Los mundos 3 a 5 muestran un bloqueo de Premium si el usuario no está suscrito.
+ * - Estado de cada nivel (completado, disponible, bloqueado): `getLevelStatus`.
+ * - Los mundos Premium muestran un bloqueo si el usuario no está suscrito.
  * - El aviso de primera visita se oculta para siempre con `sous_map_onboarding_seen`.
- * - Las estrellas por nivel se leen de `localStorage['sous_level_stars']`.
  */
 
 import { useState } from 'react';
@@ -15,82 +14,17 @@ import { Trophy, Star, X } from 'lucide-react';
 import { isPremiumUser } from '../utils/membership';
 import { Dialog } from './ui/Dialog';
 import { ScreenHeader } from './ui/ScreenHeader';
-
-// Índices 0-based: Mar de Sabores, Pico del Maestro, Castillo del Chef.
-const PREMIUM_WORLDS = new Set([2, 3, 4]);
-
-interface GameLevel {
-  id: number;
-  name: string;
-  emoji: string;
-  type: 'normal' | 'boss';
-  stars?: number;
-  xp: number;
-  path?: string;
-}
-
-interface World {
-  id: 1 | 2 | 3 | 4 | 5;
-  name: string;
-  subtitle: string;
-  emoji: string;
-  levels: GameLevel[];
-}
-
-const WORLDS: World[] = [
-  {
-    id: 1, name: 'Isla del Cuchillo', subtitle: 'Técnicas de corte', emoji: '🔪',
-    levels: [
-      { id: 1,  name: 'Juliana',          emoji: '🥕', type: 'normal', stars: 3, xp: 50,  path: '/mapa/juliana' },
-      { id: 2,  name: 'Brunoise',         emoji: '🧅', type: 'normal', stars: 3, xp: 50,  path: '/mapa/brunoise' },
-      { id: 3,  name: 'Chiffonade',       emoji: '🌿', type: 'normal', stars: 2, xp: 50,  path: '/mapa/chiffonade' },
-      { id: 4,  name: 'Chef Vegetal',     emoji: '🥦', type: 'boss',   stars: 1, xp: 200, path: '/mapa/chef-vegetal' },
-    ],
-  },
-  {
-    id: 2, name: 'Valle del Fuego', subtitle: 'Salsas y calor', emoji: '🔥',
-    levels: [
-      { id: 5,  name: 'Sofrito',          emoji: '🧄', type: 'normal', stars: 3, xp: 75,  path: '/mapa/sofrito' },
-      { id: 6,  name: 'Maillard',         emoji: '🥩', type: 'normal', stars: 2, xp: 75,  path: '/mapa/maillard' },
-      { id: 7,  name: 'Emulsión',         emoji: '🥚', type: 'normal', stars: 1, xp: 75,  path: '/mapa/emulsion' },
-      { id: 8,  name: 'El Flambeador',    emoji: '🍳', type: 'boss',   stars: 0, xp: 250, path: '/mapa/flambeador' },
-    ],
-  },
-  {
-    id: 3, name: 'Mar de Sabores', subtitle: 'Fondos y caldos', emoji: '🌊',
-    levels: [
-      { id: 9,  name: 'Fondo Blanco',     emoji: '🍲', type: 'normal', stars: 0, xp: 100, path: '/mapa/fondo-blanco' },
-      { id: 10, name: 'Fondo Oscuro',     emoji: '🥣', type: 'normal', stars: 0, xp: 100, path: '/mapa/fondo-oscuro' },
-      { id: 11, name: 'Fumet',            emoji: '🐟', type: 'normal', stars: 0, xp: 100, path: '/mapa/fumet' },
-      { id: 12, name: 'Maestro Salsas',   emoji: '🫕', type: 'boss',   stars: 0, xp: 300, path: '/mapa/maestro-salsas' },
-    ],
-  },
-  {
-    id: 4, name: 'Pico del Maestro', subtitle: 'Técnicas avanzadas', emoji: '🏔️',
-    levels: [
-      { id: 13, name: 'Sous-Vide',        emoji: '🌡️', type: 'normal', stars: 0, xp: 150, path: '/mapa/sous-vide' },
-      { id: 14, name: 'Esferificación',   emoji: '⚗️', type: 'normal', stars: 0, xp: 150, path: '/mapa/esferificacion' },
-      { id: 15, name: 'Fermentación',     emoji: '🍞', type: 'normal', stars: 0, xp: 150, path: '/mapa/fermentacion' },
-      { id: 16, name: 'El Alquimista',    emoji: '🔬', type: 'boss',   stars: 0, xp: 400, path: '/mapa/alquimista' },
-    ],
-  },
-  {
-    id: 5, name: 'Castillo del Chef', subtitle: 'Alta cocina', emoji: '👑',
-    levels: [
-      { id: 17, name: 'Menú Degustación', emoji: '🍽️', type: 'normal', stars: 0, xp: 200, path: '/mapa/menu-degustacion' },
-      { id: 18, name: 'Maridaje',         emoji: '🍷', type: 'normal', stars: 0, xp: 200, path: '/mapa/maridaje' },
-      { id: 19, name: 'Alta Cocina',      emoji: '🥂', type: 'normal', stars: 0, xp: 200, path: '/mapa/alta-cocina' },
-      { id: 20, name: 'El Gran Chef',     emoji: '👨‍🍳', type: 'boss',   stars: 0, xp: 1000, path: '/mapa/gran-chef' },
-    ],
-  },
-];
+import { WORLDS, LEVELS, getLevelStatus, readLevelStars } from '../data/adventure';
+import type { PlacedLevel, LevelStatus } from '../data/adventure';
+import { WORLD_CLASSES } from '../data/worlds';
+import { WORLD_TOKENS } from '../data/worldTokens';
 
 const SVG_W    = 300;
 const BANNER_H = 88;
 const NODE_STEP = 122;
 const WORLD_H  = BANNER_H + 4 * NODE_STEP;
 const PAD_BOT  = 70;
-const SVG_H    = 5 * WORLD_H + PAD_BOT;
+const SVG_H    = WORLDS.length * WORLD_H + PAD_BOT;
 
 // Posición X de cada nivel: dibuja la S. El mundo 4 va en espejo para variar.
 const XPOS = [
@@ -101,39 +35,7 @@ const XPOS = [
   240, 150,  60, 150,
 ];
 
-// El SVG no puede usar clases de Tailwind: repite en hex los tokens world-N
-// (main = DEFAULT, bg = soft, glow = line) más un tono oscuro para bordes y texto.
-const WCOLS = [
-  { bg: '#ecfdf5', glow: '#a7f3d0', main: '#047857', dark: '#065f46', label: '#064e3b' },
-  { bg: '#fef2f2', glow: '#fecaca', main: '#b91c1c', dark: '#991b1b', label: '#7f1d1d' },
-  { bg: '#eff6ff', glow: '#bfdbfe', main: '#1d4ed8', dark: '#1e40af', label: '#1e3a8a' },
-  { bg: '#f1f5f9', glow: '#cbd5e1', main: '#334155', dark: '#1e293b', label: '#0f172a' },
-  { bg: '#fffbeb', glow: '#fde68a', main: '#92400e', dark: '#78350f', label: '#78350f' },
-];
-
-// Clases completas escritas a mano: Tailwind no genera clases armadas en runtime.
-const WORLD_BTN: Record<World['id'], string> = {
-  1: 'bg-world-1',
-  2: 'bg-world-2',
-  3: 'bg-world-3',
-  4: 'bg-world-4',
-  5: 'bg-world-5',
-};
-
 const FONT = 'Plus Jakarta Sans, sans-serif';
-
-const ALL_LEVELS = WORLDS.flatMap(w => w.levels);
-
-type LevelStatus = 'completed' | 'active' | 'locked';
-
-function getLevelStatus(level: GameLevel, starsMap: Record<string, number>): LevelStatus {
-  if ((starsMap[level.path ?? ''] ?? 0) > 0) return 'completed';
-  const idx = ALL_LEVELS.findIndex(l => l.id === level.id);
-  const prev = ALL_LEVELS[idx - 1];
-  if (!prev) return 'active';
-  if ((starsMap[prev.path ?? ''] ?? 0) > 0) return 'active';
-  return 'locked';
-}
 
 function getPos(i: number): { x: number; y: number } {
   const w = Math.floor(i / 4);
@@ -154,12 +56,6 @@ function buildPath(pts: { x: number; y: number }[]): string {
   return d;
 }
 
-function readStars(): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem('sous_level_stars') || '{}') as Record<string, number>;
-  } catch { return {}; }
-}
-
 // Los <g> del SVG hacen de botón: Enter y espacio deben activarlos como a uno real.
 const onActivateKey = (action: () => void) => (e: KeyboardEvent) => {
   if (e.key === 'Enter' || e.key === ' ') {
@@ -169,22 +65,21 @@ const onActivateKey = (action: () => void) => (e: KeyboardEvent) => {
 };
 
 const LevelModal = ({
-  level, wi, status, stars, onClose, onNavigate,
+  level, status, stars, onClose, onNavigate,
 }: {
-  level: GameLevel;
-  wi: number;
+  level: PlacedLevel;
   status: LevelStatus;
   stars: number;
   onClose: () => void;
   onNavigate: (path: string) => void;
 }) => {
-  const isBoss = level.type === 'boss';
-  const world = WORLDS[wi];
+  const isBoss = level.kind === 'boss';
+  const { world } = level;
 
   return (
     <Dialog
       title={level.name}
-      description={`Nivel ${level.id} · ${world.name}`}
+      description={`Nivel ${level.num} · ${world.name}`}
       onClose={onClose}
       size="sm"
       footer={
@@ -199,11 +94,11 @@ const LevelModal = ({
           <button
             type="button"
             disabled={status === 'locked'}
-            onClick={() => level.path && onNavigate(level.path)}
+            onClick={() => onNavigate(level.path)}
             className={`flex-1 min-h-11 rounded-control font-semibold text-sm transition-opacity ${
               status === 'locked'
                 ? 'bg-neutral-200 text-neutral-600 cursor-not-allowed'
-                : `${WORLD_BTN[world.id]} text-white hover:opacity-90`
+                : `${WORLD_CLASSES[world.id].bg} text-white hover:opacity-90`
             }`}
           >
             {status === 'completed' ? 'Repetir nivel' : status === 'active' ? 'Empezar nivel' : 'Bloqueado'}
@@ -251,7 +146,7 @@ const LevelModal = ({
 };
 
 export const SkillTreeMap = () => {
-  const [selected, setSelected] = useState<{ level: GameLevel; wi: number } | null>(null);
+  const [selected, setSelected] = useState<PlacedLevel | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return !localStorage.getItem('sous_map_onboarding_seen'); } catch { return false; }
   });
@@ -259,12 +154,12 @@ export const SkillTreeMap = () => {
   const isPremium = isPremiumUser();
 
   // Se lee en cada render: al volver de un nivel el mapa se monta de nuevo.
-  const starsMap = readStars();
+  const starsMap = readLevelStars();
 
-  const pts = ALL_LEVELS.map((_, i) => getPos(i));
+  const pts = LEVELS.map((_, i) => getPos(i));
   const pathD = buildPath(pts);
 
-  const completed = ALL_LEVELS.filter(l => (starsMap[l.path ?? ''] ?? 0) > 0).length;
+  const completed = LEVELS.filter(l => (starsMap[l.path] ?? 0) > 0).length;
   const user = (() => {
     try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
   })();
@@ -278,7 +173,7 @@ export const SkillTreeMap = () => {
     <div className="w-full h-full flex flex-col bg-neutral-50">
       <ScreenHeader
         title="Modo Aventura"
-        subtitle={`${completed} de ${ALL_LEVELS.length} niveles`}
+        subtitle={`${completed} de ${LEVELS.length} niveles`}
         actions={
           <span className="flex items-center gap-1.5 pr-3 text-sm font-semibold text-neutral-900 whitespace-nowrap">
             <Trophy size={16} className="text-brand-700" aria-hidden />
@@ -325,8 +220,8 @@ export const SkillTreeMap = () => {
             </filter>
           </defs>
 
-          {WORLDS.map((_, w) => (
-            <rect key={w} x={0} y={w * WORLD_H} width={SVG_W} height={WORLD_H} fill={WCOLS[w].bg} />
+          {WORLDS.map((world, w) => (
+            <rect key={world.id} x={0} y={w * WORLD_H} width={SVG_W} height={WORLD_H} fill={WORLD_TOKENS[world.id].soft} />
           ))}
 
           {/* La carretera va antes que los banners para que parezca entrar en ellos. */}
@@ -341,13 +236,13 @@ export const SkillTreeMap = () => {
             const by = w * WORLD_H + 10;
             const bh = BANNER_H - 20;
             const bw = SVG_W - 20;
-            const done = world.levels.filter(l => (starsMap[l.path ?? ''] ?? 0) > 0).length;
+            const done = world.levels.filter(l => (starsMap[l.path] ?? 0) > 0).length;
             const pBarW = bw - 70;
             const pBarFill = pBarW * (done / world.levels.length);
 
             return (
-              <g key={w}>
-                <rect x={10} y={by} width={bw} height={bh} rx={13} fill={WCOLS[w].main} />
+              <g key={world.id}>
+                <rect x={10} y={by} width={bw} height={bh} rx={13} fill={WORLD_TOKENS[world.id].main} />
                 <text x={32} y={by + bh / 2 + 1} textAnchor="middle" dominantBaseline="central"
                   fontSize={22} aria-hidden>{world.emoji}</text>
                 <text x={52} y={by + 17} fontSize={12} fontWeight="800" fill="white"
@@ -363,14 +258,13 @@ export const SkillTreeMap = () => {
             );
           })}
 
-          {ALL_LEVELS.map((level, i) => {
+          {LEVELS.map((level, i) => {
             const { x, y } = getPos(i);
-            const wi = Math.floor(i / 4);
-            const wc = WCOLS[wi];
-            const isBoss = level.type === 'boss';
-            const status = getLevelStatus(level, starsMap);
+            const wc = WORLD_TOKENS[level.world.id];
+            const isBoss = level.kind === 'boss';
+            const status = getLevelStatus(level.path, starsMap);
             const r = isBoss ? 33 : 26;
-            const stars = starsMap[level.path ?? ''] ?? 0;
+            const stars = starsMap[level.path] ?? 0;
 
             const fill   = status === 'completed' ? wc.main : status === 'active' ? 'white' : '#404040';
             const stroke = status === 'completed' ? wc.dark : status === 'active' ? wc.main : '#525252';
@@ -380,7 +274,7 @@ export const SkillTreeMap = () => {
             const hasBadge = status === 'active';
             // Debajo de la insignia (16 px) o de las estrellas, sin tocarlas.
             const labelY   = y + r + (hasBadge ? 33 : hasStars ? 27 : 14);
-            const open = () => setSelected({ level, wi });
+            const open = () => setSelected(level);
             const interactive = status !== 'locked';
             const statusText = status === 'completed'
               ? `completado, ${stars} de 3 estrellas`
@@ -388,17 +282,17 @@ export const SkillTreeMap = () => {
 
             return (
               <g
-                key={level.id}
+                key={level.path}
                 onClick={interactive ? open : undefined}
                 onKeyDown={interactive ? onActivateKey(open) : undefined}
                 role={interactive ? 'button' : 'img'}
                 tabIndex={interactive ? 0 : undefined}
-                aria-label={`${level.name}, ${isBoss ? 'jefe' : `nivel ${level.id}`}, ${statusText}`}
+                aria-label={`${level.name}, ${isBoss ? 'jefe' : `nivel ${level.num}`}, ${statusText}`}
                 style={{ cursor: interactive ? 'pointer' : 'default', outline: 'none' }}
                 className="[&:focus-visible>circle.node]:stroke-brand-700 [&:focus-visible>circle.node]:[stroke-width:5px]"
               >
                 {status === 'active' && (
-                  <circle cx={x} cy={y} r={r + 10} fill={wc.glow} opacity={0.6} filter="url(#activeGlow)" />
+                  <circle cx={x} cy={y} r={r + 10} fill={wc.line} opacity={0.6} filter="url(#activeGlow)" />
                 )}
 
                 {isBoss && status !== 'locked' && (
@@ -438,12 +332,12 @@ export const SkillTreeMap = () => {
           })}
 
           {!isPremium && WORLDS.map((world, w) => {
-            if (!PREMIUM_WORLDS.has(w)) return null;
+            if (!world.premium) return null;
             const oy = w * WORLD_H;
             const goPremium = () => navigate('/membresia');
             return (
               <g
-                key={`plock-${w}`}
+                key={`plock-${world.id}`}
                 onClick={goPremium}
                 onKeyDown={onActivateKey(goPremium)}
                 role="button"
@@ -474,10 +368,9 @@ export const SkillTreeMap = () => {
 
       {selected && (
         <LevelModal
-          level={selected.level}
-          wi={selected.wi}
-          status={getLevelStatus(selected.level, starsMap)}
-          stars={starsMap[selected.level.path ?? ''] ?? 0}
+          level={selected}
+          status={getLevelStatus(selected.path, starsMap)}
+          stars={starsMap[selected.path] ?? 0}
           onClose={() => setSelected(null)}
           onNavigate={path => { setSelected(null); navigate(path); }}
         />

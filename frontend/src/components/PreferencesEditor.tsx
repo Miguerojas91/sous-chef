@@ -6,7 +6,7 @@
  * - `modal`: diálogo con Cancelar/Guardar. Solo persiste al guardar (`onSave`).
  */
 import React, { useId, useState } from 'react';
-import { RECIPE_FILTERS, getFilter } from '../data/recipeFilters';
+import { RECIPE_FILTERS } from '../data/recipeFilters';
 import { X } from 'lucide-react';
 import { Dialog } from './ui/Dialog';
 
@@ -237,15 +237,3 @@ const TagInput: React.FC<{
     </section>
   );
 };
-
-/** Resumen corto de las preferencias activas, para banners y el perfil. */
-export function summarizePreferences(filterIds: string[], allergies: string[], dislikes: string[]): string[] {
-  const parts: string[] = [];
-  for (const id of filterIds) {
-    const f = getFilter(id);
-    if (f) parts.push(f.label);
-  }
-  if (allergies.length > 0) parts.push(`${allergies.length} alergia${allergies.length > 1 ? 's' : ''}`);
-  if (dislikes.length > 0) parts.push(`${dislikes.length} que no te gusta${dislikes.length > 1 ? 'n' : ''}`);
-  return parts;
-}

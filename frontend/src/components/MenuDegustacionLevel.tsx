@@ -61,9 +61,6 @@ const RECIPE = {
 
 export const MenuDegustacionLevel = () => (
   <LevelPage
-    worldName="Castillo del Chef" worldEmoji="👑"
-    levelNum={17} levelName="Menú Degustación" levelEmoji="🍽️" xpReward={200}
-    world={5}
     missionText="Diseñar y preparar un <strong>menú degustación de 3–4 tiempos</strong> con coherencia temática, progresión de sabores y emplatado profesional. Fotografía cada tiempo emplatado."
     missionTags={[
       { icon: '🍽️', label: '3–4 tiempos' },

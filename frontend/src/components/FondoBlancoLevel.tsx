@@ -64,9 +64,6 @@ const RECIPE = {
 
 export const FondoBlancoLevel = () => (
   <LevelPage
-    worldName="Mar de Sabores" worldEmoji="🌊"
-    levelNum={9} levelName="Fondo Blanco" levelEmoji="🍲" xpReward={100}
-    world={3}
     missionText="Preparar un <strong>fondo blanco de pollo</strong> transparente y gelatinoso. El fondo debe quedar claro (no turbio) y gelatinizar al enfriar. Fotografía el fondo en un vaso transparente para ver su claridad."
     missionTags={[
       { icon: '⏱️', label: '3–4 horas' },

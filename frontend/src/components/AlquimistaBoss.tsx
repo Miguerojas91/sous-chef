@@ -64,14 +64,7 @@ const RECIPE: BossRecipe = {
 
 export const AlquimistaBoss = () => (
   <BossPage
-    bossName="El Alquimista"
-    bossEmoji="🔬"
     bossSubtitle="Guardián del Pico del Maestro"
-    levelNum={16}
-    worldName="Pico del Maestro"
-    worldEmoji="🏔️"
-    xpReward={400}
-    world={4}
     quote="63 °C durante 60 minutos, 90 segundos en el baño de calcio, 48 horas de fermentación. Aquí se cocina con termómetro y cronómetro: anota tus tiempos y respétalos."
     requirement="Requisito: sous-vide, esferificación y fermentación"
     nextWorld="Castillo del Chef desbloqueado"

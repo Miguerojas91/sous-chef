@@ -1,10 +1,10 @@
-/** FondoBlancoLevel.tsx — Nivel 9, Mundo 3: Mar de Sabores (Premium). Elaboración de fondo blanco de ternera. */
+/** Nivel 9, Mundo 3: Mar de Sabores (Premium). Fondo blanco (receta con pollo). */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [
   {
     num: 1, title: 'Qué es un fondo y por qué importa', emoji: '🍲',
-    desc: 'Un fondo blanco (fond blanc) es la base líquida de la cocina clásica francesa. Se hace hirviendo huesos crudos, mirepoix (cebolla, zanahoria, apio) y bouquet garni en agua fría. "Blanco" porque los huesos NO se tuestan. El resultado es un caldo claro, delicado y lleno de colágeno.',
+    desc: 'Un fondo blanco (fond blanc) es la base líquida de la cocina clásica francesa. Se hace hirviendo huesos crudos, mirepoix (cebolla, zanahoria, apio) y bouquet garni en agua fría. "Blanco" porque los huesos no se tuestan. El resultado es un caldo claro, delicado y lleno de colágeno.',
     tip: 'El fondo no se sala. Funciona como ingrediente base que luego se reduce y se integra en salsas, risottos y guisos. Si lo salamos, al reducirlo se vuelve insoportablemente salado.',
   },
   {
@@ -15,12 +15,12 @@ const STEPS = [
   {
     num: 3, title: 'Mirepoix y bouquet garni', emoji: '🥕',
     desc: 'Corta en mirepoix: 2 partes cebolla, 1 parte zanahoria, 1 parte apio (en trozos de 3–4 cm, no hay que ser preciso). Prepara el bouquet garni: ata en un manojo perejil, tomillo, laurel y puerro. Añade todo a la olla con los huesos limpios y agua fría.',
-    tip: 'El mirepoix para fondos no requiere brunoise ni juliana — se desecha al final. Los trozos grandes liberan sus sabores lentamente durante las horas de cocción.',
+    tip: 'El mirepoix para fondos no requiere brunoise ni juliana: se desecha al final. Los trozos grandes liberan sus sabores lentamente durante las horas de cocción.',
   },
   {
     num: 4, title: 'Cocción lenta: temperatura y control', emoji: '🌡️',
-    desc: 'Lleva a hervor y baja inmediatamente al mínimo. Un buen fondo NUNCA hierve a borbotones. Debe hacer apenas pequeñas burbujas en superficie (lo que los franceses llaman "sofrír"). Cocina sin tapa durante 2–4 horas. Desespuma cada 30 minutos.',
-    tip: 'La agitación del hervor fuerte hace que el fondo quede turbio. Las proteínas coaguladas se fragmentan con el movimiento y enturbian el líquido. Fuego MUY bajo = fondo cristalino.',
+    desc: 'Lleva a hervor y baja inmediatamente al mínimo. Un buen fondo nunca hierve a borbotones. Debe hacer apenas pequeñas burbujas en superficie (lo que los franceses llaman "frémir"). Cocina sin tapa durante 2–4 horas. Desespuma cada 30 minutos.',
+    tip: 'La agitación del hervor fuerte hace que el fondo quede turbio. Las proteínas coaguladas se fragmentan con el movimiento y enturbian el líquido. Con fuego muy bajo, el fondo queda cristalino.',
   },
   {
     num: 5, title: 'Colar, enfriar y desgrasar', emoji: '🧊',
@@ -38,7 +38,7 @@ const ERRORS = [
 
 const RECIPE = {
   name: 'Velouté de Pollo (salsa madre con fondo blanco)',
-  description: 'El fondo se convierte en salsa Velouté: una de las 5 salsas madre de Escoffier. Base del bechamel y decenas de salsas clásicas.',
+  description: 'El fondo se convierte en salsa Velouté: una de las 5 salsas madre de Escoffier y base de muchas salsas clásicas.',
   servings: '4 personas',
   time: '3–4 horas',
   difficulty: '⭐⭐⭐',
@@ -55,7 +55,7 @@ const RECIPE = {
   method: [
     'Blanquea los huesos: cubre con agua fría, hierve 5 min, escurre y lava.',
     'Coloca huesos limpios, vegetales y agua fría en olla grande. Lleva a hervor.',
-    'Baja al mínimo. Desespuma. Cocina a fuego MUY bajo 3 horas sin tapa.',
+    'Baja al mínimo. Desespuma. Cocina a fuego muy bajo 3 horas sin tapa.',
     'Cuela sin presionar. Enfría en baño de hielo. Refrigera y desgrasa.',
     '(Velouté) Derrite mantequilla, agrega harina, cocina el roux 2 min.',
     'Agrega fondo caliente poco a poco batiendo hasta conseguir salsa suave y brillante.',
@@ -66,11 +66,7 @@ export const FondoBlancoLevel = () => (
   <LevelPage
     worldName="Mar de Sabores" worldEmoji="🌊"
     levelNum={9} levelName="Fondo Blanco" levelEmoji="🍲" xpReward={100}
-    gradientFrom="from-blue-500" gradientTo="to-cyan-600"
-    accentBg="bg-blue-50" accentBorder="border-blue-200"
-    accentText="text-blue-700" accentDark="text-blue-800"
-    stepActiveBg="bg-blue-100" stepActiveTxt="text-blue-700"
-    btnBg="bg-blue-500 hover:bg-blue-600" btnShadow="shadow-blue-500/30"
+    world={3}
     missionText="Preparar un <strong>fondo blanco de pollo</strong> transparente y gelatinoso. El fondo debe quedar claro (no turbio) y gelatinizar al enfriar. Fotografía el fondo en un vaso transparente para ver su claridad."
     missionTags={[
       { icon: '⏱️', label: '3–4 horas' },

@@ -1,26 +1,26 @@
-/** FumetLevel.tsx — Nivel 11, Mundo 3: Mar de Sabores (Premium). Elaboración de fumet de pescado. */
+/** Nivel 11, Mundo 3: Mar de Sabores (Premium). Elaboración de fumet de pescado. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [
   {
     num: 1, title: 'Qué es el fumet y por qué es diferente', emoji: '🐟',
     desc: 'El fumet de pescado (fumet de poisson) es el fondo base del mar. A diferencia del fondo de carne, el fumet se cocina solo 20–25 minutos. Las espinas de pescado, si se cocinan más, liberan un sabor amargo y gelatinoso desagradable. Rapidez es la clave.',
-    tip: 'El fumet usa espinas de pescados blancos: lenguado, lubina, rodaballo, merluza. NUNCA azules como sardina o salmón — sus aceites enturbian y amargan el fondo en minutos.',
+    tip: 'El fumet usa espinas de pescados blancos: lenguado, lubina, rodaballo, merluza. Evita los pescados azules como sardina o salmón: sus aceites enturbian y amargan el fondo en minutos.',
   },
   {
     num: 2, title: 'Preparar las espinas: limpiar y desangrar', emoji: '🔪',
     desc: 'Lava las espinas bajo agua fría corriente durante 10 minutos para eliminar la sangre que generaría turbidez y amargor. Retira las agallas (si hay) porque amargan mucho. Trocea las espinas y las cabezas para que quepan en la olla y liberen mejor su sabor.',
-    tip: 'El agua del lavado debe salir clara antes de pasar al siguiente paso. Si el agua sigue roja, lava más tiempo. La sangre = turbidez + amargor. No hay atajo aquí.',
+    tip: 'El agua del lavado debe salir clara antes de pasar al siguiente paso. Si el agua sigue roja, lava más tiempo. La sangre enturbia y amarga el fumet.',
   },
   {
     num: 3, title: 'Sudar la mirepoix de mariscos', emoji: '🥂',
-    desc: 'En la olla, derrite mantequilla a fuego suave. Suda (cocina sin color) la mirepoix blanca: cebolla, apio, puerro — sin zanahoria porque añade color y dulzor. 5 minutos hasta translúcida. Agrega las espinas y suda 5 minutos más.',
+    desc: 'En la olla, derrite mantequilla a fuego suave. Suda (cocina sin color) la mirepoix blanca: cebolla, apio y puerro, sin zanahoria porque añade color y dulzor. 5 minutos hasta translúcida. Agrega las espinas y suda 5 minutos más.',
     tip: 'La mirepoix blanca (sin zanahoria ni tomate) es la base del fumet clásico, que debe quedar claro y de color paja. Con zanahoria se oscurece y cambia el perfil de sabor.',
   },
   {
     num: 4, title: 'Vino blanco y agua: la cocción de 20 min', emoji: '🍾',
     desc: 'Agrega vino blanco seco (150 ml), lleva a hervor y reduce 2 minutos para evaporar el alcohol. Agrega agua fría y el bouquet garni (laurel, perejil, eneldo). Sube a hervor suave, desespuma y cocina exactamente 20 minutos. No más.',
-    tip: 'El eneldo es el compañero clásico del pescado. Si no tienes, usa solo perejil y laurel. El tiempo de 20 min no es sugerencia — es la diferencia entre fumet elegante y caldo amargo.',
+    tip: 'El eneldo es el compañero clásico del pescado. Si no tienes, usa solo perejil y laurel. Respeta los 20 minutos: si te pasas, el caldo se vuelve amargo.',
   },
   {
     num: 5, title: 'Colar fino y usar inmediatamente', emoji: '✨',
@@ -38,7 +38,7 @@ const ERRORS = [
 
 const RECIPE = {
   name: 'Chupe de Mariscos con Fumet Artesanal',
-  description: 'El chupe es la aplicación reina del fumet. Un caldo rico de mariscos que muestra la diferencia entre usar agua de grifo y un fumet bien hecho.',
+  description: 'Un caldo de mariscos donde se nota la diferencia entre usar agua de grifo y un fumet bien hecho.',
   servings: '4 personas',
   time: '45 min + 20 min fumet',
   difficulty: '⭐⭐⭐',
@@ -68,11 +68,7 @@ export const FumetLevel = () => (
   <LevelPage
     worldName="Mar de Sabores" worldEmoji="🌊"
     levelNum={11} levelName="Fumet de Pescado" levelEmoji="🐟" xpReward={100}
-    gradientFrom="from-blue-500" gradientTo="to-cyan-600"
-    accentBg="bg-blue-50" accentBorder="border-blue-200"
-    accentText="text-blue-700" accentDark="text-blue-800"
-    stepActiveBg="bg-blue-100" stepActiveTxt="text-blue-700"
-    btnBg="bg-blue-500 hover:bg-blue-600" btnShadow="shadow-blue-500/30"
+    world={3}
     missionText="Preparar un <strong>fumet de pescado blanco</strong> limpio y translúcido: color paja, aroma marino limpio, sin amargores. Fotografía el fumet colado en un vaso o tazón claro."
     missionTags={[
       { icon: '⏱️', label: '20 minutos exactos' },

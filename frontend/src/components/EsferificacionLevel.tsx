@@ -1,21 +1,21 @@
-/** EsferificacionLevel.tsx — Nivel 14, Mundo 4: Pico del Maestro (Premium). Esferificación básica e inversa. */
+/** Nivel 14, Mundo 4: Pico del Maestro (Premium). Esferificación básica e inversa. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [
   {
     num: 1, title: 'La ciencia: alginato de sodio y calcio', emoji: '🔬',
-    desc: 'La esferificación es una técnica de cocina molecular creada por Ferran Adrià. Mezclas un líquido con alginato de sodio y lo introduces en un baño de cloruro de calcio. La reacción química crea una membrana gelificada que encierra el líquido en una esfera que "explota" en la boca.',
+    desc: 'La esferificación es una técnica de cocina molecular popularizada por Ferran Adrià. Mezclas un líquido con alginato de sodio y lo introduces en un baño de cloruro de calcio. La reacción química crea una membrana gelificada que encierra el líquido en una esfera que "explota" en la boca.',
     tip: 'Hay dos tipos: esferificación directa (alginato en el líquido) y esferificación inversa (calcio en el líquido). La inversa es más estable y funciona mejor con productos lácteos y alcoholes.',
   },
   {
     num: 2, title: 'Preparar el baño de alginato', emoji: '⚗️',
-    desc: 'Para la esferificación directa: disuelve 2g de alginato de sodio en 500ml de líquido (jugo, caldos, purés) con batidora de mano. Deja reposar 30 minutos en nevera para que desaparezcan las burbujas. El líquido sin burbujas da esferas perfectas.',
-    tip: 'El alginato no se disuelve bien en frío — bate con batidora de inmersión durante 3 minutos mínimo. Las burbujas en el líquido = esferas irregulares con agujeros. El reposo en nevera es obligatorio.',
+    desc: 'Para la esferificación directa: disuelve 2g de alginato de sodio en 500ml de líquido (jugo, caldos, purés) con batidora de mano. Deja reposar 30 minutos en nevera para que desaparezcan las burbujas. El líquido sin burbujas da esferas lisas.',
+    tip: 'El alginato no se disuelve bien en frío: bate con batidora de inmersión durante 3 minutos mínimo. Si quedan burbujas, las esferas salen irregulares y con agujeros. El reposo en nevera es obligatorio.',
   },
   {
     num: 3, title: 'Preparar el baño de calcio', emoji: '🛁',
     desc: 'Disuelve 5g de cloruro de calcio en 500ml de agua limpia. Mezcla bien hasta disolver completamente. Este es el baño donde sumergirás las esferas. Usa agua helada para que la membrana se forme más lentamente y resulte más uniforme.',
-    tip: 'El baño de calcio no cambia de temperatura durante el proceso. Puedes reutilizarlo para varias tandas de esferas. Cambiarlo cuando se vuelva viscoso.',
+    tip: 'El baño de calcio no cambia de temperatura durante el proceso. Puedes reutilizarlo para varias tandas de esferas. Cámbialo cuando se vuelva viscoso.',
   },
   {
     num: 4, title: 'Formar las esferas: la técnica de gota', emoji: '💧',
@@ -24,7 +24,7 @@ const STEPS = [
   },
   {
     num: 5, title: 'Enjuagar y servir inmediatamente', emoji: '✨',
-    desc: 'Rescata las esferas con una cuchara perforada y enjuágalas suavemente en un baño de agua limpia para retirar el exceso de calcio (que da sabor amargo). Sirve INMEDIATAMENTE. Las esferas de esferificación directa siguen gelificando con el tiempo y en pocas horas son sólidas.',
+    desc: 'Rescata las esferas con una cuchara perforada y enjuágalas suavemente en un baño de agua limpia para retirar el exceso de calcio (que da sabor amargo). Sirve de inmediato. Las esferas de esferificación directa siguen gelificando con el tiempo y en pocas horas son sólidas.',
     tip: 'Las esferas de esferificación inversa (con yogur, nata o productos grasos) son más estables y pueden prepararse con más anticipación. Para el servicio en restaurante, la inversa es más práctica.',
   },
 ];
@@ -38,7 +38,7 @@ const ERRORS = [
 
 const RECIPE = {
   name: 'Esferas de Mango con Menta (Esferificación Directa)',
-  description: 'Un clásico de la cocina molecular: jugo de mango en pequeñas esferas que estallan en la boca. Perfecto como garnish de postres o cócteles.',
+  description: 'Un clásico de la cocina molecular: jugo de mango en pequeñas esferas que estallan en la boca. Sirve como garnish de postres o cócteles.',
   servings: '20 esferas',
   time: '45 min',
   difficulty: '⭐⭐⭐⭐',
@@ -64,12 +64,8 @@ export const EsferificacionLevel = () => (
   <LevelPage
     worldName="Pico del Maestro" worldEmoji="🏔️"
     levelNum={14} levelName="Esferificación" levelEmoji="⚗️" xpReward={150}
-    gradientFrom="from-violet-500" gradientTo="to-purple-700"
-    accentBg="bg-violet-50" accentBorder="border-violet-200"
-    accentText="text-violet-700" accentDark="text-violet-800"
-    stepActiveBg="bg-violet-100" stepActiveTxt="text-violet-700"
-    btnBg="bg-violet-500 hover:bg-violet-600" btnShadow="shadow-violet-500/30"
-    missionText="Crear <strong>esferas perfectas</strong> mediante esferificación directa: membrana fina, interior líquido que explote en boca, sin huecos ni forma irregular. Fotografía las esferas en una cuchara o plato."
+    world={4}
+    missionText="Crear <strong>esferas redondas</strong> mediante esferificación directa: membrana fina, interior líquido que explote en boca, sin huecos ni forma irregular. Fotografía las esferas en una cuchara o plato."
     missionTags={[
       { icon: '⚗️', label: 'Cocina molecular' },
       { icon: '⏱️', label: '~45 min' },

@@ -1,21 +1,21 @@
-/** ChefVegetalBoss.tsx — Jefe 4, Mundo 1: Isla del Cuchillo. Desafío maestro de cortes vegetales combinados. */
+/** Jefe del nivel 4 (Isla del Cuchillo): juliana, brunoise y chiffonade en un mismo reto. */
 import { BossPage } from './BossPage';
 import type { BossRecipe } from './BossPage';
 
 const CHALLENGES = [
   {
     id: 1, emoji: '🥕', name: 'Juliana de Zanahoria',
-    desc: 'Corta una zanahoria entera en juliana perfecta: bastones de 3 mm × 3 mm × 6 cm.',
+    desc: 'Corta una zanahoria entera en juliana: bastones de 3 mm × 3 mm × 6 cm.',
     eval: 'Uniformidad de bastones y longitud constante.',
   },
   {
     id: 2, emoji: '🧅', name: 'Brunoise de Cebolla',
-    desc: 'Corta media cebolla en brunoise: cubos de 2–3 mm perfectamente uniformes.',
+    desc: 'Corta media cebolla en brunoise: cubos de 2 a 3 mm, todos del mismo tamaño.',
     eval: 'Todos los cubos del mismo tamaño, sin irregularidades.',
   },
   {
     id: 3, emoji: '🌿', name: 'Chiffonade de Albahaca',
-    desc: 'Corta 10 hojas de albahaca fresca en chiffonade fino de 1–2 mm.',
+    desc: 'Corta 10 hojas de albahaca fresca en chiffonade fino de 1 a 2 mm.',
     eval: 'Tiras finas y uniformes, sin oxidar ni magullar.',
   },
   {
@@ -26,7 +26,7 @@ const CHALLENGES = [
 ];
 
 const TIPS = [
-  'El Chef Vegetal juzga con el ojo del perfeccionista. Cada milímetro cuenta.',
+  'El Chef Vegetal mira cada corte de cerca: un milímetro de diferencia se nota en la foto.',
   'El tiempo de preparación también se valora. Organiza tu mise en place antes de empezar.',
   'Un cuchillo sin filo es tu peor enemigo aquí. Afila antes de empezar.',
   'La presentación final en la tabla es tu carta de presentación. Limpia la tabla antes de fotografiar.',
@@ -69,24 +69,12 @@ export const ChefVegetalBoss = () => (
     worldName="Isla del Cuchillo"
     worldEmoji="🔪"
     xpReward={200}
-    quote="¿Crees que dominas el cuchillo? Demuéstramelo. Juliana, Brunoise, Chiffonade — los tres cortes en un mismo desafío. Solo si dominas los tres podrás pasar al Valle del Fuego."
-    requirement="Requiere: Dominar los 3 cortes fundamentales"
-    nextWorld="🔥 Valle del Fuego Desbloqueado"
-    victoryDesc="El Chef Vegetal se inclina ante tu maestría del cuchillo. La Isla del Cuchillo es tuya."
-    returnLabel="🗺️ Volver al Mapa de Aventura"
-    headerGradient="from-emerald-500 via-teal-600 to-cyan-700"
-    bossGradient="from-emerald-900 via-teal-900 to-cyan-900"
-    accentBorder="border-emerald-500/50"
-    accentTextColor="text-emerald-400"
-    accentTextLight="text-emerald-300"
-    accentTextFaint="text-emerald-100"
-    doneBg="bg-emerald-500"
-    doneBorder="border-emerald-400"
-    doneCardBg="bg-emerald-50"
-    uploadBorderHover="border-emerald-300 bg-emerald-50 hover:bg-emerald-100"
-    reviewOverlay="bg-emerald-500/25"
-    victoryGradient="from-emerald-400 via-teal-500 to-cyan-600"
-    returnGradient="from-emerald-500 to-teal-600 shadow-emerald-500/30"
+    world={1}
+    quote="Juliana, brunoise y chiffonade en la misma tabla. Si los bastones, los cubos y las tiras salen parejos, te abro el paso al Valle del Fuego."
+    requirement="Requisito: juliana, brunoise y chiffonade"
+    nextWorld="Valle del Fuego desbloqueado"
+    victoryDesc="Bastones de 3 mm, cubos parejos y albahaca sin magullar. El Chef Vegetal aprueba tu tabla."
+    returnLabel="Volver al mapa"
     challenges={CHALLENGES}
     tips={TIPS}
     mainRecipe={RECIPE}

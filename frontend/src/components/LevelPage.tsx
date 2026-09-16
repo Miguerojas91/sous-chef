@@ -1,44 +1,35 @@
 /**
- * LevelPage.tsx
+ * Base de los niveles normales del Modo Aventura. Cada nivel (JulianaLevel,
+ * BrunoiseLevel, etc.) pasa sus pasos, errores y criterios; aquí vive la lógica común.
  *
- * Componente base reutilizable para todos los niveles normales del Modo Aventura.
- * Cada nivel (JulianaLevel, BrunoiseLevel, etc.) pasa sus propios `steps`
- * y criterios de evaluación; este componente gestiona toda la lógica común.
+ * - Aprende: acordeón de pasos. Los pasos hechos persisten en `sous_steps_{ruta}`.
+ * - Evalúa: el usuario sube una foto y `evaluateImage()` la puntúa vía el proxy.
+ *   Con 1 estrella o más se guarda la puntuación y, solo la primera vez, el XP.
+ *   Con 0 estrellas se muestra el motivo y no se marca el nivel.
  *
- * Flujo del nivel:
- * 1. Fase "Aprende" — Acordeón de pasos con tips y advertencias.
- *    - `completedSteps` persiste en localStorage por ruta (`sous_steps_{path}`).
- * 2. Fase "Evalúa" — El usuario sube una foto de su resultado.
- *    - Se llama a `evaluateImage()` vía el proxy.
- *    - Si `stars > 0`: se persiste la puntuación y se suma XP.
- *    - Si `stars === 0`: solo muestra el feedback (no marca como completado).
- *
- * Props principales:
- * - `steps`        — Pasos de la técnica con descripción, tip y alertas.
- * - `criteria`     — Criterios de evaluación enviados a la IA.
- * - `levelName`    — Nombre del nivel (para el prompt de evaluación).
- * - `xpReward`     — XP otorgado al completar con ≥1 estrella.
- * - `worldColor`   — Clase de color Tailwind del mundo (para estilos del botón).
+ * El color sale del token `world-N`. Si el nivel no pasa `world`, se deduce de
+ * `worldName`. Las props de color antiguas (gradientFrom, accentBg...) se aceptan
+ * pero ya no se usan.
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { evaluateImage } from '../services/gemini';
 import type { EvaluationResult } from '../services/gemini';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getLevelStars, saveLevelStars, addXP } from '../utils/progress';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { track, Events } from '../utils/analytics';
-import { useEffect } from 'react';
 import {
-  ArrowLeft, BookOpen, Upload, CheckCircle, Star,
-  ChevronRight, Lightbulb, AlertTriangle, Camera, Trophy, Play,
-  Clock, Users, BarChart2
+  BookOpen, Upload, CheckCircle, Star, ChevronRight, Lightbulb,
+  AlertTriangle, Camera, Trophy, Clock, Users, BarChart2, Check,
 } from 'lucide-react';
 import { EditableText } from './cms/EditableText';
 import { BlockZone } from './cms/BlockZone';
 import { SafeText } from '../utils/safeText';
+import { ScreenHeader } from './ui/ScreenHeader';
+import { WORLD_CLASSES, resolveWorld } from '../data/worlds';
+import type { WorldId } from '../data/worlds';
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
 
 export interface LevelStep {
   num: number;
@@ -62,16 +53,20 @@ export interface LevelPageProps {
   levelEmoji: string;
   xpReward: number;
 
-  gradientFrom: string;
-  gradientTo: string;
-  accentBg: string;
-  accentBorder: string;
-  accentText: string;
-  accentDark: string;
-  stepActiveBg: string;
-  stepActiveTxt: string;
-  btnBg: string;
-  btnShadow: string;
+  /** Mundo del nivel; define el color. Si falta, se deduce de `worldName`. */
+  world?: WorldId;
+
+  /** @deprecated el color sale de `world`. Se ignoran. */
+  gradientFrom?: string;
+  gradientTo?: string;
+  accentBg?: string;
+  accentBorder?: string;
+  accentText?: string;
+  accentDark?: string;
+  stepActiveBg?: string;
+  stepActiveTxt?: string;
+  btnBg?: string;
+  btnShadow?: string;
 
   missionTitle?: string;
   missionText: string;
@@ -96,26 +91,18 @@ export interface LevelPageProps {
   backPath?: string;
 }
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-
 export const LevelPage = ({
-  worldName, worldEmoji, levelNum, levelName, levelEmoji, xpReward,
-  gradientFrom, gradientTo,
-  accentBg, accentBorder, accentText, accentDark,
-  stepActiveBg, stepActiveTxt, btnBg, btnShadow,
-  missionTitle = 'Tu Misión', missionText, missionTags,
+  worldName, levelNum, levelName, levelEmoji, xpReward, world,
+  missionTitle = 'Tu misión', missionText, missionTags,
   steps, errors, recipe,
-  challengeTitle = 'Sube tu Reto',
+  challengeTitle = 'Sube tu reto',
   challengeHint = 'Fotografía tu resultado y súbelo para completar el nivel.',
   evaluationCriteria,
   backPath = '/mapa',
 }: LevelPageProps) => {
-  // Mantén la pantalla encendida durante todo el nivel — el usuario tiene las
-  // manos en la tabla de cortar / sartén y no quiere ir desbloqueando el
-  // teléfono cada 30 s.
+  // El usuario tiene las manos en la tabla o la sartén: la pantalla no debe apagarse.
   useWakeLock(true, { mediaSessionTitle: `Cocinando: ${levelName}` });
 
-  // Analytics: nivel abierto.
   useEffect(() => {
     track(Events.LevelOpened, { level: levelName, world: worldName });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,6 +111,7 @@ export const LevelPage = ({
   const navigate = useNavigate();
   const location = useLocation();
   const fileRef = useRef<HTMLInputElement>(null);
+  const w = WORLD_CLASSES[resolveWorld(world, worldName)];
 
   const stepsKey = `sous_steps_${location.pathname}`;
   const [activeStep, setActiveStep] = useState(0);
@@ -136,18 +124,19 @@ export const LevelPage = ({
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [uploadState, setUploadState] = useState<'idle' | 'reviewing' | 'approved' | 'rejected'>('idle');
   const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null);
+  const [xpEarned, setXpEarned] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const [showRecipe, setShowRecipe] = useState(false);
 
   const allStepsComplete = completedSteps.size === steps.length;
-  const progress = (completedSteps.size / steps.length) * 100;
+  const progress = steps.length ? (completedSteps.size / steps.length) * 100 : 0;
 
   const handleMarkStep = (idx: number) => {
     setCompletedSteps(prev => {
       const next = new Set(prev);
       if (next.has(idx)) next.delete(idx);
       else next.add(idx);
-      try { localStorage.setItem(stepsKey, JSON.stringify([...next])); } catch { /* ok */ }
+      try { localStorage.setItem(stepsKey, JSON.stringify([...next])); } catch { /* sin almacenamiento */ }
       return next;
     });
   };
@@ -168,14 +157,14 @@ export const LevelPage = ({
       }
       setEvaluationResult(result);
       if (!result.stars || result.stars < 1) {
-        // Imagen inválida o sin contenido culinario — no guardar progreso ni XP
+        // Foto inválida o sin comida: no se guarda progreso ni XP.
         setUploadState('rejected');
         track(Events.LevelEvalFailed, { level: levelName, stars: 0 });
       } else {
-        // Guardar progreso: XP solo si es la primera vez que se completa este nivel
         const isFirstCompletion = getLevelStars(location.pathname) === 0;
         saveLevelStars(location.pathname, result.stars);
         if (isFirstCompletion) addXP(xpReward);
+        setXpEarned(isFirstCompletion ? xpReward : 0);
         setUploadState('approved');
         track(Events.LevelCompleted, {
           level: levelName,
@@ -196,440 +185,405 @@ export const LevelPage = ({
     if (file) handleFile(file);
   };
 
-  // Derive a solid accent color from btnBg for dot indicators
-  const dotColor = btnBg.split(' ')[0].replace('bg-', 'bg-');
+  const resetPhoto = () => {
+    setUploadedImage(null);
+    setUploadState('idle');
+    setEvaluationResult(null);
+    setXpEarned(0);
+  };
 
   return (
-    <div className="min-h-full bg-neutral-50">
+    <div className="flex flex-col h-full bg-neutral-50">
+      <ScreenHeader
+        title={<EditableText elementKey={`lvl_${levelNum}_levelName`} defaultText={levelName} />}
+        subtitle={<><EditableText elementKey={`lvl_${levelNum}_worldName`} defaultText={worldName} /> · Nivel {levelNum}</>}
+        onBack={() => navigate(backPath)}
+        backLabel="Volver al mapa"
+        actions={<span className="pr-3 text-sm font-semibold text-brand-700 whitespace-nowrap">+{xpReward} XP</span>}
+      />
 
-      {/* ── Hero Header ── */}
-      <div className={`relative bg-gradient-to-br ${gradientFrom} ${gradientTo} text-white overflow-hidden`}>
-        {/* Decorative circles */}
-        <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/10 -translate-y-16 translate-x-16" />
-        <div className="absolute bottom-0 left-12 w-24 h-24 rounded-full bg-black/10 translate-y-10" />
-
-        <div className="relative px-5 pt-4 pb-0">
-          <div className="flex items-start gap-3 max-w-3xl mx-auto">
-            <button
-              onClick={() => navigate(backPath)}
-              className="p-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors flex-shrink-0 mt-0.5"
-            >
-              <ArrowLeft size={18} />
-            </button>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold bg-white/20 px-2 py-1 rounded-full">
-                  <EditableText elementKey={`lvl_${levelNum}_worldEmoji`} defaultText={worldEmoji} />{' '}
-                  <EditableText elementKey={`lvl_${levelNum}_worldName`} defaultText={worldName} />
-                </span>
-                <span className="text-xs text-white/50">›</span>
-                <span className="text-xs font-bold text-white/70">Nivel {levelNum}</span>
-              </div>
-              <h1 className="text-2xl font-black mt-1 leading-tight">
-                <EditableText elementKey={`lvl_${levelNum}_levelEmoji`} defaultText={levelEmoji} />{' '}
-                <EditableText elementKey={`lvl_${levelNum}_levelName`} defaultText={levelName} />
-              </h1>
-            </div>
-
-            {/* XP badge */}
-            <div className="flex-shrink-0 bg-white/20 rounded-2xl px-3 py-2 text-center">
-              <p className="text-[10px] text-white/60 font-semibold">Recompensa</p>
-              <p className="font-black text-yellow-300 text-lg leading-none">+{xpReward}</p>
-              <p className="text-[10px] text-white/60">XP</p>
-            </div>
-          </div>
-
-          {/* Progress bar — flush to bottom of header */}
-          <div className="max-w-3xl mx-auto mt-4">
-            <div className="flex justify-between text-[11px] text-white/70 mb-1.5 px-0.5">
-              <span className="font-semibold">{completedSteps.size}/{steps.length} pasos completados</span>
-              <span className="font-bold">{Math.round(progress)}%</span>
-            </div>
-            <div className="h-2.5 bg-white/20 rounded-t-none rounded-b-none overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-yellow-300 to-yellow-400 rounded-full transition-all duration-700 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Body ── */}
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
-
-        {/* ── Academy shortcut ── */}
-        <button
-          onClick={() => navigate('/academia')}
-          className="w-full flex items-center gap-3 bg-white border border-violet-100 rounded-2xl px-4 py-3 hover:bg-violet-50 transition-colors group text-left shadow-sm"
-        >
-          <div className="w-10 h-10 rounded-xl bg-violet-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-violet-300">
-            <BookOpen size={18} className="text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-violet-700 text-sm truncate">
-              <EditableText elementKey={`lvl_${levelNum}_link_acad`} defaultText={`La Academia → Clase: ${levelName}`} as="span" />
-            </p>
-            <p className="text-xs text-violet-400">
-              <EditableText elementKey={`lvl_${levelNum}_link_acad_desc`} defaultText="Teoría + técnica + errores comunes" as="span" />
-            </p>
-          </div>
-          <ChevronRight size={16} className="text-violet-300 group-hover:translate-x-1 transition-transform flex-shrink-0" />
-        </button>
-
-        {/* ── Mission card ── */}
-        <div className={`bg-white border ${accentBorder} rounded-2xl overflow-hidden shadow-sm`}>
-          <div className={`bg-gradient-to-br ${accentBg} to-white px-5 py-4`}>
-            <div className="flex items-start gap-3">
-              <span className="text-3xl leading-none mt-0.5">🎯</span>
-              <div className="flex-1">
-                <h2 className={`font-black ${accentDark} text-base mb-1`}>
-                  <EditableText elementKey={`lvl_${levelNum}_missionTitle`} defaultText={missionTitle} />
-                </h2>
-                {/* Render seguro: soporta **negrita** y <strong> SIN innerHTML
-                    (elimina el vector XSS si missionText se vuelve dinámico). */}
-                <div className={`${accentText} text-sm leading-relaxed`}>
-                  <SafeText text={missionText} />
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className={`border-t ${accentBorder} px-5 py-3 flex flex-wrap gap-2`}>
-            {missionTags.map((tag, i) => (
-              <span key={i} className={`flex items-center gap-1 text-xs font-bold ${accentBg} ${accentText} border ${accentBorder} px-2.5 py-1 rounded-full`}>
-                {tag.icon} {tag.label}
-              </span>
-            ))}
-            <span className="flex items-center gap-1 text-xs font-bold bg-yellow-50 text-yellow-700 border border-yellow-200 px-2.5 py-1 rounded-full">
-              <Star size={10} fill="currentColor" /> Hasta 3 ⭐
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className={`${w.bg} text-white`}>
+          <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
+            <span className="text-3xl leading-none flex-shrink-0" aria-hidden>
+              <EditableText elementKey={`lvl_${levelNum}_levelEmoji`} defaultText={levelEmoji} />
             </span>
-          </div>
-        </div>
-
-        {/* ── Recipe card ── */}
-        {recipe && (
-          <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
-            <button
-              onClick={() => setShowRecipe(!showRecipe)}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center">
-                  <span className="text-lg">📋</span>
-                </div>
-                <div className="text-left">
-                  <p className="font-bold text-neutral-800 text-sm">Receta: {recipe.name}</p>
-                  <p className="text-xs text-neutral-400">{recipe.servings} · {recipe.time} · {recipe.difficulty}</p>
-                </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between gap-2 text-sm mb-1.5">
+                <span className="font-semibold">{completedSteps.size} de {steps.length} pasos</span>
+                <span className="font-bold">{Math.round(progress)}%</span>
               </div>
-              <ChevronRight size={16} className={`text-neutral-400 transition-transform duration-300 ${showRecipe ? 'rotate-90' : ''}`} />
-            </button>
-
-            {showRecipe && (
-              <div className="border-t border-neutral-100">
-                <p className="text-sm text-neutral-500 px-5 pt-4 pb-2 leading-relaxed">{recipe.description}</p>
-
-                <div className="grid grid-cols-3 gap-3 px-5 pb-4">
-                  {[
-                    { icon: <Users size={14} />, label: 'Porciones', val: recipe.servings },
-                    { icon: <Clock size={14} />, label: 'Tiempo', val: recipe.time },
-                    { icon: <BarChart2 size={14} />, label: 'Dificultad', val: recipe.difficulty },
-                  ].map((m, i) => (
-                    <div key={i} className={`${accentBg} border ${accentBorder} rounded-xl p-3 text-center`}>
-                      <div className={`flex justify-center mb-1 ${accentText}`}>{m.icon}</div>
-                      <p className="text-[10px] text-neutral-400 font-medium">{m.label}</p>
-                      <p className={`font-bold ${accentDark} text-sm mt-0.5`}>{m.val}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="px-5 pb-4 space-y-4">
-                  <div>
-                    <h4 className="font-bold text-neutral-700 text-sm mb-2.5 flex items-center gap-2">
-                      🧂 <span>Ingredientes</span>
-                    </h4>
-                    <ul className="space-y-1.5">
-                      {recipe.ingredients.map((ing, i) => (
-                        <li key={i} className="flex items-start gap-2.5 text-sm text-neutral-700">
-                          <span className={`w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 ${dotColor}`} />
-                          {ing}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-neutral-700 text-sm mb-2.5 flex items-center gap-2">
-                      👨‍🍳 <span>Preparación</span>
-                    </h4>
-                    <ol className="space-y-2.5">
-                      {recipe.method.map((step, i) => (
-                        <li key={i} className="flex gap-3 text-sm text-neutral-700">
-                          <span className={`w-6 h-6 rounded-full ${stepActiveBg} ${stepActiveTxt} flex items-center justify-center flex-shrink-0 font-bold text-xs mt-0.5`}>{i + 1}</span>
-                          <span className="leading-relaxed pt-0.5">{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Step-by-step ── */}
-        <div>
-          <h2 className="text-base font-black text-neutral-800 mb-3 flex items-center gap-2">
-            <div className={`w-7 h-7 rounded-lg ${stepActiveBg} ${stepActiveTxt} flex items-center justify-center`}>
-              <Play size={14} fill="currentColor" />
-            </div>
-            Instrucciones Paso a Paso
-          </h2>
-          <div className="space-y-2.5">
-            {steps.map((step, i) => {
-              const isActive = activeStep === i;
-              const isDone = completedSteps.has(i);
-              return (
-                <div
-                  key={i}
-                  className={`bg-white rounded-2xl border-2 transition-all duration-200 overflow-hidden shadow-sm ${
-                    isDone
-                      ? `${accentBorder} bg-gradient-to-r ${accentBg} to-white`
-                      : isActive
-                      ? `${accentBorder} shadow-md`
-                      : 'border-neutral-100 hover:border-neutral-200'
-                  }`}
-                >
-                  <button
-                    className="w-full flex items-center gap-3 p-4 text-left"
-                    onClick={() => setActiveStep(isActive ? -1 : i)}
-                  >
-                    {/* Step number */}
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-sm transition-all duration-200 ${
-                      isDone
-                        ? `${btnBg.split(' ')[0]} text-white shadow-sm`
-                        : isActive
-                        ? `${stepActiveBg} ${stepActiveTxt}`
-                        : 'bg-neutral-100 text-neutral-500'
-                    }`}>
-                      {isDone ? <CheckCircle size={18} /> : <span className="text-base">{step.emoji}</span>}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-neutral-800 text-sm leading-snug">
-                        <EditableText elementKey={`lvl_${levelNum}_step_${i}_title`} defaultText={step.title} />
-                      </p>
-                      {!isActive && !isDone && (
-                        <p className="text-xs text-neutral-400 mt-0.5 line-clamp-1">
-                          {step.desc.substring(0, 60)}…
-                        </p>
-                      )}
-                      {isDone && (
-                        <p className={`text-xs font-semibold ${accentText} mt-0.5`}>Completado ✓</p>
-                      )}
-                    </div>
-
-                    <ChevronRight
-                      size={16}
-                      className={`text-neutral-300 transition-transform duration-200 flex-shrink-0 ${isActive ? 'rotate-90' : ''}`}
-                    />
-                  </button>
-
-                  {isActive && (
-                    <div className="px-4 pb-4 border-t border-neutral-100 pt-4 space-y-3">
-                      <p className="text-sm text-neutral-700 leading-relaxed">
-                        <EditableText elementKey={`lvl_${levelNum}_step_${i}_desc`} defaultText={step.desc} as="span" />
-                      </p>
-
-                      {/* Tip */}
-                      <div className="flex gap-2.5 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                        <Lightbulb size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-800 leading-relaxed">
-                          <strong className="font-black">Tip Pro: </strong>
-                          <EditableText elementKey={`lvl_${levelNum}_step_${i}_tip`} defaultText={step.tip} as="span" />
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleMarkStep(i); setActiveStep(-1); }}
-                        className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 ${
-                          isDone
-                            ? 'bg-neutral-100 text-neutral-500'
-                            : `${btnBg} text-white shadow-sm`
-                        }`}
-                      >
-                        {isDone
-                          ? <EditableText elementKey={`lvl_${levelNum}_btn_undone`} defaultText="↩ Marcar como pendiente" as="span" />
-                          : <EditableText elementKey={`lvl_${levelNum}_btn_done`} defaultText="✓ Marcar como completado" as="span" />
-                        }
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── All steps done banner ── */}
-        {allStepsComplete && !uploadedImage && (
-          <div className={`bg-gradient-to-r ${gradientFrom} ${gradientTo} text-white rounded-2xl p-5 text-center shadow-lg ${btnShadow}`}>
-            <Trophy size={28} className="mx-auto mb-2" />
-            <p className="font-black text-lg">¡Pasos completados! 🎉</p>
-            <p className="text-white/80 text-sm mt-1">Ahora sube la foto de tu trabajo para reclamar las ⭐ y el XP.</p>
-          </div>
-        )}
-
-        {/* ── Common errors ── */}
-        <div className="bg-white border border-red-100 rounded-2xl overflow-hidden shadow-sm">
-          <div className="bg-red-50 px-5 py-3 border-b border-red-100">
-            <h3 className="font-black text-red-700 flex items-center gap-2 text-sm">
-              <AlertTriangle size={15} /> Errores Más Comunes
-            </h3>
-          </div>
-          <div className="divide-y divide-red-50">
-            {errors.map((e, i) => (
-              <div key={i} className="px-5 py-3.5 flex gap-3 hover:bg-red-50/50 transition-colors">
-                <span className="text-xl flex-shrink-0 mt-0.5">{e.icon}</span>
-                <div className="min-w-0">
-                  <p className="font-bold text-neutral-800 text-sm">
-                    <EditableText elementKey={`lvl_${levelNum}_err_${i}_err`} defaultText={e.error} />
-                  </p>
-                  <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">
-                    <EditableText elementKey={`lvl_${levelNum}_err_${i}_fix`} defaultText={e.fix} />
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Image Upload Challenge ── */}
-        <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className={`${accentBg} border-b ${accentBorder} px-5 py-4`}>
-            <h3 className={`font-black ${accentDark} text-base flex items-center gap-2`}>
-              <Camera size={18} /> {challengeTitle}
-            </h3>
-            <p className={`${accentText} text-xs mt-1`}>{challengeHint}</p>
-          </div>
-
-          <div className="p-5">
-            {!uploadedImage ? (
               <div
-                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => fileRef.current?.click()}
-                className={`rounded-xl border-2 border-dashed transition-all cursor-pointer text-center py-10 px-4 ${
-                  dragOver
-                    ? `${accentBorder} ${accentBg}`
-                    : `border-neutral-200 hover:${accentBorder} hover:${accentBg}`
-                }`}
+                className="h-2 bg-white/30 rounded-full overflow-hidden"
+                role="progressbar"
+                aria-label="Pasos completados"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(progress)}
               >
-                <div className={`w-14 h-14 rounded-2xl ${accentBg} border ${accentBorder} flex items-center justify-center mx-auto mb-3`}>
-                  <Upload size={24} className={accentText} />
-                </div>
-                <p className="font-bold text-neutral-700">Arrastra tu foto aquí</p>
-                <p className="text-sm text-neutral-400 mt-1">o haz clic para seleccionar</p>
-                <p className="text-xs text-neutral-300 mt-2">JPG, PNG · Máx 10 MB</p>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                <div
+                  className="h-full bg-white rounded-full transition-all duration-500 ease-out motion-reduce:transition-none"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="relative rounded-xl overflow-hidden">
-                  <img src={uploadedImage} alt="Tu reto" className="w-full max-h-72 object-cover" />
-                  {uploadState === 'reviewing' && (
-                    <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-3 text-white">
-                      <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                      <p className="font-bold text-sm">Analizando tu trabajo…</p>
-                    </div>
-                  )}
-                  {uploadState === 'approved' && (
-                    <div className="absolute inset-0 bg-emerald-500/25 flex items-center justify-center">
-                      <div className="bg-emerald-500 rounded-full p-4 shadow-2xl shadow-emerald-900/30">
-                        <CheckCircle size={40} className="text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-5">
+          <button
+            type="button"
+            onClick={() => navigate('/academia')}
+            className="w-full min-h-14 flex items-center gap-3 bg-white border border-neutral-200 rounded-card px-4 py-3 hover:bg-neutral-50 transition-colors text-left"
+          >
+            <BookOpen size={20} className="text-neutral-600 flex-shrink-0" aria-hidden />
+            <span className="flex-1 min-w-0">
+              <span className="block font-semibold text-neutral-900 text-sm">
+                <EditableText elementKey={`lvl_${levelNum}_link_acad`} defaultText={`Clase en la Academia: ${levelName}`} as="span" />
+              </span>
+              <span className="block text-sm text-neutral-600">
+                <EditableText elementKey={`lvl_${levelNum}_link_acad_desc`} defaultText="Teoría, técnica y errores comunes" as="span" />
+              </span>
+            </span>
+            <ChevronRight size={20} className="text-neutral-500 flex-shrink-0" aria-hidden />
+          </button>
+
+          <section className="bg-white border border-neutral-200 rounded-card overflow-hidden">
+            <div className={`${w.soft} px-4 py-4`}>
+              <h2 className="font-bold text-neutral-900 text-base mb-1">
+                <EditableText elementKey={`lvl_${levelNum}_missionTitle`} defaultText={missionTitle} />
+              </h2>
+              {/* SafeText admite **negrita** y <strong> sin innerHTML, así no abre un XSS si el texto pasa a ser dinámico. */}
+              <div className="text-neutral-800 text-sm leading-relaxed">
+                <SafeText text={missionText} />
+              </div>
+            </div>
+            <ul className="border-t border-neutral-200 px-4 py-3 flex flex-wrap gap-2">
+              {missionTags.map((tag, i) => (
+                <li key={i} className="text-xs font-semibold bg-neutral-100 text-neutral-800 px-2.5 py-1 rounded-full">
+                  {tag.label}
+                </li>
+              ))}
+              <li className="flex items-center gap-1 text-xs font-semibold bg-amber-50 text-amber-800 px-2.5 py-1 rounded-full">
+                <Star size={12} fill="currentColor" aria-hidden /> Hasta 3 estrellas
+              </li>
+            </ul>
+          </section>
+
+          {recipe && (
+            <section className="bg-white border border-neutral-200 rounded-card overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowRecipe(!showRecipe)}
+                aria-expanded={showRecipe}
+                className="w-full min-h-14 flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors text-left"
+              >
+                <span className="flex-1 min-w-0">
+                  <span className="block font-semibold text-neutral-900 text-sm">Receta: {recipe.name}</span>
+                  <span className="block text-sm text-neutral-600">{recipe.servings} · {recipe.time} · {recipe.difficulty}</span>
+                </span>
+                <ChevronRight size={20} aria-hidden className={`text-neutral-500 flex-shrink-0 transition-transform motion-reduce:transition-none ${showRecipe ? 'rotate-90' : ''}`} />
+              </button>
+
+              {showRecipe && (
+                <div className="border-t border-neutral-100 px-4 pb-4">
+                  <p className="text-sm text-neutral-700 pt-4 pb-3 leading-relaxed">{recipe.description}</p>
+
+                  <dl className="flex flex-wrap gap-x-5 gap-y-2 pb-4 text-sm">
+                    {[
+                      { icon: <Users size={16} aria-hidden />, label: 'Porciones', val: recipe.servings },
+                      { icon: <Clock size={16} aria-hidden />, label: 'Tiempo', val: recipe.time },
+                      { icon: <BarChart2 size={16} aria-hidden />, label: 'Dificultad', val: recipe.difficulty },
+                    ].map((m, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <span className={w.text}>{m.icon}</span>
+                        <dt className="text-neutral-600">{m.label}:</dt>
+                        <dd className="font-semibold text-neutral-900">{m.val}</dd>
                       </div>
+                    ))}
+                  </dl>
+
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-bold text-neutral-900 text-sm mb-2">Ingredientes</h3>
+                      <ul className="space-y-1.5">
+                        {recipe.ingredients.map((ing, i) => (
+                          <li key={i} className="flex items-start gap-2.5 text-sm text-neutral-800">
+                            <span className={`w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 ${w.bg}`} aria-hidden />
+                            {ing}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  )}
-                  {uploadState === 'rejected' && (
-                    <div className="absolute inset-0 bg-red-500/60 flex items-center justify-center">
-                      <div className="bg-red-600 rounded-full p-4 shadow-2xl shadow-red-900/30">
-                        <AlertTriangle size={40} className="text-white" />
-                      </div>
+                    <div>
+                      <h3 className="font-bold text-neutral-900 text-sm mb-2">Preparación</h3>
+                      <ol className="space-y-2.5">
+                        {recipe.method.map((step, i) => (
+                          <li key={i} className="flex gap-3 text-sm text-neutral-800">
+                            <span className={`w-6 h-6 rounded-full ${w.soft} ${w.text} flex items-center justify-center flex-shrink-0 font-bold text-xs mt-0.5`}>{i + 1}</span>
+                            <span className="leading-relaxed pt-0.5 min-w-0">{step}</span>
+                          </li>
+                        ))}
+                      </ol>
                     </div>
-                  )}
+                  </div>
                 </div>
+              )}
+            </section>
+          )}
 
-                {uploadState === 'approved' && evaluationResult && (
-                  <div className={`bg-gradient-to-r ${gradientFrom} ${gradientTo} text-white rounded-2xl p-5 text-center shadow-lg ${btnShadow}`}>
-                    <Trophy size={32} className="mx-auto mb-2" />
-                    <p className="font-black text-xl">¡Reto Completado! 🎉</p>
-                    <div className="flex justify-center gap-1 mt-2 text-2xl">
-                      {Array.from({ length: evaluationResult.stars }).map((_, i) => <span key={i}>⭐</span>)}
-                    </div>
-                    <p className="text-white/90 text-sm mt-2 leading-relaxed italic">"{evaluationResult.feedback}"</p>
-                    <p className="text-white/70 text-xs mt-3">Ganaste <strong className="font-black text-white">{xpReward} XP</strong></p>
-                  </div>
-                )}
-
-                {uploadState === 'rejected' && evaluationResult && (
-                  <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-5 text-center">
-                    <AlertTriangle size={32} className="mx-auto mb-2 text-red-500" />
-                    <p className="font-black text-lg text-red-700">Foto no válida ❌</p>
-                    <p className="text-red-600 text-sm mt-2 leading-relaxed">{evaluationResult.feedback}</p>
-                    <p className="text-red-400 text-xs mt-3">La foto debe mostrar claramente el resultado de la tarea para completar el nivel.</p>
-                  </div>
-                )}
-
-                {uploadState !== 'reviewing' && (
-                  <button
-                    onClick={() => { setUploadedImage(null); setUploadState('idle'); setEvaluationResult(null); }}
-                    className={`w-full py-2 text-sm font-bold transition-colors ${
-                      uploadState === 'rejected'
-                        ? 'text-red-500 hover:text-red-700'
-                        : 'text-neutral-400 hover:text-red-500'
+          <section>
+            <h2 className="text-base font-bold text-neutral-900 mb-3">Instrucciones paso a paso</h2>
+            <div className="space-y-2.5">
+              {steps.map((step, i) => {
+                const isActive = activeStep === i;
+                const isDone = completedSteps.has(i);
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-card border overflow-hidden transition-colors ${
+                      isDone
+                        ? `${w.line} ${w.soft}`
+                        : isActive
+                        ? `${w.border} bg-white`
+                        : 'border-neutral-200 bg-white'
                     }`}
                   >
-                    {uploadState === 'rejected' ? '📷 Volver a intentar con otra foto' : 'Cambiar foto'}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+                    <button
+                      type="button"
+                      className="w-full min-h-14 flex items-center gap-3 p-4 text-left"
+                      onClick={() => setActiveStep(isActive ? -1 : i)}
+                      aria-expanded={isActive}
+                    >
+                      <span className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm ${
+                        isDone
+                          ? `${w.bg} text-white`
+                          : isActive
+                          ? `${w.soft} ${w.text}`
+                          : 'bg-neutral-100 text-neutral-700'
+                      }`}>
+                        {isDone ? <Check size={18} aria-label="Completado" /> : i + 1}
+                      </span>
 
-          {/* Evaluation criteria */}
-          {!uploadedImage && evaluationCriteria && (
-            <div className={`border-t ${accentBorder} bg-neutral-50 px-5 py-4`}>
-              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">¿Cómo se evalúa?</p>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                {evaluationCriteria.map((c, i) => (
-                  <div key={i} className="bg-white border border-neutral-100 rounded-xl p-2.5 shadow-sm">
-                    <p className="text-lg">{c.stars}</p>
-                    <p className="text-[10px] text-neutral-400 mt-1 leading-tight">{c.label}</p>
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-semibold text-neutral-900 text-sm leading-snug">
+                          <EditableText elementKey={`lvl_${levelNum}_step_${i}_title`} defaultText={step.title} />
+                        </span>
+                        {!isActive && !isDone && (
+                          <span className="block text-sm text-neutral-600 mt-0.5 line-clamp-1">{step.desc}</span>
+                        )}
+                        {isDone && (
+                          <span className={`block text-sm font-semibold ${w.text} mt-0.5`}>Completado</span>
+                        )}
+                      </span>
+
+                      <ChevronRight
+                        size={20}
+                        aria-hidden
+                        className={`text-neutral-500 transition-transform motion-reduce:transition-none flex-shrink-0 ${isActive ? 'rotate-90' : ''}`}
+                      />
+                    </button>
+
+                    {isActive && (
+                      <div className="px-4 pb-4 border-t border-neutral-100 pt-4 space-y-3">
+                        <p className="text-sm text-neutral-800 leading-relaxed">
+                          <EditableText elementKey={`lvl_${levelNum}_step_${i}_desc`} defaultText={step.desc} as="span" />
+                        </p>
+
+                        <div className="flex gap-2.5 bg-amber-50 border border-amber-200 rounded-control p-3">
+                          <Lightbulb size={16} className="text-amber-800 flex-shrink-0 mt-0.5" aria-hidden />
+                          <p className="text-sm text-amber-800 leading-relaxed">
+                            <strong className="font-bold">Consejo: </strong>
+                            <EditableText elementKey={`lvl_${levelNum}_step_${i}_tip`} defaultText={step.tip} as="span" />
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleMarkStep(i); setActiveStep(-1); }}
+                          className={`w-full min-h-11 rounded-control font-semibold text-sm transition-colors ${
+                            isDone
+                              ? 'border border-neutral-300 text-neutral-800 bg-white hover:bg-neutral-50'
+                              : `${w.bg} text-white hover:opacity-90`
+                          }`}
+                        >
+                          {isDone
+                            ? <EditableText elementKey={`lvl_${levelNum}_btn_undone`} defaultText="Marcar como pendiente" as="span" />
+                            : <EditableText elementKey={`lvl_${levelNum}_btn_done`} defaultText="Marcar como completado" as="span" />
+                          }
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ))}
+                );
+              })}
+            </div>
+          </section>
+
+          {allStepsComplete && !uploadedImage && (
+            <div role="status" className={`${w.soft} border ${w.line} rounded-card p-4 flex items-start gap-3`}>
+              <Trophy size={22} className={`${w.text} flex-shrink-0`} aria-hidden />
+              <div className="min-w-0">
+                <p className="font-bold text-neutral-900">Pasos completados</p>
+                <p className="text-neutral-800 text-sm mt-0.5">Ahora sube la foto de tu resultado para ganar estrellas y XP.</p>
               </div>
             </div>
           )}
-        </div>
 
-        {/* ── Dynamic Admin Blocks ── */}
-        <div className="mt-2">
+          <section className="bg-white border border-neutral-200 rounded-card overflow-hidden">
+            <div className="bg-red-50 px-4 py-3 border-b border-red-100">
+              <h2 className="font-bold text-red-800 flex items-center gap-2 text-sm">
+                <AlertTriangle size={16} aria-hidden /> Errores más comunes
+              </h2>
+            </div>
+            <ul className="divide-y divide-neutral-100">
+              {errors.map((e, i) => (
+                <li key={i} className="px-4 py-3.5 flex gap-3">
+                  <span className="text-xl flex-shrink-0 mt-0.5" aria-hidden>{e.icon}</span>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-neutral-900 text-sm">
+                      <EditableText elementKey={`lvl_${levelNum}_err_${i}_err`} defaultText={e.error} />
+                    </p>
+                    <p className="text-sm text-neutral-600 mt-0.5 leading-relaxed">
+                      <EditableText elementKey={`lvl_${levelNum}_err_${i}_fix`} defaultText={e.fix} />
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="bg-white border border-neutral-200 rounded-card overflow-hidden">
+            <div className={`${w.soft} border-b ${w.line} px-4 py-4`}>
+              <h2 className="font-bold text-neutral-900 text-base flex items-center gap-2">
+                <Camera size={18} className={w.text} aria-hidden /> {challengeTitle}
+              </h2>
+              <p className="text-neutral-800 text-sm mt-1">{challengeHint}</p>
+            </div>
+
+            {/* capture abre la cámara trasera en móvil; en escritorio se ignora. */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handleFile(f); }}
+            />
+
+            <div className="p-4">
+              {!uploadedImage ? (
+                <button
+                  type="button"
+                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileRef.current?.click()}
+                  className={`w-full rounded-card border-2 border-dashed transition-colors text-center py-8 px-4 ${
+                    dragOver ? `${w.border} ${w.soft}` : 'border-neutral-300 hover:bg-neutral-50'
+                  }`}
+                >
+                  <Upload size={28} className={`${w.text} mx-auto mb-2`} aria-hidden />
+                  <span className="block font-semibold text-neutral-900">Toma o sube una foto</span>
+                  <span className="block text-sm text-neutral-600 mt-1">JPG o PNG, hasta 10 MB</span>
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <div className="relative rounded-card overflow-hidden">
+                    <img src={uploadedImage} alt="Foto de tu resultado" className="w-full max-h-72 object-cover" />
+                    {uploadState === 'reviewing' && (
+                      <div role="status" className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 text-white">
+                        <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin motion-reduce:animate-none" aria-hidden />
+                        <p className="font-semibold text-sm">Revisando tu foto…</p>
+                      </div>
+                    )}
+                    {uploadState === 'approved' && (
+                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center" aria-hidden>
+                        <div className="bg-emerald-700 rounded-full p-4">
+                          <CheckCircle size={40} className="text-white" />
+                        </div>
+                      </div>
+                    )}
+                    {uploadState === 'rejected' && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center" aria-hidden>
+                        <div className="bg-red-700 rounded-full p-4">
+                          <AlertTriangle size={40} className="text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {uploadState === 'approved' && evaluationResult && (
+                    <div role="status" className={`${w.bg} text-white rounded-card p-5 text-center`}>
+                      <Trophy size={32} className="mx-auto mb-2" aria-hidden />
+                      <p className="font-extrabold text-xl">¡Reto completado!</p>
+                      <div className="flex justify-center gap-1 mt-2" aria-label={`${evaluationResult.stars} de 3 estrellas`}>
+                        {Array.from({ length: evaluationResult.stars }).map((_, i) => (
+                          <Star key={i} size={24} fill="currentColor" aria-hidden />
+                        ))}
+                      </div>
+                      <p className="text-white text-sm mt-2 leading-relaxed [overflow-wrap:anywhere]">{evaluationResult.feedback}</p>
+                      <p className="text-white text-sm mt-3">
+                        {xpEarned > 0
+                          ? <>Ganaste <strong className="font-extrabold">{xpEarned} XP</strong></>
+                          : 'Ya habías ganado el XP de este nivel.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {uploadState === 'rejected' && evaluationResult && (
+                    <div role="alert" className="bg-red-50 border border-red-200 rounded-card p-4">
+                      <p className="font-bold text-red-800">Foto no válida</p>
+                      <p className="text-red-800 text-sm mt-1 leading-relaxed [overflow-wrap:anywhere]">{evaluationResult.feedback}</p>
+                      <p className="text-red-800 text-sm mt-2">La foto debe mostrar claramente el resultado de la tarea para completar el nivel.</p>
+                    </div>
+                  )}
+
+                  {uploadState !== 'reviewing' && (
+                    <button
+                      type="button"
+                      onClick={resetPhoto}
+                      className={`w-full min-h-11 rounded-control text-sm font-semibold transition-colors ${
+                        uploadState === 'rejected'
+                          ? 'bg-brand-700 text-white hover:bg-brand-800'
+                          : 'border border-neutral-300 text-neutral-800 hover:bg-neutral-50'
+                      }`}
+                    >
+                      {uploadState === 'rejected' ? 'Intentar con otra foto' : 'Cambiar foto'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {!uploadedImage && evaluationCriteria && (
+              <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-4">
+                <h3 className="text-sm font-semibold text-neutral-600 mb-2">¿Cómo se evalúa?</h3>
+                <ul className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {evaluationCriteria.map((c, i) => (
+                    <li key={i} className="bg-white border border-neutral-200 rounded-control px-3 py-2 flex items-center gap-2 sm:flex-col sm:text-center">
+                      <span className="text-base flex-shrink-0">{c.stars}</span>
+                      <span className="text-sm text-neutral-800 leading-snug min-w-0">{c.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+
           <BlockZone zoneId={`lvl_${levelNum}_extras`} />
+
+          {uploadState === 'approved' && (
+            <button
+              type="button"
+              onClick={() => navigate(backPath)}
+              className={`w-full min-h-12 rounded-control font-bold text-white text-base ${w.bg} hover:opacity-90 transition-opacity`}
+            >
+              <EditableText elementKey={`lvl_${levelNum}_btn_back`} defaultText="Volver al mapa" as="span" />
+            </button>
+          )}
+
+          <div className="h-6" />
         </div>
-
-        {/* ── Return to map ── */}
-        {uploadState === 'approved' && (
-          <button
-            onClick={() => navigate(backPath)}
-            className={`w-full py-4 rounded-2xl font-black text-white text-base bg-gradient-to-r ${gradientFrom} ${gradientTo} hover:opacity-90 transition-all active:scale-95 shadow-lg ${btnShadow}`}
-          >
-            <EditableText elementKey={`lvl_${levelNum}_btn_back`} defaultText="🗺️ Volver al Mapa de Aventura" as="span" />
-          </button>
-        )}
-
-        <div className="h-6" />
       </div>
     </div>
   );

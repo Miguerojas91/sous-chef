@@ -1,15 +1,15 @@
-/** AlquimistaBoss.tsx — Jefe 16, Mundo 4: Pico del Maestro (Premium). Desafío de técnicas avanzadas y cocina molecular. */
+/** Jefe del nivel 16 (Pico del Maestro, Premium): sous-vide, esferificación y fermentación. */
 import { BossPage } from './BossPage';
 import type { BossRecipe } from './BossPage';
 
 const CHALLENGES = [
   {
-    id: 1, emoji: '🌡️', name: 'Sous-Vide Perfecto',
+    id: 1, emoji: '🌡️', name: 'Sous-vide al punto',
     desc: 'Proteína cocinada sous-vide a temperatura precisa con costra Maillard exterior. Interior de cocción uniforme.',
-    eval: 'Interior perfecto, costra crujiente, no gris.',
+    eval: 'Interior del mismo color de borde a borde, costra crujiente, sin franja gris.',
   },
   {
-    id: 2, emoji: '⚗️', name: 'Esferas Magistrales',
+    id: 2, emoji: '⚗️', name: 'Esferas de alginato',
     desc: 'Mínimo 6 esferas de esferificación directa: esféricas, brillantes, sin huecos.',
     eval: 'Forma esférica regular, interior líquido.',
   },
@@ -20,13 +20,13 @@ const CHALLENGES = [
   },
   {
     id: 4, emoji: '🔬', name: 'El Plato del Alquimista',
-    desc: 'Crea un plato final que combine al menos DOS de las tres técnicas avanzadas aprendidas. Presenta con garnish y fotografía.',
+    desc: 'Crea un plato final que combine al menos dos de las tres técnicas avanzadas aprendidas. Presenta con garnish y fotografía.',
     eval: 'Plato profesional con dos técnicas visibles y buena presentación.',
   },
 ];
 
 const TIPS = [
-  'El Alquimista juzga la precisión. Cada técnica tiene parámetros exactos — confiar en el ojo no es suficiente aquí.',
+  'El Alquimista juzga la precisión. Cada técnica tiene parámetros exactos: aquí el ojo no basta.',
   'Para el plato final: piensa en contraste de texturas. Sous-vide + esfera aportan suavidad y explosión líquida.',
   'La presentación cuenta como técnica en este nivel. Un plato mal emplatado pierde puntos aunque la técnica sea correcta.',
   'Documenta tiempos y temperaturas. El Alquimista valora el proceso tanto como el resultado.',
@@ -71,23 +71,11 @@ export const AlquimistaBoss = () => (
     worldName="Pico del Maestro"
     worldEmoji="🏔️"
     xpReward={400}
-    quote="La ciencia y la cocina son la misma cosa vista desde ángulos diferentes. Temperatura, tiempo, reacción química — quien domina estos parámetros domina el sabor. Demuéstrame que no cocinas por intuición sino por conocimiento."
-    requirement="Requiere: Sous-Vide + Esferificación + Fermentación"
-    nextWorld="👑 Castillo del Chef Desbloqueado"
-    victoryDesc="Has ascendido el Pico del Maestro. La ciencia de la cocina es tuya. El Castillo del Chef te espera."
-    headerGradient="from-violet-700 via-purple-700 to-fuchsia-700"
-    bossGradient="from-violet-900 to-purple-900"
-    accentBorder="border-violet-500/50"
-    accentTextColor="text-violet-400"
-    accentTextLight="text-violet-300"
-    accentTextFaint="text-violet-100"
-    doneBg="bg-violet-500"
-    doneBorder="border-violet-400"
-    doneCardBg="bg-violet-50"
-    uploadBorderHover="border-violet-300 bg-violet-50 hover:bg-violet-100"
-    reviewOverlay="bg-violet-500/25"
-    victoryGradient="from-violet-600 via-purple-600 to-fuchsia-700"
-    returnGradient="from-violet-500 to-purple-700 shadow-violet-500/30"
+    world={4}
+    quote="63 °C durante 60 minutos, 90 segundos en el baño de calcio, 48 horas de fermentación. Aquí se cocina con termómetro y cronómetro: anota tus tiempos y respétalos."
+    requirement="Requisito: sous-vide, esferificación y fermentación"
+    nextWorld="Castillo del Chef desbloqueado"
+    victoryDesc="Yema fluida a 63 °C, esferas de piquillo con el centro líquido y un kimchi ácido y crujiente. El Alquimista anota tu receta en su cuaderno."
     challenges={CHALLENGES}
     tips={TIPS}
     mainRecipe={RECIPE}

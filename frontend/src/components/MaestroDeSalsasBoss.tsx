@@ -1,4 +1,4 @@
-/** MaestroDeSalsasBoss.tsx — Jefe 12, Mundo 3: Mar de Sabores (Premium). Desafío de fondos y salsas clásicas. */
+/** Jefe del nivel 12 (Mar de Sabores, Premium): fondo blanco, fondo oscuro, fumet y un plato con ellos. */
 import { BossPage } from './BossPage';
 import type { BossRecipe } from './BossPage';
 
@@ -21,14 +21,14 @@ const CHALLENGES = [
   {
     id: 4, emoji: '🫕', name: 'El Gran Plato del Maestro',
     desc: 'Usa uno de tus fondos para preparar una sopa, crema o salsa completa. Fotografía el plato terminado con garnish.',
-    eval: 'Plato presentado con la salsa/sopa visible y profesional.',
+    eval: 'Plato presentado con la salsa o sopa visible y bordes limpios.',
   },
 ];
 
 const TIPS = [
-  'El Maestro conoce el sabor de los fondos con un solo sorbo. La calidad se ve en el vaso.',
-  'Fondo gelatinizado = colágeno bien extraído = técnica correcta.',
-  'La presentación del plato final evalúa también el acabado profesional.',
+  'Un buen fondo se reconoce en el vaso: claro y sin grasa flotando.',
+  'Si el fondo gelatiniza al enfriar, extrajiste bien el colágeno.',
+  'En el plato final también cuenta el acabado: bordes limpios y garnish.',
   'Usa el fondo que mejor te salió para el plato final. Calidad sobre cantidad.',
 ];
 
@@ -73,23 +73,11 @@ export const MaestroDeSalsasBoss = () => (
     worldName="Mar de Sabores"
     worldEmoji="🌊"
     xpReward={300}
-    quote="Los fondos son el alma de la cocina. Sin ellos, solo tienes agua caliente con ingredientes. Demuéstrame que entiendes la diferencia entre blanco, oscuro y marino. Luego, hazme un plato digno."
-    requirement="Requiere: Dominar los 3 tipos de fondos"
-    nextWorld="🏔️ Pico del Maestro Desbloqueado"
-    victoryDesc="El Maestro te entrega las llaves del Mar de Sabores. La profundidad de los fondos vive en tus manos."
-    headerGradient="from-blue-600 via-cyan-600 to-teal-700"
-    bossGradient="from-blue-900 to-cyan-900"
-    accentBorder="border-blue-500/50"
-    accentTextColor="text-blue-400"
-    accentTextLight="text-blue-300"
-    accentTextFaint="text-blue-100"
-    doneBg="bg-blue-500"
-    doneBorder="border-blue-400"
-    doneCardBg="bg-blue-50"
-    uploadBorderHover="border-blue-300 bg-blue-50 hover:bg-blue-100"
-    reviewOverlay="bg-blue-500/25"
-    victoryGradient="from-blue-500 via-cyan-500 to-teal-600"
-    returnGradient="from-blue-500 to-cyan-600 shadow-blue-500/30"
+    world={3}
+    quote="Fondo blanco de pollo, jus de huesos tostados y fumet de 20 minutos. Muéstrame los tres en el vaso y después usa uno en un plato terminado."
+    requirement="Requisito: fondo blanco, fondo oscuro y fumet"
+    nextWorld="Pico del Maestro desbloqueado"
+    victoryDesc="Un fondo que gelatiniza al enfriar y un fumet color paja sin amargor. El Maestro de Salsas te abre el camino al Pico."
     challenges={CHALLENGES}
     tips={TIPS}
     mainRecipe={RECIPE}

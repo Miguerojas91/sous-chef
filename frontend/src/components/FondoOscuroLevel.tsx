@@ -1,11 +1,11 @@
-/** FondoOscuroLevel.tsx — Nivel 10, Mundo 3: Mar de Sabores (Premium). Elaboración de fondo oscuro de res. */
+/** Nivel 10, Mundo 3: Mar de Sabores (Premium). Elaboración de fondo oscuro de res. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [
   {
     num: 1, title: 'La diferencia: huesos tostados', emoji: '🔥',
-    desc: 'El fondo oscuro (fond brun) usa huesos TOSTADOS en horno a 220°C hasta que sean de color marrón profundo. Este tostado crea reacción de Maillard en los huesos, generando cientos de compuestos de sabor complejos que un fondo blanco no puede tener.',
-    tip: 'Color caoba oscuro = fondo oscuro de calidad. Color gris o negro = quemado y amargo. La línea entre tostado y quemado es de 10 minutos. Vigila el horno.',
+    desc: 'El fondo oscuro (fond brun) usa huesos tostados en horno a 220°C hasta que sean de color marrón profundo. Este tostado crea reacción de Maillard en los huesos, que aporta sabores que un fondo blanco no tiene.',
+    tip: 'Busca un color caoba oscuro. Si los huesos se ven grises o negros, están quemados y amargan. La línea entre tostado y quemado es de 10 minutos. Vigila el horno.',
   },
   {
     num: 2, title: 'Tostar los huesos y la mirepoix', emoji: '🦴',
@@ -13,32 +13,32 @@ const STEPS = [
     tip: 'El tostado de la mirepoix junto al hueso añade capas de sabor. La cebolla quemada en sus bordes añade el color oscuro característico del jus y las salsas oscuras.',
   },
   {
-    num: 3, title: 'Desglasar la bandeja: el oro líquido', emoji: '🥂',
-    desc: 'Transfiere los huesos y la mirepoix tostados a la olla. A la bandeja caliente vacía, agrega vino tinto o agua y raspa todos los residuos adheridos al fondo (el "fond"): esos depósitos son azúcares caramelizados y proteínas = sabor concentrado.',
+    num: 3, title: 'Desglasar la bandeja', emoji: '🥂',
+    desc: 'Transfiere los huesos y la mirepoix tostados a la olla. A la bandeja caliente vacía, agrega vino tinto o agua y raspa todos los residuos adheridos al fondo (el "fond"): esos depósitos son azúcares caramelizados y proteínas con sabor concentrado.',
     tip: 'Este proceso es "desglasar". Los residuos del fondo de la bandeja se llaman "sucs" en cocina francesa. Son el sabor más concentrado de toda la preparación.',
   },
   {
     num: 4, title: 'Pasta de tomate y cocción larga', emoji: '🍅',
-    desc: 'En la olla con huesos añade la concentración de la bandeja, pasta de tomate (1 cucharada), agua fría y bouquet garni. Lleva a hervor suave. Cocina a fuego muy bajo 6–8 horas. Desespuma el primer hora. No tapes.',
+    desc: 'En la olla con huesos añade la concentración de la bandeja, pasta de tomate (1 cucharada), agua fría y bouquet garni. Lleva a hervor suave. Cocina a fuego muy bajo 6–8 horas. Desespuma la primera hora. No tapes.',
     tip: 'La pasta de tomate le da acidez, cuerpo y el color oscuro característico. Sin ella el fondo es marrón pálido. Agrégala directamente sobre los huesos y cocina un minuto antes de añadir el agua.',
   },
   {
     num: 5, title: 'Reducción final: el jus', emoji: '✨',
-    desc: 'Después de colar, reduce el fondo a la mitad a fuego medio. Este proceso concentra y crea "jus de veau" o jus de res. Para "glace de viande" (the mother of all glazes), reduce hasta 1/10 hasta obtener textura de almíbar espeso.',
-    tip: 'Una cucharada de glace de viande añadida a cualquier salsa la intensifica inmediatamente. Los grandes chefs la llaman "bomba de sabor". Con 8 horas de fondo oscuro obtienes algo que no puedes comprar enlatado.',
+    desc: 'Después de colar, reduce el fondo a la mitad a fuego medio. Este proceso concentra y crea "jus de veau" o jus de res. Para "glace de viande", reduce hasta 1/10 hasta obtener textura de almíbar espeso.',
+    tip: 'Una cucharada de glace de viande añadida a cualquier salsa la intensifica de inmediato.',
   },
 ];
 
 const ERRORS = [
-  { icon: '⬛', error: 'Huesos quemados (negro/amargo)', fix: '220°C máx y vigila cada 10 min los últimos 20 min. Negro = amargo. No hay solución — empieza de nuevo.' },
+  { icon: '⬛', error: 'Huesos quemados (negro/amargo)', fix: '220°C máx y vigila cada 10 min los últimos 20 min. Si están negros, amargan. No tiene arreglo: empieza de nuevo.' },
   { icon: '💧', error: 'Fondo turbio', fix: 'El hervor fuerte fragmenta las proteínas. Fuego muy bajo, solo pequeñas burbujas. Desespuma los primeros 30 min.' },
-  { icon: '😞', error: 'Sin cuerpo ni color', fix: 'Los huesos no estaban tostados lo suficiente. El tostado es la clave del fondo oscuro. Color caoba = perfecto.' },
+  { icon: '😞', error: 'Sin cuerpo ni color', fix: 'Los huesos no estaban tostados lo suficiente. El tostado es la clave del fondo oscuro. Busca color caoba.' },
   { icon: '⏰', error: 'Tiempo insuficiente', fix: 'El fondo oscuro necesita 6–8 horas. Con menos tiempo no extraes el colágeno ni desarrollas complejidad.' },
 ];
 
 const RECIPE = {
   name: 'Jus de Res y Salsa Demi-Glace',
-  description: 'La demi-glace es la salsa reina de la cocina francesa clásica. Base de todas las salsas oscuras: perigeaux, bordelaise, chasseur. Una vez que la dominas, entiendes por qué los grandes restaurantes huelen como huelen.',
+  description: 'La demi-glace es la base de las salsas oscuras de la cocina francesa clásica, como la périgueux, la bordelesa y la chasseur.',
   servings: '6 personas',
   time: '8 horas',
   difficulty: '⭐⭐⭐⭐',
@@ -56,7 +56,7 @@ const RECIPE = {
     'Añade mirepoix los últimos 15 min del tostado.',
     'Desglasa la bandeja con vino tinto, raspando todos los sucs.',
     'Transfiere todo a olla grande. Agrega pasta de tomate, agua fría y bouquet garni.',
-    'Hierve, baja al mínimo. Cocina 8 horas a fuego muy bajo sin tapa. Desespuma primer hora.',
+    'Hierve, baja al mínimo. Cocina 8 horas a fuego muy bajo sin tapa. Desespuma la primera hora.',
     'Cuela sin presionar. Reduce a la mitad para obtener jus. Reduce a 1/4 para demi-glace espesa.',
   ],
 };
@@ -65,11 +65,7 @@ export const FondoOscuroLevel = () => (
   <LevelPage
     worldName="Mar de Sabores" worldEmoji="🌊"
     levelNum={10} levelName="Fondo Oscuro" levelEmoji="🥣" xpReward={100}
-    gradientFrom="from-blue-500" gradientTo="to-cyan-600"
-    accentBg="bg-blue-50" accentBorder="border-blue-200"
-    accentText="text-blue-700" accentDark="text-blue-800"
-    stepActiveBg="bg-blue-100" stepActiveTxt="text-blue-700"
-    btnBg="bg-blue-500 hover:bg-blue-600" btnShadow="shadow-blue-500/30"
+    world={3}
     missionText="Preparar un <strong>fondo oscuro/jus de res</strong> con huesos tostados: color marrón profundo, rico en gelatina y sabor complejo. Fotografía el jus reducido en una cuchara o vaso corto mostrando su color oscuro y brillante."
     missionTags={[
       { icon: '⏱️', label: '6–8 horas' },

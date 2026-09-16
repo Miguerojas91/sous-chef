@@ -1,4 +1,4 @@
-/** ChiffonadeLevel.tsx — Nivel 3, Mundo 1: Isla del Cuchillo. Técnica de corte chiffonade de hojas finas. */
+/** Nivel 3, Mundo 1: Isla del Cuchillo. Técnica de corte chiffonade de hojas finas. */
 import { LevelPage } from './LevelPage';
 
 const STEPS = [
@@ -9,12 +9,12 @@ const STEPS = [
   },
   {
     num: 2, title: 'Apila las hojas en orden de tamaño', emoji: '📚',
-    desc: 'Pon las hojas más grandes abajo y las más pequeñas arriba. Áplastalas suavemente para que queden bien alineadas. El apilado correcto garantiza que todos los cortes tengan el mismo ancho al final.',
+    desc: 'Pon las hojas más grandes abajo y las más pequeñas arriba. Aplástalas suavemente para que queden bien alineadas. El apilado correcto garantiza que todos los cortes tengan el mismo ancho al final.',
     tip: 'Trabaja con máximo 6–8 hojas apiladas. Más que eso pierdes control y la pila se desliza. Si las hojas son muy grandes, dobla por la mitad a lo largo antes de apilar.',
   },
   {
     num: 3, title: 'Enrolla las hojas como un cigarro', emoji: '🌀',
-    desc: 'Enrolla el apilado de hojas apretadamente desde un lado, formando un cilindro compacto. El rollo debe ser firme — cuanto más apretado, más finas y uniformes saldrán las tiras. Sostén el rollo con la garra de gato.',
+    desc: 'Enrolla el apilado de hojas apretadamente desde un lado, formando un cilindro compacto. El rollo debe quedar firme: cuanto más apretado, más finas y uniformes saldrán las tiras. Sostén el rollo con la garra de gato.',
     tip: 'En chiffonade profesional el rollo es la clave. Si el rollo está flojo y se desarma, las tiras salen irregulares. Practica el enrollado antes de pasar al corte.',
   },
   {
@@ -25,20 +25,20 @@ const STEPS = [
   {
     num: 5, title: 'Separa y esponja las tiras', emoji: '✨',
     desc: 'Pasa los dedos por las tiras para separarlas con suavidad. Las tiras deben ser largas, finas, uniformes y rizadas naturalmente. Si las hojas se apelmazan, las tiras son demasiado anchas o el rollo estaba muy flojo.',
-    tip: 'Usa el chiffonade inmediatamente: como garnish, en ensaladas, sobre sopas o cremas. Las tiras de albahaca en chiffonade sobre una bruschetta o pizza margarita es el uso clásico.',
+    tip: 'Usa el chiffonade inmediatamente: como garnish, en ensaladas, sobre sopas o cremas. La albahaca en chiffonade sobre una bruschetta o una pizza margarita es el uso clásico.',
   },
 ];
 
 const ERRORS = [
   { icon: '🟫', error: 'Hojas oxidadas/marrones', fix: 'Corta con cuchillo muy afilado en el último momento. El filo romo magulla las células y acelera la oxidación.' },
-  { icon: '📎', error: 'Tiras pegadas entre sí', fix: 'Asegúrate de que las hojas estén perfectamente secas antes de enrollar.' },
+  { icon: '📎', error: 'Tiras pegadas entre sí', fix: 'Asegúrate de que las hojas estén bien secas antes de enrollar.' },
   { icon: '↔️', error: 'Tiras de diferente ancho', fix: 'Mantén el rollo más firme y mueve el cuchillo a intervalos exactos. Practica el ojo midiendo.' },
   { icon: '🔄', error: 'El rollo se deshace al cortar', fix: 'Envuelve más apretado y sostén el rollo con la parte más ancha de la garra de gato.' },
 ];
 
 const RECIPE = {
   name: 'Pasta al Pesto con Chiffonade de Albahaca',
-  description: 'El pesto auténtico requiere albahaca fresca, y el chiffonade es la guarnición perfecta para el plato final. Un clásico genovés que muestra tu técnica.',
+  description: 'El pesto lleva albahaca fresca, y el chiffonade va encima como guarnición. Un clásico genovés donde se nota tu corte.',
   servings: '2 personas',
   time: '30 min',
   difficulty: '⭐⭐',
@@ -66,11 +66,7 @@ export const ChiffonadeLevel = () => (
   <LevelPage
     worldName="Isla del Cuchillo" worldEmoji="🔪"
     levelNum={3} levelName="Chiffonade" levelEmoji="🌿" xpReward={50}
-    gradientFrom="from-emerald-500" gradientTo="to-teal-600"
-    accentBg="bg-emerald-50" accentBorder="border-emerald-200"
-    accentText="text-emerald-700" accentDark="text-emerald-800"
-    stepActiveBg="bg-emerald-100" stepActiveTxt="text-emerald-700"
-    btnBg="bg-emerald-500 hover:bg-emerald-600" btnShadow="shadow-emerald-500/30"
+    world={1}
     missionText="Cortar <strong>un manojo de albahaca o espinacas</strong> en chiffonade <strong>uniforme y fino</strong>: tiras de 1–2 mm de ancho, sin magullar ni oxidar las hojas. Fotografía el resultado esponjado sobre la tabla."
     missionTags={[
       { icon: '⏱️', label: '~15 min' },

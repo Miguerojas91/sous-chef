@@ -1,4 +1,4 @@
-/** FlambeadorBoss.tsx — Jefe 8, Mundo 2: Valle del Fuego. Desafío de salsas y reacciones de calor. */
+/** Jefe del nivel 8 (Valle del Fuego): sofrito, Maillard y emulsión en un mismo plato. */
 import { BossPage } from './BossPage';
 import type { BossRecipe } from './BossPage';
 
@@ -9,7 +9,7 @@ const CHALLENGES = [
     eval: 'Color dorado uniforme, sin partes quemadas, aceite brillante.',
   },
   {
-    id: 2, emoji: '🥩', name: 'Costra Maillard Perfecta',
+    id: 2, emoji: '🥩', name: 'Costra Maillard caoba',
     desc: 'Dora un filete, pechuga o tofu a fuego muy alto. La costra debe ser color caoba uniforme, sin zonas grises.',
     eval: 'Color caoba, crujiente al tacto, interior jugoso.',
   },
@@ -26,9 +26,9 @@ const CHALLENGES = [
 ];
 
 const TIPS = [
-  'El Flambeador juzga sabor Y técnica. No puedes engañarlo con un plato bonito.',
+  'El Flambeador juzga sabor y técnica: un plato bonito no basta.',
   'El orden importa: sofrito primero, Maillard en proteína aparte, emulsión al final.',
-  'Temperatura constante es el secreto. El fuego cambia — tú controlas.',
+  'Mantén la temperatura estable y ajusta el fuego cuando el sofrito o la costra lo pidan.',
   'Una foto bien iluminada muestra mejor el color Maillard y la textura del sofrito.',
 ];
 
@@ -59,7 +59,7 @@ const RECIPE: BossRecipe = {
     'Emulsión de mantequilla: baja el fuego al mínimo. Incorpora los dados de mantequilla fría a la salsa uno a uno fuera del fuego, girando la sartén. La salsa debe quedar brillante y napar la cuchara.',
     'Sirve el entrecot entero, napa con la salsa Bordelaise, una cucharada del sofrito a un lado y perejil picado.',
   ],
-  plating: 'Sartén → plato precalentado. El filete en diagonal, la salsa en trazo limpio (no lago). Sofrito en quenelle lateral. Flor de sal encima del filete justo al servir.',
+  plating: 'Pasa de la sartén a un plato precalentado. El filete en diagonal, la salsa en trazo limpio (no lago). Sofrito en quenelle lateral. Flor de sal encima del filete justo al servir.',
 };
 
 export const FlambeadorBoss = () => (
@@ -71,23 +71,11 @@ export const FlambeadorBoss = () => (
     worldName="Valle del Fuego"
     worldEmoji="🔥"
     xpReward={250}
-    quote="El fuego no miente. O controlas el calor o el calor te controla. Sofrito, Maillard, Emulsión — combínalos todos en un mismo plato. Eso es cocina de verdad."
-    requirement="Requiere: Dominar las 3 técnicas del fuego"
-    nextWorld="🌊 Mar de Sabores Desbloqueado"
-    victoryDesc="El Flambeador se rinde ante tu dominio del calor. El Mar de Sabores te aguarda."
-    headerGradient="from-orange-600 via-red-600 to-rose-700"
-    bossGradient="from-orange-900 to-red-900"
-    accentBorder="border-orange-500/50"
-    accentTextColor="text-orange-400"
-    accentTextLight="text-orange-300"
-    accentTextFaint="text-orange-100"
-    doneBg="bg-orange-500"
-    doneBorder="border-orange-400"
-    doneCardBg="bg-orange-50"
-    uploadBorderHover="border-orange-300 bg-orange-50 hover:bg-orange-100"
-    reviewOverlay="bg-orange-500/25"
-    victoryGradient="from-orange-500 via-red-500 to-rose-600"
-    returnGradient="from-orange-500 to-red-600 shadow-orange-500/30"
+    world={2}
+    quote="Sofrito de base, costra caoba en la carne y una salsa montada con mantequilla fría. Si la mantequilla entra con el fuego alto, la salsa se corta y empiezas de nuevo."
+    requirement="Requisito: sofrito, Maillard y emulsión"
+    nextWorld="Mar de Sabores desbloqueado"
+    victoryDesc="Costra caoba en el entrecot y una bordelesa brillante que napa la cuchara. El Flambeador te deja pasar."
     challenges={CHALLENGES}
     tips={TIPS}
     mainRecipe={RECIPE}

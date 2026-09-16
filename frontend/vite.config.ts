@@ -15,18 +15,12 @@ const hasSSL      = fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath);
 
 export default defineConfig({
   plugins: [react()],
-  // ── Build optimizado ────────────────────────────────────────────────────────
   build: {
-    // Minifica con esbuild (default) y elimina console.* / debugger en prod.
-    // Cada console.log que sobrevive cuesta CPU al motor, ocupa bytes en el
-    // bundle, y se queda en memoria mientras DevTools esté abierto.
     minify: 'esbuild',
-    // Genera sourcemaps "hidden" para que Sentry pueda reportar errores legibles
-    // sin exponer los .map al navegador.
+    // Mapas generados pero sin referencia en el bundle: no se exponen al navegador.
     sourcemap: 'hidden',
-    // Inline assets <4kB para reducir requests HTTP.
     assetsInlineLimit: 4096,
-    // Hash en filenames → permite cache-busting agresivo del CDN.
+    // Hash en los nombres para poder cachear agresivamente en el CDN.
     rollupOptions: {
       output: {
         chunkFileNames: 'assets/[name]-[hash].js',
@@ -36,11 +30,10 @@ export default defineConfig({
     },
   },
   esbuild: {
-    // Eliminar console.* y debugger en producción.
-    // En dev se conservan para debugging.
-    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
-    // Mantener `console.error` / `console.warn` SI la app reporta errores reales.
-    // Si quieres que también se eliminen, cámbialo a ['console','debugger'].
+    // En producción se quitan los logs de depuración (`pure`) pero se conservan
+    // console.error y console.warn: son la única pista cuando algo falla en un
+    // teléfono de un tester.
+    drop: process.env.NODE_ENV === 'production' ? ['debugger'] : [],
     pure: ['console.log', 'console.debug', 'console.info', 'console.trace'],
   },
   server: {
@@ -54,11 +47,11 @@ export default defineConfig({
       },
     }),
     proxy: {
-      // En desarrollo: /api → proxy local en puerto 3001
+      // En desarrollo, /api va al proxy local.
       '/api': {
         target:       'http://localhost:3001',
         changeOrigin: true,
-        ws:           true,   // también proxea WebSockets
+        ws:           true,   // la voz usa WebSocket en /api/live
       },
     },
   },

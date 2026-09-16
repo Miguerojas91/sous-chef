@@ -1,18 +1,7 @@
 /**
- * utils/apiClient.ts
- *
- * Cliente HTTP que añade automáticamente:
- * - Header `Authorization: Bearer <access_token>`.
- * - Reintento transparente de la request si el access_token caducó (401):
- *     1) llama a `/auth/refresh` con el refresh_token guardado.
- *     2) si OK → guarda el nuevo par, repite la request original.
- *     3) si falla → limpia sesión y dispara `sous:auth-expired`.
- * - Coalescing: si varios fetchs en paralelo reciben 401, solo uno hace
- *   refresh; los demás esperan al mismo Promise.
- *
- * Uso:
- *     const r = await apiFetch('/api/v1/users/me');
- *     const data = await r.json();
+ * fetch con `Authorization: Bearer`. Ante un 401 renueva el token y repite la
+ * petición una vez; si no puede, cierra sesión y emite `sous:auth-expired`.
+ * Si varias peticiones reciben 401 a la vez, comparten un solo refresh.
  */
 
 import {
@@ -50,7 +39,7 @@ async function attemptRefresh(): Promise<boolean> {
     } catch {
       return false;
     } finally {
-      // limpiar la promesa al siguiente tick
+      // al siguiente tick, para que las llamadas en curso reciban la misma promesa
       setTimeout(() => { refreshPromise = null; }, 0);
     }
   })();
@@ -58,15 +47,11 @@ async function attemptRefresh(): Promise<boolean> {
   return refreshPromise;
 }
 
-/**
- * Resuelve una URL relativa contra `BACKEND_URL` o `API_URL` (proxy).
- * Si la URL ya es absoluta, la deja tal cual.
- */
+/** `/api/v1/*` va al backend FastAPI; lo demás queda relativo (proxy de Vite en dev, dominio del proxy en prod). */
 function resolveUrl(url: string): string {
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  // Rutas /api/v1/* van al backend FastAPI; el resto al proxy.
   if (url.startsWith('/api/v1') && BACKEND_URL) return `${BACKEND_URL}${url}`;
-  return url; // queda relativa; Vite proxy en dev, dominio del proxy en prod
+  return url;
 }
 
 export interface ApiFetchOptions extends RequestInit {
@@ -92,7 +77,6 @@ export async function apiFetch(url: string, options: ApiFetchOptions = {}): Prom
 
   if (resp.status !== 401 || skipAuth) return resp;
 
-  // 401 → intentar refresh
   const refreshed = await attemptRefresh();
   if (!refreshed) {
     clearSession();
@@ -100,12 +84,11 @@ export async function apiFetch(url: string, options: ApiFetchOptions = {}): Prom
     return resp;
   }
 
-  // Reintentar con el nuevo access token
   resp = await fetch(finalUrl, { ...rest, headers: buildHeaders() });
   return resp;
 }
 
-/** Helper JSON: lanza si no es OK. */
+/** Lanza con el `detail` del servidor si la respuesta no es OK. */
 export async function apiJson<T>(url: string, options: ApiFetchOptions = {}): Promise<T> {
   const r = await apiFetch(url, options);
   if (!r.ok) {

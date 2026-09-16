@@ -1,20 +1,7 @@
-/**
- * CMSDashboard.tsx
- *
- * Panel de administración del Constructor Visual CMS.
- * Solo accesible para usuarios con `is_admin: true`.
- *
- * Funcionalidades:
- * - Lista todas las páginas dinámicas creadas.
- * - Permite crear nuevas páginas con slug personalizado.
- * - Navega al editor de cada página al hacer clic en "Editar".
- *
- * Acceso: ruta `/cms` protegida por `RequireAuth` en App.tsx.
- * Si el usuario no es admin, muestra un mensaje de acceso denegado.
- */
+/** Panel del editor de contenido, solo para `is_admin`. Hoy no tiene ruta en App.tsx. */
 
 import React, { useEffect, useState } from 'react';
-import { ShieldAlert, Plus, ArrowRight } from 'lucide-react';
+import { ShieldAlert, Plus, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEditor } from '../../context/EditorContext';
 
@@ -24,69 +11,68 @@ interface PageItem {
     title: string;
 }
 
+const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-2';
+
 export const CMSDashboard: React.FC = () => {
     const { isAdmin, isEditMode, toggleEditMode } = useEditor();
     const navigate = useNavigate();
     const [pages, setPages] = useState<PageItem[]>([]);
 
     useEffect(() => {
-        // En MVP cargamos páginas simuladas (las que ya migramos o probamos)
-        // Pronto llamará a fetch('/api/v1/cms/pages')
+        // Lista fija mientras no exista el endpoint /api/v1/cms/pages.
         // eslint-disable-next-line react-hooks/exhaustive-deps
         setPages([
-            { id: 1, slug: 'cms-test', title: 'Página de Prueba Motor CMS' },
-            { id: 2, slug: 'juliana-level', title: 'Nivel 1: Juliana (Próxima Migración)' },
+            { id: 1, slug: 'cms-test', title: 'Página de prueba del CMS' },
+            { id: 2, slug: 'juliana-level', title: 'Nivel 1: Juliana (pendiente de migrar)' },
         ]);
-        
-        // Ensure edit mode is on when we are in the dashboard
+
         // eslint-disable-next-line react-hooks/exhaustive-deps
         if (!isEditMode) toggleEditMode();
     }, []);
 
     if (!isAdmin) {
         return (
-            <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-gray-50 h-screen">
-                <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
-                <h1 className="text-2xl font-bold text-gray-800">Acceso Denegado</h1>
-                <p className="text-gray-500 mt-2">Solo los administradores pueden acceder al Modo Dios.</p>
-                <button onClick={() => navigate('/')} className="mt-6 text-orange-600 hover:text-orange-700 font-bold">Volver al Inicio</button>
+            <div role="alert" className="flex flex-col items-center justify-center min-h-dvh p-4 md:p-6 text-center bg-neutral-50">
+                <ShieldAlert className="w-12 h-12 text-danger mb-4" aria-hidden />
+                <h1 className="text-xl md:text-2xl font-bold text-neutral-900">Acceso denegado</h1>
+                <p className="text-neutral-600 mt-2">Solo los administradores pueden editar contenido.</p>
+                <button type="button" onClick={() => navigate('/')} className={`mt-6 min-h-11 px-4 rounded-control text-brand-700 hover:text-brand-800 font-bold ${FOCUS_RING}`}>Volver al inicio</button>
             </div>
         );
     }
 
     return (
-        <div className="w-full min-h-screen bg-gray-900 text-gray-100 p-8 font-sans overflow-y-auto">
+        <div className="w-full min-h-dvh bg-neutral-50 text-neutral-900 p-4 md:p-6 overflow-y-auto">
             <div className="max-w-5xl mx-auto">
-                
-                <header className="flex items-center justify-between mb-12 border-b border-gray-800 pb-6">
-                    <div>
-                        <h1 className="text-3xl font-bold flex items-center gap-3 text-orange-500">
-                            <ShieldAlert className="w-8 h-8" />
-                            MODO DIOS (CMS)
-                        </h1>
-                        <p className="text-gray-400 mt-2">Gestor visual de contenido estructural.</p>
+
+                <header className="flex flex-wrap items-center justify-between gap-4 mb-8 border-b border-neutral-200 pb-6">
+                    <div className="min-w-0">
+                        <h1 className="text-xl md:text-2xl font-bold text-neutral-900">Editor de contenido</h1>
+                        <p className="text-neutral-600 mt-1">Páginas que puedes editar en pantalla.</p>
                     </div>
-                    <button className="flex items-center gap-2 bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 px-6 rounded-lg transition-colors">
-                        <Plus className="w-5 h-5" />
-                        Crear Nueva Página
+                    <button type="button" className={`min-h-11 flex items-center gap-2 bg-brand-700 hover:bg-brand-800 text-white font-bold px-4 rounded-control transition-colors ${FOCUS_RING}`}>
+                        <Plus className="w-5 h-5" aria-hidden />
+                        Crear página
                     </button>
                 </header>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <ul className="bg-white rounded-card border border-neutral-200 divide-y divide-neutral-100">
                     {pages.map(page => (
-                        <div key={page.id} className="bg-gray-800 border border-gray-700 rounded-2xl p-6 flex flex-col hover:border-orange-500/50 transition-colors group">
-                            <h2 className="text-xl font-bold text-white mb-2">{page.title}</h2>
-                            <p className="text-gray-400 text-sm mb-6 flex-1">/{page.slug}</p>
-                            
-                            <button 
-                                onClick={() => navigate(`/${page.slug}`)} 
-                                className="w-full flex items-center justify-between bg-gray-700 hover:bg-orange-600 text-gray-200 hover:text-white font-medium py-3 px-4 rounded-xl transition-colors">
-                                <span>Editar Visualmente</span>
-                                <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <li key={page.id}>
+                            <button
+                                type="button"
+                                onClick={() => navigate(`/${page.slug}`)}
+                                className={`w-full min-h-14 px-4 py-2 flex items-center justify-between gap-3 text-left hover:bg-neutral-50 transition-colors rounded-card ${FOCUS_RING}`}
+                            >
+                                <span className="min-w-0">
+                                    <span className="block font-semibold text-neutral-900 [overflow-wrap:anywhere]">{page.title}</span>
+                                    <span className="block text-sm text-neutral-600">/{page.slug}</span>
+                                </span>
+                                <ChevronRight className="w-5 h-5 shrink-0 text-neutral-500" aria-hidden />
                             </button>
-                        </div>
+                        </li>
                     ))}
-                </div>
+                </ul>
 
             </div>
         </div>

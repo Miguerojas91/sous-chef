@@ -1,12 +1,4 @@
-/**
- * CMSTestPage.tsx
- *
- * Página de prueba para el sistema CMS. Muestra un ejemplo de página
- * renderizada con bloques mock para verificar que el `DynamicPageRenderer`
- * funciona correctamente.
- *
- * Acceso: ruta `/cms/test` (solo disponible en desarrollo / para admins).
- */
+/** Página de prueba del renderizador de bloques con datos fijos (ruta `/cms-test`). */
 
 import React from 'react';
 import { DynamicPageRenderer } from './DynamicPageRenderer';
@@ -18,31 +10,31 @@ const MOCK_BLOCKS: CMSBlock[] = [
     {
         id: '1',
         type: 'header',
-        content: 'Bienvenido al Modo Dios (CMS Dinámico)',
+        content: 'Página de prueba del CMS',
         styles: { alignment: 'center', bold: true }
     },
     {
         id: '2',
         type: 'paragraph',
-        content: 'Esta página ya no está escrita en código estático React. Todo este contenido proviene de un esquema JSON generado de forma dinámica.',
+        content: 'Este contenido sale de un JSON de bloques, no de componentes escritos a mano.',
         styles: { alignment: 'center' }
     },
     {
         id: '3',
         type: 'image',
         content: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=800&q=80',
-        title: 'El entorno de pruebas de desarrollo CMS'
+        title: 'Imagen de prueba'
     },
     {
         id: '4',
         type: 'accordion',
-        title: '¿Por qué estamos haciendo esto?',
-        content: 'Para que los administradores tengan un constructor visual en vivo estilo Elementor donde puedan cambiar textos e imágenes al instante, sin depender de los desarrolladores.'
+        title: '¿Para qué sirve?',
+        content: 'Para que los administradores cambien textos e imágenes en pantalla sin esperar un despliegue.'
     },
     {
         id: '5',
         type: 'checklist',
-        content: '- Aprender a usar los bloques\n- Migrar los niveles de aventura existentes\n- Añadir la barra de herramientas de Elementor'
+        content: '- Probar cada tipo de bloque\n- Migrar los niveles del Modo Aventura\n- Añadir una barra de herramientas de edición'
     }
 ];
 
@@ -50,17 +42,22 @@ export const CMSTestPage: React.FC = () => {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-900 font-sans p-6 w-full flex justify-center overflow-y-auto">
-            <div className="max-w-3xl w-full bg-white rounded-3xl p-8 shadow-sm">
-                <button onClick={() => navigate('/')} className="flex items-center gap-2 text-gray-500 hover:text-orange-600 mb-8 transition-colors">
-                    <ArrowLeft className="w-5 h-5" />
-                    Volver al Dashboard
-                </button>
-                <div className="bg-orange-100 text-orange-800 text-sm font-bold px-3 py-1 rounded-full mb-6 inline-flex shadow-sm tracking-wide uppercase">
-                    Prueba del Renderizador de Bloques
+        <div className="flex flex-col h-full">
+            <div className="flex-1 min-h-0 overflow-y-auto bg-neutral-50 text-neutral-900 p-4 md:p-6 w-full flex justify-center">
+                <div className="max-w-3xl w-full h-fit bg-white rounded-card border border-neutral-200 p-4 md:p-6">
+                    <button
+                        type="button"
+                        onClick={() => navigate('/')}
+                        className="min-h-11 flex items-center gap-2 px-2 -ml-2 mb-6 rounded-control text-neutral-600 hover:text-brand-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700"
+                    >
+                        <ArrowLeft className="w-5 h-5" aria-hidden />
+                        Volver al inicio
+                    </button>
+                    <p className="text-sm font-semibold text-neutral-600 mb-4">
+                        Prueba del renderizador de bloques
+                    </p>
+                    <DynamicPageRenderer blocks={MOCK_BLOCKS} />
                 </div>
-                {/* Render the JSON dynamically */}
-                <DynamicPageRenderer blocks={MOCK_BLOCKS} />
             </div>
         </div>
     );

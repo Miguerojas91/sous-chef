@@ -1,13 +1,4 @@
-/**
- * usePageVisibility.ts
- *
- * Devuelve `true` mientras la pestaña está visible. Útil para pausar
- * intervalos, polling y animaciones cuando el usuario cambia de pestaña
- * o bloquea el dispositivo — preserva batería en mobile.
- *
- * También expone `useIntervalWhenVisible` para correr un callback en
- * intervalo SOLO si la pestaña está activa.
- */
+/** Pausar intervalos y polling con la app oculta o el teléfono bloqueado ahorra batería. */
 import { useEffect, useRef, useState } from 'react';
 
 export function usePageVisible(): boolean {
@@ -24,10 +15,7 @@ export function usePageVisible(): boolean {
   return visible;
 }
 
-/**
- * Ejecuta `cb` cada `delay` ms SOLO mientras la pestaña esté visible.
- * Si `delay` es `null`, no corre.
- */
+/** Solo corre con la página visible. `delay` en `null` lo desactiva. */
 export function useIntervalWhenVisible(cb: () => void, delay: number | null): void {
   const cbRef = useRef(cb);
   cbRef.current = cb;

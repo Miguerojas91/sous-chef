@@ -1,33 +1,22 @@
 /**
- * utils/analytics.ts
+ * Wrapper de PostHog. Sin `VITE_POSTHOG_KEY` todo es no-op, así desarrollo no
+ * ensucia el dashboard. `VITE_POSTHOG_HOST` por defecto es https://us.posthog.com.
  *
- * Wrapper de PostHog para Sous Chef.
- *
- * Activación:
- *  - `VITE_POSTHOG_KEY`  — token de proyecto PostHog. Sin esto, todas las
- *    funciones son no-op (útil en dev, no ensucia el dashboard).
- *  - `VITE_POSTHOG_HOST` — host del API (default `https://us.posthog.com`).
- *
- * Privacidad:
- *  - NO mandamos emails, passwords, ni contenido de mensajes de chat.
- *  - Sí mandamos: pantallas visitadas, IDs internos, métricas agregadas.
- *  - El user.id en distinct es el username (no PII fuerte).
- *
- * Eventos canónicos: ver `Events` enum abajo.
+ * Privacidad: nunca se envían emails, contraseñas ni contenido del chat. Solo
+ * pantallas, IDs internos y métricas agregadas; el distinct id es el username.
  */
 const KEY  = ((import.meta.env.VITE_POSTHOG_KEY as string | undefined) ?? '').trim();
 const HOST = ((import.meta.env.VITE_POSTHOG_HOST as string | undefined) ?? 'https://us.posthog.com').trim();
 const IS_PROD = import.meta.env.PROD;
 
-// Cliente PostHog cargado dinámicamente para no bloatar el bundle inicial
-// (posthog-js pesa ~180 KB raw).
+// Import dinámico: posthog-js es pesado y no debe entrar en el bundle inicial.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnalyticsClient = any;
 
 let initialized = false;
 let client: AnalyticsClient | null = null;
 
-/** Buffer de eventos disparados mientras PostHog terminaba de cargar. */
+/** Eventos que llegan antes de que PostHog termine de cargar. */
 const eventBuffer: Array<{ kind: 'track' | 'pageview' | 'identify' | 'reset'; args: unknown[] }> = [];
 
 function flushBuffer(): void {
@@ -43,16 +32,14 @@ function flushBuffer(): void {
   }
 }
 
-/** Inicializa PostHog (carga lazy) una sola vez. Llamar al boot de la app. */
+/** Idempotente. Llamar al arrancar la app. */
 export function initAnalytics(): void {
   if (initialized) return;
   initialized = true;
   if (!KEY) {
-    // Dev sin key — no-op silencioso. En desarrollo no ensuciamos el dashboard.
     return;
   }
 
-  // Lazy import — el JS de PostHog NO se incluye en el bundle inicial.
   import('posthog-js').then((mod) => {
     try {
       const posthog = mod.default;
@@ -69,8 +56,7 @@ export function initAnalytics(): void {
         },
       });
       if (!client) {
-        // En la mayoría de casos `loaded` se llamó dentro de init; si no,
-        // forzamos el client con la instancia general.
+        // Normalmente `loaded` ya corrió dentro de init; si no, usar la instancia global.
         client = posthog;
         flushBuffer();
       }
@@ -82,32 +68,26 @@ export function initAnalytics(): void {
   });
 }
 
-/**
- * Identifica al usuario en PostHog. Llamar tras login.
- * @param userId distinct ID (usamos username — no es PII fuerte)
- * @param props rasgos del usuario (no enviar PII)
- */
+/** Llamar tras el login. `props` no debe llevar PII. */
 export function identify(userId: string, props?: Record<string, unknown>): void {
   if (!KEY) return;
   if (!client) { eventBuffer.push({ kind: 'identify', args: [userId, props] }); return; }
   try { client.identify(userId, props); } catch { /* no-op */ }
 }
 
-/** Resetea el cliente — llamar al logout. */
+/** Llamar al cerrar sesión. */
 export function resetIdentity(): void {
   if (!KEY) return;
   if (!client) { eventBuffer.push({ kind: 'reset', args: [] }); return; }
   try { client.reset(); } catch { /* no-op */ }
 }
 
-/** Registra un evento. Props son agregables sin restricción. */
 export function track(event: string, props?: Record<string, unknown>): void {
   if (!KEY) return;
   if (!client) { eventBuffer.push({ kind: 'track', args: [event, props] }); return; }
   try { client.capture(event, props); } catch { /* no-op */ }
 }
 
-/** Pageview — llamar en cada cambio de ruta. */
 export function trackPageview(path: string, props?: Record<string, unknown>): void {
   if (!KEY) return;
   const payload = { $current_url: window.location.origin + path, path, ...props };
@@ -115,9 +95,7 @@ export function trackPageview(path: string, props?: Record<string, unknown>): vo
   try { client.capture('$pageview', payload); } catch { /* no-op */ }
 }
 
-// ── Catálogo de eventos canónicos ────────────────────────────────────────────
-// Usar SIEMPRE estas constantes en lugar de strings sueltas, para evitar typos
-// y mantener el dashboard limpio.
+// Usa estas constantes en vez de strings sueltos: un typo crea un evento nuevo en el dashboard.
 export const Events = {
   // Auth
   Registered:          'user.registered',

@@ -1,20 +1,7 @@
 /**
- * EditableText.tsx
- *
- * Componente inline del CMS que permite editar cualquier texto de la app
- * directamente en la pantalla, sin salir de la interfaz.
- *
- * Comportamiento:
- * - En modo lectura: renderiza el texto guardado (o `defaultText` si no hay nada).
- * - En modo edición (admin activo): muestra un botón de paleta al hacer hover,
- *   que abre un popover con un textarea para editar el texto inline.
- * - Los cambios se persisten en localStorage bajo la clave `cms_text_{elementKey}`.
- * - El CMS sincroniza los textos con la base de datos cuando el admin guarda.
- *
- * Uso:
- * ```tsx
- * <EditableText elementKey="home_title" defaultText="Sous Chef" as="h1" />
- * ```
+ * Texto editable en línea por el admin. Fuera del modo edición muestra el
+ * texto guardado en `cms_text_{elementKey}` o `defaultText`. `elementKey` es
+ * la clave de almacenamiento: no la cambies en textos existentes.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -29,14 +16,14 @@ interface EditableTextProps {
    className?: string;
 }
 
-export const EditableText: React.FC<EditableTextProps> = ({ 
-    elementKey, 
-    defaultText, 
-    as: Tag = 'span', 
-    className = '' 
+export const EditableText: React.FC<EditableTextProps> = ({
+    elementKey,
+    defaultText,
+    as: Tag = 'span',
+    className = ''
 }) => {
    const { isEditMode } = useEditor();
-   
+
    const [text, setText] = useState(() => {
        const saved = localStorage.getItem(`cms_text_${elementKey}`);
        return saved || defaultText;
@@ -45,7 +32,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
    const [customColor, setCustomColor] = useState(() => {
        return localStorage.getItem(`cms_color_${elementKey}`) || '';
    });
-   
+
    const [popupPos, setPopupPos] = useState<{x: number, y: number} | null>(null);
 
    useEffect(() => {
@@ -55,15 +42,14 @@ export const EditableText: React.FC<EditableTextProps> = ({
        return () => window.removeEventListener('click', close);
    }, [popupPos]);
 
+   // Estilo inline para que el color elegido gane a cualquier clase de Tailwind.
    const textStyle = {
         color: customColor ? customColor : undefined,
    };
 
-   // Para asegurar que el color gane a cualquier clase de Tailwind, 
-   // construimos un style object limpio.
    const renderTag = (isEditing: boolean) => {
        return (
-          <Tag 
+          <Tag
              contentEditable={isEditing}
              suppressContentEditableWarning={isEditing}
              style={textStyle}
@@ -73,7 +59,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
                 setText(newText);
                 localStorage.setItem(`cms_text_${elementKey}`, newText);
              } : undefined}
-             className={`${className} ${isEditing ? 'border border-dashed border-orange-400/50 bg-orange-400/5 outline-none cursor-text px-0.5 rounded transition-all hover:bg-orange-400/10 min-h-[1em]' : ''}`}
+             className={`${className} ${isEditing ? 'border border-dashed border-brand-400 bg-brand-50 cursor-text px-0.5 rounded transition-colors hover:bg-brand-100 min-h-[1em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700' : ''}`}
           >
              {text}
           </Tag>
@@ -85,55 +71,62 @@ export const EditableText: React.FC<EditableTextProps> = ({
          <div className="relative group/editable inline-block">
             {renderTag(true)}
 
-            {/* Visible Trigger for Color Picker */}
-            <button 
+            <button
+                type="button"
                 onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     const rect = e.currentTarget.getBoundingClientRect();
                     setPopupPos({ x: rect.left, y: rect.bottom + 5 });
                 }}
-                className="absolute -top-4 -right-2 p-1 bg-white border border-orange-200 rounded-full shadow-md text-orange-500 hover:scale-110 transition-all opacity-0 group-hover/editable:opacity-100 z-[60]"
-                title="Cambiar color del texto"
+                className="absolute -top-6 -right-5 w-11 h-11 flex items-center justify-center opacity-0 group-hover/editable:opacity-100 focus-visible:opacity-100 transition-opacity z-[60] rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700"
+                aria-label="Cambiar color del texto"
             >
-                <Palette size={12} />
+                <span className="p-1 bg-white border border-neutral-200 rounded-full text-brand-700">
+                    <Palette size={12} aria-hidden />
+                </span>
             </button>
-            
+
             {popupPos && createPortal(
-                <div 
-                    className="fixed z-[99999] bg-white p-3 rounded-xl shadow-2xl border border-neutral-200 animate-in zoom-in-95 duration-200"
+                <div
+                    role="dialog"
+                    aria-label="Color del texto"
+                    className="fixed z-[99999] bg-white p-3 rounded-card shadow-overlay border border-neutral-200 motion-safe:animate-fade-in"
                     style={{ left: Math.min(window.innerWidth - 200, popupPos.x), top: popupPos.y }}
                     onClick={e => e.stopPropagation()}
                 >
                     <div className="flex flex-col gap-2 min-w-[120px]">
-                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-center">Color del Texto</span>
-                        
+                        <span className="text-sm font-semibold text-neutral-600 text-center">Color del texto</span>
+
                         <div className="flex items-center gap-3 justify-center">
-                            <input 
-                                type="color" 
+                            <input
+                                type="color"
+                                aria-label="Elegir color"
                                 value={customColor || '#000000'}
-                                className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0 overflow-hidden"
+                                className="w-11 h-11 rounded-control cursor-pointer border-0 p-0 overflow-hidden"
                                 onChange={e => {
                                     const val = e.target.value;
                                     setCustomColor(val);
                                     localStorage.setItem(`cms_color_${elementKey}`, val);
                                 }}
                             />
-                            
+
                             <div className="flex flex-col gap-1">
-                                <button 
+                                <button
+                                    type="button"
                                     onClick={() => {
                                         setCustomColor('');
                                         localStorage.removeItem(`cms_color_${elementKey}`);
                                         setPopupPos(null);
                                     }}
-                                    className="text-[10px] font-bold text-neutral-400 hover:text-red-500 uppercase p-1"
+                                    className="min-h-11 px-2 text-xs font-semibold text-neutral-600 hover:text-danger rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700"
                                 >
-                                    Limpiar
+                                    Quitar color
                                 </button>
-                                <button 
+                                <button
+                                    type="button"
                                     onClick={() => setPopupPos(null)}
-                                    className="text-[10px] font-bold text-orange-500 uppercase p-1"
+                                    className="min-h-11 px-2 text-xs font-semibold text-brand-700 rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700"
                                 >
                                     Listo
                                 </button>

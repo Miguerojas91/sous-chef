@@ -1,14 +1,7 @@
 /**
- * utils/auth.ts
- *
- * Sesión del frontend. Soporta:
- *   1. Backend JWT (si está configurada `VITE_BACKEND_URL`).
- *   2. Local-only (LOCAL_USERS + localStorage) — modo MVP heredado.
- *
- * Storage:
- *   - localStorage['user']         → datos del usuario (LocalUser).
- *   - localStorage['sous_token']   → access token JWT (~15 min).
- *   - localStorage['sous_refresh'] → refresh token opaco (~30 días).
+ * Sesión del frontend: backend JWT si hay `VITE_BACKEND_URL`, si no, solo local.
+ * localStorage: `user` (LocalUser), `sous_token` (JWT, ~15 min),
+ * `sous_refresh` (refresh token opaco, ~30 días).
  */
 
 import type { LocalUser } from '../data/localUsers';
@@ -35,10 +28,8 @@ export const getUser = (): LocalUser | null => {
   }
 };
 
-/** Devuelve el código de país del usuario, o undefined si no está configurado. */
 export const getUserCountry = (): string | undefined => getUser()?.country;
 
-/** Actualiza el país del usuario en localStorage y emite el evento de cambio. */
 export const setUserCountry = (countryCode: string): void => {
   const user = getUser();
   if (!user) return;
@@ -47,31 +38,24 @@ export const setUserCountry = (countryCode: string): void => {
   window.dispatchEvent(new Event('userStateChange'));
 };
 
-/**
- * Devuelve TODAS las preferencias persistentes del usuario (filtros activos).
- * Lee primero `preferences` (campo nuevo); si no existe, cae a
- * `dietaryPreferences` (campo legacy) para no romper a usuarios viejos.
- */
+/** Cae a `dietaryPreferences` para usuarios guardados antes de `preferences`. */
 export const getUserPreferences = (): string[] => {
   const u = getUser();
   return u?.preferences ?? u?.dietaryPreferences ?? [];
 };
 
-/** Actualiza las preferencias del usuario. */
 export const setUserPreferences = (ids: string[]): void => {
   const user = getUser();
   if (!user) return;
-  // Borramos el campo legacy para evitar inconsistencia entre los dos.
+  // Se borra el campo antiguo para que no queden dos fuentes distintas.
   const { dietaryPreferences: _legacy, ...rest } = user;
   const next = { ...rest, preferences: ids };
   localStorage.setItem(USER_KEY, JSON.stringify(next));
   window.dispatchEvent(new Event('userStateChange'));
 };
 
-/** Devuelve las alergias guardadas del usuario (vacío si no hay). */
 export const getUserAllergies = (): string[] => getUser()?.allergies ?? [];
 
-/** Actualiza las alergias del usuario. */
 export const setUserAllergies = (allergies: string[]): void => {
   const user = getUser();
   if (!user) return;
@@ -80,10 +64,8 @@ export const setUserAllergies = (allergies: string[]): void => {
   window.dispatchEvent(new Event('userStateChange'));
 };
 
-/** Devuelve los disgustos guardados del usuario (vacío si no hay). */
 export const getUserDislikes = (): string[] => getUser()?.dislikes ?? [];
 
-/** Actualiza los disgustos del usuario. */
 export const setUserDislikes = (dislikes: string[]): void => {
   const user = getUser();
   if (!user) return;
@@ -92,10 +74,9 @@ export const setUserDislikes = (dislikes: string[]): void => {
   window.dispatchEvent(new Event('userStateChange'));
 };
 
-// ── Aliases legacy (mantienen las llamadas viejas funcionando) ────────────────
-/** @deprecated — usa `getUserPreferences`. */
+/** @deprecated Usa `getUserPreferences`. */
 export const getUserDietary = getUserPreferences;
-/** @deprecated — usa `setUserPreferences`. */
+/** @deprecated Usa `setUserPreferences`. */
 export const setUserDietary = setUserPreferences;
 
 export const setSession = (user: LocalUser, token?: string, refreshToken?: string): void => {
@@ -117,8 +98,6 @@ export const authHeaders = (): Record<string, string> => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// ── JWT helpers ──────────────────────────────────────────────────────────────
-
 interface JwtPayload {
   sub: string;
   exp?: number;
@@ -127,7 +106,7 @@ interface JwtPayload {
   username?: string;
 }
 
-/** Decodifica un JWT (sin verificar firma — solo para leer claims). */
+/** Solo lee claims: no verifica la firma, no usar para decisiones de seguridad. */
 export function decodeJwt(token: string): JwtPayload | null {
   try {
     const parts = token.split('.');
@@ -141,17 +120,14 @@ export function decodeJwt(token: string): JwtPayload | null {
   }
 }
 
-/** True si el access token está caducado o ausente. */
 export function isAccessTokenExpired(): boolean {
   const t = getToken();
   if (!t) return true;
   const payload = decodeJwt(t);
-  if (!payload?.exp) return false; // sin claim de expiry → no asumir caducado
-  // Margen de 30s para evitar carrera con el server
+  if (!payload?.exp) return false; // sin exp no se asume caducado
+  // 30 s de margen para no mandar un token que caduca en tránsito
   return payload.exp * 1000 < Date.now() + 30_000;
 }
-
-// ── Backend auth (FastAPI) ────────────────────────────────────────────────────
 
 export class BackendUnavailableError extends Error {}
 
@@ -193,10 +169,10 @@ async function postBackend<T>(path: string, body: unknown): Promise<T> {
 function authResponseToUser(r: AuthResponse): LocalUser {
   return {
     username: r.user.username,
-    password: '', // no persistimos — JWT hace el resto
+    password: '', // con JWT no se guarda la contraseña
     email: r.user.email,
     xp: r.user.xp,
-    rank: 'Iniciado', // recalculado en el header
+    rank: 'Iniciado', // el header lo recalcula a partir del XP
     is_admin: r.user.is_admin,
   };
 }
@@ -221,7 +197,7 @@ export async function backendRegister(args: {
   return u;
 }
 
-/** Revoca este refresh token en el server (ignora errores). */
+/** Revoca este refresh token en el servidor; ignora errores. */
 export async function backendLogout(): Promise<void> {
   if (!BACKEND_URL) return;
   const rt = getRefreshToken();
@@ -233,10 +209,10 @@ export async function backendLogout(): Promise<void> {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${at}` },
       body: JSON.stringify({ refresh_token: rt }),
     });
-  } catch { /* offline → ignoramos */ }
+  } catch { /* sin conexión: se ignora */ }
 }
 
-/** Revoca TODAS las sesiones del usuario (botón pánico). */
+/** Revoca todas las sesiones del usuario en todos sus dispositivos. */
 export async function backendLogoutAll(): Promise<void> {
   if (!BACKEND_URL) return;
   const at = getToken();
@@ -246,5 +222,5 @@ export async function backendLogoutAll(): Promise<void> {
       method: 'POST',
       headers: { Authorization: `Bearer ${at}` },
     });
-  } catch { /* ignoramos */ }
+  } catch { /* se ignora */ }
 }

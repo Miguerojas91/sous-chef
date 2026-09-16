@@ -1,16 +1,9 @@
-/**
- * ErrorBoundary.tsx
- *
- * Captura errores de renderizado para que un fallo en cualquier subárbol
- * no deje la app entera en blanco. Muestra una UI amigable con opción de
- * recargar o ir al inicio.
- */
+/** Evita que un error de render deje la app entera en blanco. */
 import { Component, type ReactNode } from 'react';
 import { ChefHat, RefreshCw } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
-  /** UI alternativa opcional (override del default). */
   fallback?: ReactNode;
 }
 
@@ -27,7 +20,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }): void {
-    // En producción esto se enviaría a Sentry/equivalente.
+    // Sin servicio de reporte de errores: solo queda en consola.
     console.error('[ErrorBoundary]', error, info.componentStack);
   }
 
@@ -47,39 +40,39 @@ export class ErrorBoundary extends Component<Props, State> {
       <main
         role="alert"
         aria-live="assertive"
-        className="min-h-screen flex items-center justify-center bg-neutral-50 px-6"
+        className="min-h-dvh flex items-center justify-center bg-neutral-50 px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       >
         <div className="max-w-sm w-full text-center">
-          <div className="inline-flex p-4 rounded-3xl bg-gradient-to-br from-orange-400 to-rose-500 shadow-lg mb-6">
-            <ChefHat className="w-10 h-10 text-white" aria-hidden />
-          </div>
+          <ChefHat className="w-12 h-12 text-brand-700 mx-auto mb-4" aria-hidden />
 
-          <h1 className="text-2xl font-extrabold text-neutral-900 tracking-tight mb-2">
-            Algo se quemó en la cocina
+          <h1 className="text-xl md:text-2xl font-extrabold text-neutral-900 mb-2">
+            Algo falló en la app
           </h1>
-          <p className="text-sm text-neutral-500 mb-6">
-            Hubo un error inesperado. Recarga la app para volver a la cocina.
+          <p className="text-sm text-neutral-600 mb-6">
+            Hubo un error inesperado. Recarga para seguir donde ibas.
           </p>
 
           <div className="flex flex-col gap-2">
             <button
+              type="button"
               onClick={this.handleReload}
-              className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm transition-colors"
+              className="min-h-11 flex items-center justify-center gap-2 px-4 rounded-control bg-brand-700 hover:bg-brand-800 text-white font-bold text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-2"
             >
               <RefreshCw size={16} aria-hidden /> Recargar
             </button>
             <button
+              type="button"
               onClick={this.handleHome}
-              className="py-3 px-4 rounded-xl bg-white border border-neutral-200 hover:bg-neutral-50 text-neutral-700 font-bold text-sm transition-colors"
+              className="min-h-11 px-4 rounded-control bg-white border border-neutral-200 hover:bg-neutral-100 text-neutral-800 font-bold text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-2"
             >
               Volver al inicio
             </button>
           </div>
 
           {import.meta.env.DEV && this.state.error && (
-            <details className="mt-6 text-left text-xs text-neutral-400 bg-white p-3 rounded-lg border border-neutral-100">
-              <summary className="cursor-pointer font-semibold">Detalles (dev)</summary>
-              <pre className="mt-2 whitespace-pre-wrap break-all">{this.state.error.message}</pre>
+            <details className="mt-6 text-left text-xs text-neutral-600 bg-white p-3 rounded-card border border-neutral-200">
+              <summary className="cursor-pointer font-semibold min-h-11 flex items-center">Detalles (dev)</summary>
+              <pre className="mt-2 whitespace-pre-wrap [overflow-wrap:anywhere]">{this.state.error.message}</pre>
             </details>
           )}
         </div>

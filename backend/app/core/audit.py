@@ -10,8 +10,10 @@ import json
 import logging
 from typing import Optional, Any
 from fastapi import Request
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import is_postgres
 from app.models import AuditLog
 
 logger = logging.getLogger("audit")
@@ -61,7 +63,7 @@ async def log_event(
 ) -> None:
     """Registra un evento. Nunca lanza: fallar el log no debe romper la app."""
     try:
-        row = AuditLog(
+        values = dict(
             user_id=user_id,
             action=action[:64],
             target=(target or "")[:255] or None,
@@ -70,7 +72,17 @@ async def log_event(
             metadata_=json.dumps(meta, default=str)[:8000] if meta else None,
             ok=ok,
         )
-        db.add(row)
+        if is_postgres(db):
+            # Vía función: un INSERT ORM usa RETURNING, y RLS rechaza devolver
+            # filas de eventos anónimos o de otro usuario (login fallido, reuso).
+            await db.execute(
+                text("SELECT audit_log_append(CAST(:user_id AS integer), CAST(:action AS text), "
+                     "CAST(:target AS text), CAST(:ip AS text), CAST(:user_agent AS text), "
+                     "CAST(:metadata_ AS text), CAST(:ok AS boolean))"),
+                values,
+            )
+            return
+        db.add(AuditLog(**values))
         await db.flush()
     except Exception:  # noqa: BLE001
         logger.exception("audit log failed — action=%s user_id=%s", action, user_id)

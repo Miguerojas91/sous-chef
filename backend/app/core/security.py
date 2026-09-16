@@ -16,11 +16,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import jwt
 from jwt import PyJWTError as JWTError
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.core.database import AsyncSessionLocal, get_db, IS_POSTGRES
+from app.core.database import AsyncSessionLocal, get_db, IS_POSTGRES, set_rls_context
 from app.models import User
 
 JWT_SECRET = os.getenv("JWT_SECRET")
@@ -76,6 +75,9 @@ async def get_current_user(
     except ValueError:
         raise creds_exc
 
+    # El `sub` ya está verificado por la firma: basta para que RLS deje ver la
+    # propia fila. Nunca is_admin aquí; eso lo decide la DB, no el JWT.
+    await set_rls_context(db, user_id=user_id_int)
     result = await db.execute(select(User).where(User.id == user_id_int))
     user = result.scalars().first()
     if not user:
@@ -98,6 +100,9 @@ async def get_user_db(current: User = Depends(get_current_user)):
     `app.is_admin` (transacción-local), que son leídas por las políticas RLS
     definidas en la migración `002_enable_rls.py`.
 
+    A diferencia del contexto que fija `get_current_user` (solo user_id), aquí
+    también se propaga `is_admin` leído de la DB.
+
     En SQLite (dev) las políticas no existen y `set_config` no se ejecuta;
     la dependencia se comporta como un `get_db` normal.
 
@@ -112,14 +117,7 @@ async def get_user_db(current: User = Depends(get_current_user)):
             # Abrimos una transacción explícita para que `set_config(..., true)`
             # (transaction-local) cubra todas las queries del request.
             async with session.begin():
-                await session.execute(
-                    text("SELECT set_config('app.current_user_id', :uid, true)"),
-                    {"uid": str(current.id)},
-                )
-                await session.execute(
-                    text("SELECT set_config('app.is_admin', :a, true)"),
-                    {"a": "true" if current.is_admin else "false"},
-                )
+                await set_rls_context(session, user_id=current.id, is_admin=bool(current.is_admin))
                 yield session
         else:
             # Dev/SQLite: sin RLS, comportamiento normal

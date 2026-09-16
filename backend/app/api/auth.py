@@ -4,6 +4,11 @@ Endpoints de autenticación con:
 - Refresh tokens persistidos con rotación + detección de reuso.
 - Rate limit estricto en /login (anti brute-force).
 - Audit log de cada intento.
+
+RLS (Postgres): antes de autenticarse no hay contexto, así que la búsqueda
+por username, el alta y la rotación del refresh token van por funciones
+SECURITY DEFINER (`app/core/auth_store.py`, `rotate_refresh_token`). Una vez
+conocido el usuario se fija `app.current_user_id` y el resto usa el ORM bajo RLS.
 """
 import json
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -12,19 +17,21 @@ from sqlalchemy.future import select
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 
-from app.core.database import get_db
+from app.core.auth_store import create_user_account, find_login_candidate
+from app.core.database import get_db, set_rls_context
 from app.core.rate_limit import limiter
-from app.core.security import create_access_token, get_current_user
+from app.core.security import JWT_EXPIRE_MINUTES, create_access_token, get_current_user
 from app.core.tokens import (
     create_refresh_token,
     lookup_refresh_token,
+    rotate_refresh_token,
     revoke_token,
     revoke_all_for_user,
     RefreshOutcome,
 )
 from app.core.audit import log_event, Action
 from app.core.passwords import get_password_hash, verify_password
-from app.models import User, RefreshToken
+from app.models import User
 
 router = APIRouter()
 
@@ -90,20 +97,24 @@ def _client_meta(request: Request) -> tuple[Optional[str], Optional[str]]:
     return ua, ip
 
 
-async def _build_auth_response(
-    db: AsyncSession, user: User, request: Request, *, replaces_id: Optional[int] = None
-) -> AuthResponse:
-    from app.core.security import JWT_EXPIRE_MINUTES
-    access = create_access_token(
+def _access_token_for(user: User) -> str:
+    return create_access_token(
         subject=user.id,
         extra={"is_admin": bool(user.is_admin), "username": user.username},
     )
+
+
+async def _load_authenticated_user(db: AsyncSession, user_id: int) -> Optional[User]:
+    """Solo tras verificar credenciales o refresh token: abre RLS para ese usuario."""
+    await set_rls_context(db, user_id=user_id)
+    return (await db.execute(select(User).where(User.id == user_id))).scalars().first()
+
+
+async def _build_auth_response(db: AsyncSession, user: User, request: Request) -> AuthResponse:
     ua, ip = _client_meta(request)
-    refresh, _ = await create_refresh_token(
-        db, user.id, user_agent=ua, ip=ip, replaces_id=replaces_id
-    )
+    refresh, _ = await create_refresh_token(db, user.id, user_agent=ua, ip=ip)
     return AuthResponse(
-        access_token=access,
+        access_token=_access_token_for(user),
         refresh_token=refresh,
         expires_in=JWT_EXPIRE_MINUTES * 60,
         user=_user_to_public(user),
@@ -119,25 +130,23 @@ async def register(request: Request, response: Response, user: UserCreate, db: A
         await db.commit()
         raise HTTPException(400, "La contraseña debe tener al menos 8 caracteres")
 
-    res = await db.execute(
-        select(User).where((User.username == user.username) | (User.email == user.email))
+    new_id = await create_user_account(
+        db,
+        username=user.username,
+        email=user.email,
+        hashed_password=get_password_hash(user.password),
+        allergies_json=json.dumps(user.allergies),
+        dislikes_json=json.dumps(user.dislikes),
     )
-    if res.scalars().first():
+    if new_id is None:
         await log_event(db, action=Action.REGISTER, ok=False,
                         target=user.username, meta={"reason": "duplicate"}, request=request)
         await db.commit()
         raise HTTPException(400, "Username o email ya registrado")
 
-    db_user = User(
-        username=user.username,
-        email=user.email,
-        hashed_password=get_password_hash(user.password),
-        allergies=json.dumps(user.allergies),
-        dislikes=json.dumps(user.dislikes),
-        is_admin=False,
-    )
-    db.add(db_user)
-    await db.flush()  # obtener id
+    db_user = await _load_authenticated_user(db, new_id)
+    if db_user is None:
+        raise HTTPException(500, "No se pudo completar el registro")
 
     resp = await _build_auth_response(db, db_user, request)
     await log_event(db, action=Action.REGISTER, user_id=db_user.id,
@@ -149,9 +158,11 @@ async def register(request: Request, response: Response, user: UserCreate, db: A
 @router.post("/login", response_model=AuthResponse)
 @limiter.limit("10/minute")
 async def login(request: Request, response: Response, creds: UserLogin, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(User).where(User.username == creds.username))
-    user = res.scalars().first()
-    if not user or not verify_password(creds.password, user.hashed_password):
+    candidate = await find_login_candidate(db, creds.username)
+    user = None
+    if candidate and verify_password(creds.password, candidate.hashed_password):
+        user = await _load_authenticated_user(db, candidate.id)
+    if not user:
         await log_event(db, action=Action.LOGIN_FAIL, ok=False,
                         target=creds.username, request=request)
         await db.commit()
@@ -167,41 +178,39 @@ async def login(request: Request, response: Response, creds: UserLogin, db: Asyn
 @router.post("/refresh", response_model=TokenResponse)
 @limiter.limit("60/minute")
 async def refresh(request: Request, response: Response, body: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    outcome, row = await lookup_refresh_token(db, body.refresh_token)
+    ua, ip = _client_meta(request)
+    # La revocación de la cadena ante reuso ocurre dentro de la rotación.
+    rot = await rotate_refresh_token(db, body.refresh_token, user_agent=ua, ip=ip)
 
-    if outcome == RefreshOutcome.NOT_FOUND:
+    if rot.outcome == RefreshOutcome.NOT_FOUND:
         await log_event(db, action=Action.REFRESH_NOT_FOUND, ok=False, request=request)
         await db.commit()
         raise HTTPException(401, "Refresh token inválido")
 
-    assert row is not None
-
-    if outcome == RefreshOutcome.REUSE_DETECTED:
-        # Robo probable: invalida toda la cadena del usuario.
-        n = await revoke_all_for_user(db, row.user_id)
+    if rot.outcome == RefreshOutcome.REUSE_DETECTED:
         await log_event(db, action=Action.REFRESH_REUSE, ok=False,
-                        user_id=row.user_id, meta={"revoked": n}, request=request)
+                        user_id=rot.user_id, meta={"revoked": rot.revoked_count}, request=request)
         await db.commit()
         raise HTTPException(401, "Refresh token revocado (reuso detectado). Inicia sesión nuevamente.")
 
-    if outcome == RefreshOutcome.EXPIRED:
+    if rot.outcome == RefreshOutcome.EXPIRED:
         await log_event(db, action=Action.REFRESH_EXPIRED, ok=False,
-                        user_id=row.user_id, request=request)
+                        user_id=rot.user_id, request=request)
         await db.commit()
         raise HTTPException(401, "Refresh token expirado")
 
-    user = (await db.execute(select(User).where(User.id == row.user_id))).scalars().first()
+    user = await _load_authenticated_user(db, rot.user_id)
     if not user:
+        # Sin commit: la rotación se deshace con el rollback de la sesión.
         raise HTTPException(401, "Usuario no encontrado")
 
-    await revoke_token(db, row)
-    resp = await _build_auth_response(db, user, request, replaces_id=row.id)
+    access = _access_token_for(user)
     await log_event(db, action=Action.REFRESH_OK, user_id=user.id, request=request)
     await db.commit()
     return TokenResponse(
-        access_token=resp.access_token,
-        refresh_token=resp.refresh_token,
-        expires_in=resp.expires_in,
+        access_token=access,
+        refresh_token=rot.new_token,
+        expires_in=JWT_EXPIRE_MINUTES * 60,
     )
 
 
@@ -213,6 +222,8 @@ async def logout(
     db: AsyncSession = Depends(get_db),
 ):
     """Revoca un refresh token específico (cierra esa sesión)."""
+    # FastAPI reutiliza la misma sesión `get_db` que `get_current_user`, que ya
+    # fijó el contexto RLS del usuario: solo verá y revocará sus propios tokens.
     outcome, row = await lookup_refresh_token(db, body.refresh_token)
     if outcome == RefreshOutcome.OK and row and row.user_id == current.id:
         await revoke_token(db, row)

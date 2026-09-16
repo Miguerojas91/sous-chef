@@ -7,11 +7,9 @@ import asyncio
 import os
 import sys
 
-from sqlalchemy import select
-
+from app.core.auth_store import find_login_candidate
 from app.core.passwords import verify_password
 from app.core.database import AsyncSessionLocal
-from app.models import User
 
 
 async def verify() -> None:
@@ -21,8 +19,8 @@ async def verify() -> None:
         sys.exit("Faltan ADMIN_USERNAME o ADMIN_PASSWORD en el entorno.")
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(select(User).where(User.username == username))
-        user = result.scalar_one_or_none()
+        # Misma búsqueda que /auth/login, para probar también el camino bajo RLS.
+        user = await find_login_candidate(session, username)
         if not user:
             print("Usuario no encontrado.")
             return

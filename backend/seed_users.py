@@ -19,7 +19,7 @@ import sys
 import bcrypt
 from sqlalchemy import select
 
-from app.core.database import AsyncSessionLocal
+from app.core.database import AsyncSessionLocal, set_rls_context
 from app.models import User
 
 
@@ -68,6 +68,8 @@ async def seed() -> None:
         return
     inserted, skipped = 0, 0
     async with AsyncSessionLocal() as db:
+        # Script de operador: crea admins, así que necesita contexto admin bajo RLS.
+        await set_rls_context(db, is_admin=True)
         for u in LOCAL_USERS:
             if len(u["password"]) < 8:
                 print(f"⚠️  '{u['username']}' tiene contraseña <8 chars — la siembro pero "

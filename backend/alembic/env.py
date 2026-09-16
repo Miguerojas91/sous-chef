@@ -23,7 +23,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from app.core.database import Base, DATABASE_URL
 import app.models  # Imports all models to register them on Base.metadata
 
-config.set_main_option("sqlalchemy.url", str(DATABASE_URL))
+# Las migraciones deben correr con el rol dueño del esquema, no con app_user:
+# si app_user fuera owner podría desactivar RLS con ALTER TABLE.
+config.set_main_option("sqlalchemy.url", os.getenv("MIGRATION_DATABASE_URL") or str(DATABASE_URL))
 
 # add your model's MetaData object here
 # for 'autogenerate' support

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { LESSON_CONTENT } from '../data/LessonContent';
 import type { LessonSection } from '../data/LessonContent';
+import { useWakeLock } from '../hooks/useWakeLock';
 
 interface LessonViewerProps {
   lessonTitle: string;
@@ -126,6 +127,10 @@ export const LessonViewer = ({
   levelName, levelColor, levelBg, levelBorder,
   isCompleted, onClose, onComplete,
 }: LessonViewerProps) => {
+  // Mientras la lección está abierta, el usuario está leyendo activamente
+  // (a veces con las manos ocupadas siguiendo los pasos). El componente solo
+  // se monta cuando se abre y se desmonta al cerrar — el lock se libera solo.
+  useWakeLock(true, { mediaSessionTitle: `Lección: ${lessonTitle}` });
 
   const key = lessonTitle.replace(/\s+/g, '');
   const data = LESSON_CONTENT[key];

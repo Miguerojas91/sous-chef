@@ -25,6 +25,7 @@ import { evaluateImage } from '../services/gemini';
 import type { EvaluationResult } from '../services/gemini';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getLevelStars, saveLevelStars, addXP } from '../utils/progress';
+import { useWakeLock } from '../hooks/useWakeLock';
 import {
   ArrowLeft, CheckCircle, ChevronRight, Shield, Swords, Zap, Upload, Clock, Users, ChefHat
 } from 'lucide-react';
@@ -105,6 +106,10 @@ export const BossPage = ({
   challenges, tips, mainRecipe,
   backPath = '/mapa',
 }: BossPageProps) => {
+  // Pantalla siempre encendida durante un boss — son recetas largas (45+ min)
+  // y el usuario está activamente cocinando.
+  useWakeLock(true, { mediaSessionTitle: `Boss: ${bossName}` });
+
   const navigate = useNavigate();
   const location = useLocation();
   const xpAwardedRef = useRef(false);

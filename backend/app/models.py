@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, Table, Enum
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, Table, Enum, DateTime, Text
+from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 import enum
@@ -155,3 +156,42 @@ class Page(Base):
     slug = Column(String, unique=True, index=True)
     title = Column(String)
     content_json = Column(String, default="[]") # Array de Block objects
+
+
+class RefreshToken(Base):
+    """
+    Refresh token persistido (solo el HASH, nunca el token en claro).
+
+    Flujo:
+    - /auth/login emite un access_token (JWT corto) + refresh_token opaco.
+    - El cliente envía el refresh_token a /auth/refresh para rotar.
+    - Cada uso CONSUME el actual (revoked_at + replaced_by_id) y emite uno nuevo.
+    - Detección de reuso: si llega un refresh_token ya revocado, se invalidan
+      TODOS los tokens del usuario (señal de robo).
+    """
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    token_hash = Column(String(128), unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    replaced_by_id = Column(Integer, ForeignKey("refresh_tokens.id", ondelete="SET NULL"), nullable=True)
+    user_agent = Column(String(512), nullable=True)
+    ip = Column(String(64), nullable=True)
+
+
+class AuditLog(Base):
+    """Registro append-only de acciones sensibles. RLS: el usuario ve las suyas."""
+    __tablename__ = "audit_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
+    action = Column(String(64), nullable=False, index=True)
+    target = Column(String(255), nullable=True)
+    ip = Column(String(64), nullable=True)
+    user_agent = Column(String(512), nullable=True)
+    metadata_ = Column("metadata", Text, nullable=True)  # SQLAlchemy reserva 'metadata'
+    ok = Column(Boolean, server_default="1", nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

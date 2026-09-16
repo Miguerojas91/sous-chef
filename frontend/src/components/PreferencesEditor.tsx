@@ -1,42 +1,25 @@
 /**
- * PreferencesEditor.tsx
+ * Editor de preferencias: los filtros de receta, alergias (Sous nunca las usa,
+ * es un tema de salud) y lo que no le gusta al usuario (Sous lo evita).
  *
- * Editor unificado de preferencias del usuario:
- *  - Chips de los 8 filtros (sin-horno, 3-ingredientes, económico, para-niños,
- *    diabético, keto, vegetariano, sin gluten).
- *  - Tag input de alergias (NUNCA usar — riesgo de salud).
- *  - Tag input de disgustos (evitar — preferencia).
- *
- * Dos modos:
- *  - `mode="inline"`  — embed en un formulario (registro).
- *  - `mode="modal"`   — overlay full-screen con botones Cerrar/Guardar
- *                       (se llama desde un botón "Editar preferencias").
- *
- * Patrón "controlled": los valores se reciben por props y los cambios se
- * notifican al padre. El padre decide cuándo persistir (en registro: al
- * crear cuenta; en modal: al pulsar "Guardar").
+ * - `inline`: dentro del registro. Avisa cada cambio con `onChange`.
+ * - `modal`: diálogo con Cancelar/Guardar. Solo persiste al guardar (`onSave`).
  */
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { RECIPE_FILTERS, getFilter } from '../data/recipeFilters';
-import { AlertTriangle, ChevronRight, X, Ban } from 'lucide-react';
+import { X } from 'lucide-react';
+import { Dialog } from './ui/Dialog';
+
+type Prefs = { filterIds: string[]; allergies: string[]; dislikes: string[] };
 
 interface PreferencesEditorProps {
   mode?: 'inline' | 'modal';
   initialFilterIds: string[];
   initialAllergies: string[];
   initialDislikes: string[];
-  onChange?: (next: {
-    filterIds: string[];
-    allergies: string[];
-    dislikes: string[];
-  }) => void;
-  /** Solo en modo modal: callback cuando el usuario cierra/guarda. */
+  onChange?: (next: Prefs) => void;
   onClose?: () => void;
-  onSave?: (next: {
-    filterIds: string[];
-    allergies: string[];
-    dislikes: string[];
-  }) => void;
+  onSave?: (next: Prefs) => void;
 }
 
 export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
@@ -52,13 +35,12 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
   const [allergies, setAllergies] = useState<string[]>(initialAllergies);
   const [dislikes, setDislikes] = useState<string[]>(initialDislikes);
 
-  const notify = (next: Partial<{ filterIds: string[]; allergies: string[]; dislikes: string[] }>) => {
-    const merged = {
+  const notify = (next: Partial<Prefs>) => {
+    onChange?.({
       filterIds: next.filterIds ?? filterIds,
       allergies: next.allergies ?? allergies,
       dislikes: next.dislikes ?? dislikes,
-    };
-    onChange?.(merged);
+    });
   };
 
   const toggleFilter = (id: string) => {
@@ -94,15 +76,11 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
   };
 
   const body = (
-    <div className="space-y-5">
-      {/* Filtros (chips) */}
+    <div className="space-y-6">
       <section>
-        <h3 className="text-sm font-bold text-neutral-800 mb-2">
-          Filtros automáticos
-        </h3>
-        <p className="text-xs text-neutral-500 mb-3 leading-snug">
-          Sous respetará lo que marques aquí en TODAS tus sesiones, sin tener que
-          repetirlo cada vez.
+        <h3 className="text-base font-bold text-neutral-900">Tipo de recetas</h3>
+        <p className="text-sm text-neutral-600 mt-0.5 mb-3 leading-snug">
+          Sous las tiene en cuenta en cada sesión. No tienes que repetirlas.
         </p>
         <div className="flex flex-wrap gap-2">
           {RECIPE_FILTERS.map(f => {
@@ -114,15 +92,14 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
                 type="button"
                 onClick={() => toggleFilter(f.id)}
                 aria-pressed={active}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                className={`min-h-11 px-4 rounded-full text-sm font-semibold transition-colors border ${
                   active
                     ? isDiet
-                      ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-200'
-                      : 'bg-orange-500 text-white border-orange-500 shadow-sm shadow-orange-200'
-                    : 'bg-white text-neutral-700 border-neutral-200 hover:border-orange-300'
+                      ? 'bg-world-1 text-white border-world-1'
+                      : 'bg-brand-700 text-white border-brand-700'
+                    : 'bg-white text-neutral-800 border-neutral-300 hover:border-neutral-500'
                 }`}
               >
-                <span>{f.emoji}</span>
                 {f.label}
               </button>
             );
@@ -130,27 +107,21 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
         </div>
       </section>
 
-      {/* Alergias */}
       <TagInput
-        kind="allergies"
         label="Alergias"
-        sublabel="Sous NUNCA las usará — alto riesgo"
-        icon={<AlertTriangle className="w-4 h-4 text-red-500" />}
-        emptyMsg="Sin alergias registradas."
-        chipClass="bg-red-100 text-red-700"
+        sublabel="Sous nunca las usará."
+        emptyMsg="No has agregado alergias."
+        chipClass="bg-red-50 text-red-800 border-red-200"
         tags={allergies}
         onAdd={(t) => addTag('allergies', t)}
         onRemove={(t) => removeTag('allergies', t)}
       />
 
-      {/* Disgustos */}
       <TagInput
-        kind="dislikes"
-        label="No me gustan"
-        sublabel="Sous los evitará salvo que los pidas"
-        icon={<Ban className="w-4 h-4 text-orange-500" />}
-        emptyMsg="Sin disgustos registrados."
-        chipClass="bg-orange-100 text-orange-700"
+        label="No me gusta"
+        sublabel="Sous lo evita, salvo que lo pidas."
+        emptyMsg="No has agregado nada."
+        chipClass="bg-neutral-100 text-neutral-800 border-neutral-300"
         tags={dislikes}
         onAdd={(t) => addTag('dislikes', t)}
         onRemove={(t) => removeTag('dislikes', t)}
@@ -160,63 +131,49 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
 
   if (mode === 'modal') {
     return (
-      <div className="fixed inset-0 z-[300] bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col">
-          <header className="p-5 border-b border-neutral-100 flex items-center justify-between flex-shrink-0">
-            <div>
-              <h2 className="text-lg font-black text-neutral-900">Mis preferencias</h2>
-              <p className="text-xs text-neutral-500">Se aplican a todas tus sesiones de cocina.</p>
-            </div>
+      <Dialog
+        title="Mis preferencias"
+        description="Se aplican a todas tus sesiones de cocina."
+        onClose={onClose ?? (() => {})}
+        footer={
+          <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              aria-label="Cerrar"
-              className="p-2 rounded-full hover:bg-neutral-100 transition-colors"
-            >
-              <X size={18} className="text-neutral-500" />
-            </button>
-          </header>
-
-          <div className="overflow-y-auto p-5 flex-1">{body}</div>
-
-          <footer className="p-4 border-t border-neutral-100 flex gap-2 flex-shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 px-4 rounded-xl text-sm font-bold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 transition-colors"
+              className="flex-1 min-h-11 rounded-control text-sm font-semibold text-neutral-800 border border-neutral-300 hover:bg-neutral-50 transition-colors"
             >
               Cancelar
             </button>
             <button
               type="button"
               onClick={() => onSave?.({ filterIds, allergies, dislikes })}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors"
+              className="flex-1 min-h-11 rounded-control text-sm font-semibold text-white bg-brand-700 hover:bg-brand-800 transition-colors"
             >
-              Guardar <ChevronRight size={16} />
+              Guardar
             </button>
-          </footer>
-        </div>
-      </div>
+          </div>
+        }
+      >
+        <div className="mt-5">{body}</div>
+      </Dialog>
     );
   }
 
   return body;
 };
 
-
-// ── Sub-componente: Tag input ─────────────────────────────────────────────────
 const TagInput: React.FC<{
-  kind: 'allergies' | 'dislikes';
   label: string;
   sublabel: string;
-  icon: React.ReactNode;
   emptyMsg: string;
   chipClass: string;
   tags: string[];
   onAdd: (tag: string) => void;
   onRemove: (tag: string) => void;
-}> = ({ label, sublabel, icon, emptyMsg, chipClass, tags, onAdd, onRemove }) => {
+}> = ({ label, sublabel, emptyMsg, chipClass, tags, onAdd, onRemove }) => {
   const [draft, setDraft] = useState('');
+  const inputId = useId();
+  const hintId = useId();
 
   const commit = () => {
     if (draft.trim()) {
@@ -227,68 +184,68 @@ const TagInput: React.FC<{
 
   return (
     <section>
-      <h3 className="text-sm font-bold text-neutral-800 mb-1 flex items-center gap-2">
-        {icon}
-        {label}
-        <span className="font-normal text-xs text-neutral-500">— {sublabel}</span>
-      </h3>
-      <div className="flex gap-2 mb-2">
+      <label htmlFor={inputId} className="block text-base font-bold text-neutral-900">{label}</label>
+      <p id={hintId} className="text-sm text-neutral-600 mt-0.5 mb-2">{sublabel}</p>
+      <div className="flex gap-2 mb-3">
         <input
+          id={inputId}
           type="text"
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
               e.preventDefault();
               commit();
             }
           }}
           onBlur={commit}
-          placeholder="Escribe y presiona Enter…"
-          className="flex-1 px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400"
+          aria-describedby={hintId}
+          enterKeyHint="done"
+          placeholder="Escribe y toca Agregar"
+          className="flex-1 min-w-0 min-h-11 px-3 text-base sm:text-sm border border-neutral-300 rounded-control focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700"
         />
         <button
           type="button"
           onClick={commit}
-          className="px-3 py-2 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
+          className="min-h-11 px-4 text-sm font-semibold text-brand-800 bg-brand-50 hover:bg-brand-100 rounded-control transition-colors"
         >
           Agregar
         </button>
       </div>
       {tags.length === 0 ? (
-        <p className="text-xs text-neutral-400 italic">{emptyMsg}</p>
+        <p className="text-sm text-neutral-600">{emptyMsg}</p>
       ) : (
-        <div className="flex flex-wrap gap-1.5">
+        <ul className="flex flex-wrap gap-2">
           {tags.map(t => (
-            <span
+            <li
               key={t}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${chipClass}`}
+              className={`inline-flex items-center pl-3 rounded-full border text-sm font-semibold ${chipClass}`}
             >
               {t}
               <button
                 type="button"
                 onClick={() => onRemove(t)}
                 aria-label={`Quitar ${t}`}
-                className="hover:opacity-70"
+                className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-black/5"
               >
-                &times;
+                <X size={16} aria-hidden />
               </button>
-            </span>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </section>
   );
 };
 
-// ── Helper: resumen corto de preferencias activas para mostrar en banners ────
+/** Resumen corto de las preferencias activas, para banners y el perfil. */
 export function summarizePreferences(filterIds: string[], allergies: string[], dislikes: string[]): string[] {
   const parts: string[] = [];
   for (const id of filterIds) {
     const f = getFilter(id);
-    if (f) parts.push(`${f.emoji} ${f.label}`);
+    if (f) parts.push(f.label);
   }
-  if (allergies.length > 0) parts.push(`⚠️ ${allergies.length} alergia${allergies.length > 1 ? 's' : ''}`);
-  if (dislikes.length > 0) parts.push(`🙅 ${dislikes.length} no me gusta${dislikes.length > 1 ? 'n' : ''}`);
+  if (allergies.length > 0) parts.push(`${allergies.length} alergia${allergies.length > 1 ? 's' : ''}`);
+  if (dislikes.length > 0) parts.push(`${dislikes.length} que no te gusta${dislikes.length > 1 ? 'n' : ''}`);
   return parts;
 }

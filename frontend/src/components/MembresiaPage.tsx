@@ -1,67 +1,64 @@
 /**
- * MembresiaPage.tsx
+ * Suscripción Premium: beneficios, precio y compra en Hotmart, más la
+ * verificación por correo para quien ya pagó (consulta el proxy vía
+ * `checkMembership`).
  *
- * Página de suscripción Premium de Sous Chef.
- * Presenta los beneficios, el precio y el botón de compra vía Hotmart.
- * También incluye el flujo de verificación para usuarios que ya pagaron.
+ * La lista de beneficios debe coincidir con lo que el código bloquea de verdad:
+ * mundos 3-5 (`PremiumRoute`), el tope de voz (`voiceUsage`) y las lecciones
+ * con `isPremium` en la Academia. Ver MONETIZATION.md antes de cambiarla.
  *
- * Flujo "ya pagué":
- * 1. Usuario ingresa el correo usado en Hotmart.
- * 2. Se llama a `checkMembership(email)` que consulta el proxy.
- * 3. Si la membresía es válida: se llama a `updatePremiumStatus(true)`,
- *    se muestra mensaje de éxito y se redirige a `/mapa` en 1.5 s.
- * 4. Si no se encuentra: se muestra mensaje de error con instrucciones.
- *
- * Si el usuario ya es premium al montar el componente, se muestra
- * directamente la pantalla de confirmación con acceso al mapa.
- *
- * Variables de entorno:
- * - `VITE_HOTMART_URL` — URL de pago en Hotmart (fallback: placeholder).
+ * `VITE_HOTMART_URL`: URL de pago en Hotmart.
  */
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Crown, Lock, CheckCircle, XCircle, Loader2,
-  Flame, Waves, Mountain, Castle, ChefHat, ArrowRight, Mail
-} from 'lucide-react';
+import { Crown, Check, X, Loader2, Mail, ArrowLeft } from 'lucide-react';
 import { checkMembership, updatePremiumStatus, isPremiumUser } from '../utils/membership';
+import { FREE_CAP_SECONDS, PRO_CAP_SECONDS } from '../utils/voiceUsage';
 
-// ─── Beneficios premium ───────────────────────────────────────────────────────
+const FREE_VOICE_MIN = FREE_CAP_SECONDS / 60;
+const PREMIUM_VOICE_MIN = PRO_CAP_SECONDS / 60;
+
 const PREMIUM_FEATURES = [
-  { icon: Waves,    label: 'Mundo 3: Mar de Sabores',        desc: 'Fondos, fumet y salsas maestras' },
-  { icon: Mountain, label: 'Mundo 4: Pico del Maestro',      desc: 'Sous-vide, esferificación, fermentación' },
-  { icon: Castle,   label: 'Mundo 5: Castillo del Chef',     desc: 'Menú degustación y alta cocina' },
-  { icon: ChefHat,  label: 'Evaluación IA ilimitada',        desc: 'Sube tus fotos y recibe feedback real' },
-  { icon: Crown,    label: 'Batallas contra Chef Bosses',    desc: 'Desafíos con voz en tiempo real' },
+  {
+    label: 'Mundos 3, 4 y 5 del Modo Aventura',
+    desc: 'Fondos y salsas madre, sous-vide y fermentación, menú degustación. Con sus jefes.',
+  },
+  {
+    label: `${PREMIUM_VOICE_MIN} minutos de voz al mes`,
+    desc: `Cocina con las manos libres. En el plan gratis son ${FREE_VOICE_MIN}.`,
+  },
+  {
+    label: 'Clases avanzadas de la Academia',
+    desc: 'Las lecciones marcadas como Premium.',
+  },
 ];
 
 const FREE_FEATURES = [
-  { icon: ChefHat,  label: 'Mundo 1: Isla del Cuchillo', ok: true },
-  { icon: Flame,    label: 'Mundo 2: Valle del Fuego',   ok: true },
-  { icon: ChefHat,  label: 'Cocinemos (IA + voz)',       ok: true },
-  { icon: ChefHat,  label: 'Sabores del Mundo',          ok: true },
-  { icon: ChefHat,  label: 'La Academia + Mealprep',     ok: true },
-  { icon: Lock,     label: 'Mundos 3, 4 y 5',            ok: false },
+  { label: 'Mundos 1 y 2 del Modo Aventura, con sus jefes', ok: true },
+  { label: 'Cocinemos por texto, sin límite', ok: true },
+  { label: `${FREE_VOICE_MIN} minutos de voz al mes`, ok: true },
+  { label: 'Sabores del Mundo y Mealprep', ok: true },
+  { label: 'Clases básicas de la Academia', ok: true },
+  { label: 'Evaluación de tus fotos en cada nivel', ok: true },
+  { label: 'Mundos 3, 4 y 5', ok: false },
 ];
 
-// ─── Componente ───────────────────────────────────────────────────────────────
 export const MembresiaPage = () => {
   const navigate = useNavigate();
   const alreadyPremium = isPremiumUser();
 
-  const [email, setEmail]       = useState(() => {
+  const [email, setEmail] = useState(() => {
     try {
       return (JSON.parse(localStorage.getItem('user') ?? '{}') as { email?: string }).email ?? '';
     } catch { return ''; }
   });
   const [checking, setChecking] = useState(false);
-  const [result,   setResult]   = useState<'found' | 'notfound' | null>(null);
+  const [result, setResult] = useState<'found' | 'notfound' | null>(null);
 
   const HOTMART_URL = (import.meta.env.VITE_HOTMART_URL as string | undefined)
     ?? 'https://pay.hotmart.com/PRODUCT_ID_AQUI';
 
-  // ── "Ya pagué" – verifica membresía ────────────────────────────────────────
   const handleVerify = async () => {
     if (!email.trim()) return;
     setChecking(true);
@@ -70,157 +67,143 @@ export const MembresiaPage = () => {
     if (isPremium) {
       updatePremiumStatus(true);
       setResult('found');
-      setTimeout(() => navigate('/mapa'), 1500);
     } else {
       setResult('notfound');
     }
     setChecking(false);
   };
 
-  // ── Si ya es premium, mostrar pantalla de confirmación ────────────────────
   if (alreadyPremium) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-xl">
-          <Crown className="w-10 h-10 text-white" />
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center gap-5 p-6 text-center">
+        <Crown className="w-12 h-12 text-brand-700" aria-hidden />
         <div>
-          <h2 className="text-2xl font-black text-neutral-900">¡Ya eres miembro Premium!</h2>
-          <p className="text-neutral-500 mt-1">Tienes acceso completo a todos los mundos de Sous.</p>
+          <h1 className="text-2xl font-extrabold text-neutral-900">Tu membresía Premium está activa</h1>
+          <p className="text-neutral-600 mt-1">Tienes acceso a los cinco mundos y a {PREMIUM_VOICE_MIN} minutos de voz al mes.</p>
         </div>
         <button
           onClick={() => navigate('/mapa')}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-rose-500 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
+          className="min-h-11 px-6 bg-brand-700 hover:bg-brand-800 text-white font-semibold rounded-control transition-colors"
         >
-          <ArrowRight size={18} /> Ir al Mapa de Aventura
+          Ir al mapa
         </button>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 text-white px-6 py-10 text-center relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_50%,#f97316,transparent_60%),radial-gradient(circle_at_70%_50%,#f43f5e,transparent_60%)]" />
-        <div className="relative z-10">
-          <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-orange-500/30">
-            <Crown className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-black tracking-tight">Sous <span className="text-orange-400">Premium</span></h1>
-          <p className="text-neutral-400 mt-2 max-w-sm mx-auto text-sm leading-relaxed">
-            Desbloquea los 3 mundos avanzados y lleva tus habilidades culinarias al siguiente nivel.
-          </p>
-
-          {/* Precio */}
-          <div className="mt-6 inline-flex flex-col items-center bg-white/10 border border-white/20 rounded-2xl px-8 py-4 backdrop-blur-sm">
-            <span className="text-xs text-neutral-400 uppercase tracking-widest font-semibold mb-1">Membresía mensual</span>
-            <div className="flex items-end gap-1">
-              <span className="text-4xl font-black text-white">$9.99</span>
-              <span className="text-neutral-400 text-sm mb-1">USD/mes</span>
-            </div>
-            <span className="text-xs text-green-400 font-semibold mt-1">✓ Cancela cuando quieras</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 max-w-md mx-auto space-y-6">
-        {/* Botón principal – Hotmart */}
-        <a
-          href={HOTMART_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-black text-lg rounded-2xl shadow-xl shadow-orange-500/30 transition-all active:scale-[0.98]"
+    <div className="flex-1 overflow-y-auto bg-neutral-50">
+      <header className="flex items-center gap-1 px-2 h-12 bg-white border-b border-neutral-200">
+        <button
+          onClick={() => navigate(-1)}
+          aria-label="Volver"
+          className="w-11 h-11 flex items-center justify-center rounded-control text-neutral-700 hover:bg-neutral-100"
         >
-          <Crown size={22} />
-          Suscribirme ahora
-          <ArrowRight size={18} />
-        </a>
+          <ArrowLeft size={20} aria-hidden />
+        </button>
+        <span className="text-base font-extrabold text-neutral-900">Sous Chef Premium</span>
+      </header>
 
-        {/* Beneficios premium */}
-        <div className="bg-neutral-50 rounded-2xl border border-neutral-100 p-5">
-          <h3 className="text-xs font-black uppercase tracking-widest text-orange-500 mb-4">
-            Incluido en Premium
-          </h3>
-          <div className="space-y-3">
-            {PREMIUM_FEATURES.map(({ icon: Icon, label, desc }) => (
-              <div key={label} className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Icon size={15} className="text-orange-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-neutral-800">{label}</p>
-                  <p className="text-xs text-neutral-500">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Comparación libre vs premium */}
-        <div className="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
-          <h3 className="text-xs font-black uppercase tracking-widest text-neutral-400 mb-4">
-            Plan Gratuito
-          </h3>
-          <div className="space-y-2">
-            {FREE_FEATURES.map(({ label, ok }) => (
-              <div key={label} className="flex items-center gap-3">
-                {ok
-                  ? <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                  : <XCircle   size={16} className="text-neutral-300 flex-shrink-0" />
-                }
-                <span className={`text-sm ${ok ? 'text-neutral-700 font-medium' : 'text-neutral-400 line-through'}`}>
-                  {label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* "Ya pagué" – verificar membresía */}
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
-          <h3 className="text-sm font-black text-blue-800 mb-1">¿Ya completaste el pago?</h3>
-          <p className="text-xs text-blue-600 mb-3">
-            Ingresa el correo que usaste en Hotmart para verificar tu acceso.
+      <div className="px-4 py-6 max-w-md mx-auto space-y-6">
+        <section className="bg-white rounded-card border border-neutral-200 p-5">
+          <p className="text-sm text-neutral-600">Membresía mensual</p>
+          <p className="mt-1 flex items-baseline gap-1.5">
+            <span className="text-4xl font-extrabold text-neutral-900">$9.99</span>
+            <span className="text-neutral-600">USD al mes</span>
           </p>
-          <div className="flex flex-col gap-2">
-            <div className="relative">
-              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="correo@ejemplo.com"
-                className="w-full pl-9 pr-3 py-2.5 text-sm border border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-              />
-            </div>
-            <button
-              onClick={handleVerify}
-              disabled={checking || !email.trim()}
-              className="flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors"
-            >
-              {checking
-                ? <><Loader2 size={15} className="animate-spin" /> Verificando...</>
-                : 'Verificar mi acceso'
-              }
-            </button>
+          <p className="text-sm text-neutral-600 mt-1">Cancelas cuando quieras.</p>
+          <a
+            href={HOTMART_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-5 flex items-center justify-center gap-2 w-full min-h-12 px-6 bg-brand-700 hover:bg-brand-800 text-white font-semibold text-base rounded-control transition-colors"
+          >
+            Suscribirme
+          </a>
+        </section>
 
+        <section>
+          <h2 className="text-sm font-semibold text-neutral-600 mb-2 px-1">Qué incluye Premium</h2>
+          <ul className="bg-white rounded-card border border-neutral-200 divide-y divide-neutral-100">
+            {PREMIUM_FEATURES.map(({ label, desc }) => (
+              <li key={label} className="flex items-start gap-3 p-4">
+                <Check size={18} className="text-brand-700 flex-shrink-0 mt-0.5" aria-hidden />
+                <div>
+                  <p className="text-sm font-semibold text-neutral-900">{label}</p>
+                  <p className="text-sm text-neutral-600">{desc}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-sm font-semibold text-neutral-600 mb-2 px-1">Plan gratis</h2>
+          <ul className="bg-white rounded-card border border-neutral-200 divide-y divide-neutral-100">
+            {FREE_FEATURES.map(({ label, ok }) => (
+              <li key={label} className="flex items-center gap-3 px-4 py-3">
+                {ok
+                  ? <Check size={16} className="text-world-1 flex-shrink-0" aria-hidden />
+                  : <X size={16} className="text-neutral-500 flex-shrink-0" aria-hidden />
+                }
+                <span className={`text-sm ${ok ? 'text-neutral-800' : 'text-neutral-600'}`}>
+                  {ok ? label : <><span className="sr-only">No incluye: </span>{label}</>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="bg-white rounded-card border border-neutral-200 p-5">
+          <h2 className="text-base font-bold text-neutral-900">¿Ya pagaste?</h2>
+          <p className="text-sm text-neutral-600 mt-1 mb-3">
+            Escribe el correo que usaste en Hotmart y verificamos tu acceso.
+          </p>
+          <label htmlFor="membresia-email" className="text-sm font-semibold text-neutral-800">Correo</label>
+          <div className="relative mt-1">
+            <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" aria-hidden />
+            <input
+              id="membresia-email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="correo@ejemplo.com"
+              className="w-full min-h-11 pl-9 pr-3 text-base sm:text-sm border border-neutral-300 rounded-control focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 bg-white"
+            />
+          </div>
+          <button
+            onClick={handleVerify}
+            disabled={checking || !email.trim()}
+            className="mt-2 w-full flex items-center justify-center gap-2 min-h-11 px-4 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-50 text-white text-sm font-semibold rounded-control transition-colors"
+          >
+            {checking
+              ? <><Loader2 size={15} className="animate-spin motion-reduce:animate-none" aria-hidden /> Verificando…</>
+              : 'Verificar mi acceso'
+            }
+          </button>
+
+          <div role="status" aria-live="polite">
             {result === 'found' && (
-              <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 text-sm font-semibold">
-                <CheckCircle size={15} /> ¡Membresía activa! Redirigiendo...
+              <div className="mt-3 rounded-control bg-emerald-50 border border-emerald-200 p-3">
+                <p className="text-sm font-semibold text-emerald-800">Encontramos tu membresía. Ya tienes Premium.</p>
+                <button
+                  onClick={() => navigate('/mapa')}
+                  className="mt-2 min-h-11 px-4 bg-world-1 hover:bg-emerald-800 text-white text-sm font-semibold rounded-control"
+                >
+                  Ir al mapa
+                </button>
               </div>
             )}
             {result === 'notfound' && (
-              <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm">
-                <XCircle size={15} />
-                <span>
-                  No encontramos tu membresía activa. Verifica que el correo sea el mismo que usaste en Hotmart,
-                  o espera unos minutos y vuelve a intentarlo.
-                </span>
-              </div>
+              <p className="mt-3 rounded-control bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+                No encontramos una membresía activa con ese correo. Revisa que sea el mismo de Hotmart.
+                Si acabas de pagar, espera unos minutos y vuelve a intentarlo.
+              </p>
             )}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

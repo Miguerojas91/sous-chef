@@ -8,11 +8,12 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  * {
-    scroll-behavior: smooth;
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 
-  /* Scrollbar personalizado */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -24,6 +25,18 @@
     @apply bg-neutral-300 rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-orange-400;
+    @apply bg-neutral-400;
+  }
+}
+
+@layer base {
+  /* Respeta "reducir movimiento" del sistema también en animaciones sueltas
+     que no llevan el prefijo motion-safe. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

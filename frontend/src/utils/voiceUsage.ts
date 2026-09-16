@@ -1,30 +1,18 @@
 /**
- * utils/voiceUsage.ts
+ * Consumo mensual de voz (Gemini Live), guardado por mes en
+ * localStorage['sous_voice_usage'] como { "YYYY-MM": segundos }.
+ * Topes por plan en MONETIZATION.md: gratis 15 min, Premium 60 min.
  *
- * Tracking del consumo mensual de voz (Gemini Live) por usuario.
- *
- * Caps según el plan (ver MONETIZATION.md):
- *  - Free:    15 min/mes = 900 s
- *  - Pro:     60 min/mes = 3,600 s
- *
- * Storage:
- *  - localStorage['sous_voice_usage'] = JSON { "2026-05": 421, "2026-06": 0 }
- *  - Cada mes se almacena por separado (formato YYYY-MM).
- *  - Limpieza automática de meses con >12 meses de antigüedad para no inflar
- *    el localStorage.
- *
- * Seguridad:
- *  - El tracking es client-side (suficiente para un MVP / good actor).
- *  - Un usuario técnico puede borrar el storage para resetear. Para producción
- *    seria conviene validar también server-side en el WS del proxy.
+ * El control es del lado del cliente: alguien técnico puede borrar el storage.
+ * El proxy limita duración y conexiones por IP, pero no minutos por usuario.
  */
 
 import { isPremiumUser } from './membership';
 
 const STORAGE_KEY = 'sous_voice_usage';
 
-const FREE_CAP_SECONDS = 15 * 60;  // 900
-const PRO_CAP_SECONDS  = 60 * 60;  // 3,600
+export const FREE_CAP_SECONDS = 15 * 60;
+export const PRO_CAP_SECONDS  = 60 * 60;
 
 interface UsageStore {
   [yearMonth: string]: number; // segundos consumidos en ese mes
@@ -47,7 +35,7 @@ function loadStore(): UsageStore {
 }
 
 function pruneOldMonths(store: UsageStore): UsageStore {
-  // Mantener solo los últimos 12 meses para no llenar localStorage.
+  // Solo los últimos 12 meses, para no llenar localStorage.
   const keys = Object.keys(store).sort();
   if (keys.length <= 12) return store;
   const pruned: UsageStore = {};
@@ -59,42 +47,32 @@ function saveStore(store: UsageStore): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pruneOldMonths(store)));
   } catch {
-    /* storage lleno o no disponible — fallar silencioso */
+    /* storage lleno o bloqueado: no se registra el uso */
   }
 }
 
-// ── API pública ──────────────────────────────────────────────────────────────
-
-/** Cap (segundos) de voz disponible para el usuario actual este mes. */
 export function getCapSeconds(): number {
   return isPremiumUser() ? PRO_CAP_SECONDS : FREE_CAP_SECONDS;
 }
 
-/** Segundos consumidos este mes. */
 export function getUsedSecondsThisMonth(): number {
   const store = loadStore();
   return store[thisMonthKey()] ?? 0;
 }
 
-/** Segundos restantes este mes (puede ser 0). */
 export function getRemainingSeconds(): number {
   return Math.max(0, getCapSeconds() - getUsedSecondsThisMonth());
 }
 
-/** Minutos restantes redondeados hacia abajo (para mostrar en UI). */
 export function getRemainingMinutes(): number {
   return Math.floor(getRemainingSeconds() / 60);
 }
 
-/** `true` si el usuario ya consumió todo el cap del mes. */
 export function hasReachedCap(): boolean {
   return getRemainingSeconds() <= 0;
 }
 
-/**
- * Añade `seconds` al consumo del mes actual.
- * Si excede el cap, lo trunca al cap (no acumula "deuda").
- */
+/** Suma al consumo del mes sin pasar del tope (no acumula deuda). */
 export function addUsedSeconds(seconds: number): void {
   if (seconds <= 0 || !Number.isFinite(seconds)) return;
   const store = loadStore();
@@ -106,10 +84,6 @@ export function addUsedSeconds(seconds: number): void {
   window.dispatchEvent(new Event('sous:voice-usage-changed'));
 }
 
-/**
- * Resumen para UI — usado en banners y modales.
- * Ej.: { used: 320, cap: 900, remaining: 580, isPremium: false, minutesLeft: 9 }
- */
 export interface VoiceUsageSummary {
   used: number;
   cap: number;
@@ -135,10 +109,7 @@ export function getVoiceUsageSummary(): VoiceUsageSummary {
   };
 }
 
-/**
- * Test helper — resetea el consumo del mes actual. SOLO para QA/dev.
- * No exportar a UI sin protección admin.
- */
+/** Reinicia el consumo del mes actual. Solo para QA; no exponer en la UI. */
 export function resetCurrentMonth(): void {
   const store = loadStore();
   delete store[thisMonthKey()];

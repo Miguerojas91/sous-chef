@@ -1,29 +1,17 @@
 /**
- * useGeminiLive.ts
+ * Voz en tiempo real con Gemini Live a través del proxy (el navegador nunca
+ * habla directo con Google).
  *
- * Hook de React para conversaciones de voz en tiempo real con Gemini Live,
- * a través del proxy propio (nunca conecta directamente a Google desde el navegador).
+ *   micrófono → ScriptProcessor → 16 kHz PCM16 base64 → WebSocket → proxy → Gemini Live
+ *   Gemini Live → proxy → WebSocket → AudioContext 24 kHz → altavoz
  *
- * Arquitectura:
- *   Browser (microfono) → ScriptProcessor → downsample a 16kHz → PCM16 base64
- *     → WebSocket → Proxy Express → Gemini Live API
- *     → Proxy → WebSocket → Browser → AudioContext 24kHz → altavoz
- *
- * Características principales:
- * - VAD (Voice Activity Detection) por RMS: solo envía audio cuando hay voz,
- *   ahorrando hasta un 70% del audio facturado en sesiones con silencios.
- * - Modo "sleeping": cuando hay 15 s de silencio, cierra el WebSocket pero
- *   mantiene el micrófono activo. Se despierta automáticamente al detectar voz.
- * - Reconexión automática: si el WebSocket se cierra (límite de sesión, red,
- *   etc.), reconecta con el historial de los últimos N turnos como contexto.
- * - Wake Lock dual: Screen Wake Lock API + NoSleep.js + MediaSession API
- *   para evitar que la pantalla/AudioContext se suspenda en iOS/Android.
- * - Recuperación al volver la pestaña: re-activa AudioContexts y reconecta
- *   el WebSocket si es necesario.
- * - Duración máxima de sesión: 20 minutos activos, luego pasa a sleeping.
- *
- * @param customSystemPrompt - Sobreescribe el system prompt por defecto del chef.
- * @returns Estado de voz, transcripción, texto actual del chef y controles.
+ * - VAD por RMS: solo se envía audio cuando hay voz, porque el audio se factura.
+ * - Tras SILENCE_TIMEOUT_MS de silencio pasa a `sleeping`: cierra el WebSocket
+ *   pero deja el micrófono abierto y se despierta al detectar voz.
+ * - Si el WebSocket se cierra, reconecta reinyectando los últimos turnos.
+ * - Wake Lock + NoSleep.js + MediaSession para que iOS/Android no suspendan
+ *   la pantalla ni el AudioContext.
+ * - Máximo 20 min de sesión activa; luego pasa a `sleeping`.
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -35,18 +23,9 @@ import {
   getRemainingSeconds as voiceRemainingSeconds,
 } from '../utils/voiceUsage';
 
-// ── Helpers de audio ──────────────────────────────────────────────────────────
-
 /**
- * Convierte un buffer de audio Float32 (rango -1..1) a PCM16 codificado en base64.
- * Formato requerido por la API Gemini Live (audio/pcm;rate=16000).
- *
- * Optimización: reusamos un Int16Array (`_pcm16Scratch`) entre invocaciones.
- * En el hot path (12 fps de audio), esto elimina ~24 allocations/seg que
- * antes generaban presión de GC.
- *
- * @param float32 - Buffer de muestras de audio en punto flotante.
- * @returns Cadena base64 del audio en formato PCM 16-bit little-endian.
+ * Float32 (-1..1) a PCM16 little-endian en base64, el formato que pide Gemini Live.
+ * Reutiliza un Int16Array entre llamadas para no presionar al GC en el hot path.
  */
 let _pcm16Scratch: Int16Array | null = null;
 function float32ToPCM16Base64(float32: Float32Array): string {
@@ -59,7 +38,7 @@ function float32ToPCM16Base64(float32: Float32Array): string {
     pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
   const bytes = new Uint8Array(pcm16.buffer, 0, pcm16.byteLength);
-  // Evitar concat en loop (O(n²) en strings grandes). Bloques de 8192.
+  // Por bloques: concatenar byte a byte es O(n²) en strings grandes.
   let bin = '';
   const CHUNK = 8192;
   for (let i = 0; i < bytes.length; i += CHUNK) {
@@ -69,15 +48,10 @@ function float32ToPCM16Base64(float32: Float32Array): string {
 }
 
 /**
- * Reduce la frecuencia de muestreo de un buffer de audio por promedio de ventana.
- * Necesario para convertir la tasa nativa del navegador (44.1/48 kHz) a 16 kHz.
- *
- * @param buf  - Buffer de entrada en la tasa `from`.
- * @param from - Frecuencia de muestreo original (Hz).
- * @param to   - Frecuencia de muestreo objetivo (Hz).
- * @returns Nuevo buffer a la tasa `to`. Devuelve el original si `from === to`.
+ * Baja la tasa nativa del navegador (44.1/48 kHz) a 16 kHz promediando ventanas.
+ * Reutiliza el buffer de salida entre frames: quien llama debe consumirlo antes
+ * del siguiente frame.
  */
-// Buffer scratch reusable para downsample — evita allocations por frame.
 let _downsampleScratch: Float32Array | null = null;
 function downsample(buf: Float32Array, from: number, to: number): Float32Array {
   if (from === to) return buf;
@@ -97,13 +71,7 @@ function downsample(buf: Float32Array, from: number, to: number): Float32Array {
   return out;
 }
 
-/**
- * Convierte audio PCM16 codificado en base64 a Float32 (rango -1..1).
- * Utilizado para reproducir el audio que devuelve la IA (24 kHz PCM).
- *
- * @param b64 - Cadena base64 del audio PCM 16-bit.
- * @returns Buffer Float32 listo para usar con AudioContext.
- */
+/** Audio del modelo (PCM16 base64, 24 kHz) a Float32 para el AudioContext. */
 function pcm16Base64ToFloat32(b64: string): Float32Array {
   const bin   = atob(b64);
   const bytes = new Uint8Array(bin.length);
@@ -114,30 +82,17 @@ function pcm16Base64ToFloat32(b64: string): Float32Array {
   return f32;
 }
 
-/**
- * Calcula el RMS (Root Mean Square) de un buffer de audio.
- * Se usa como medida de energía sonora para la detección de voz (VAD).
- *
- * @param buf - Buffer de muestras de audio.
- * @returns Valor RMS entre 0 y 1.
- */
+/** Energía del frame (0..1), usada por el VAD. */
 function calcRMS(buf: Float32Array): number {
   let sum = 0;
   for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
   return Math.sqrt(sum / buf.length);
 }
 
-// ── Tipos exportados ──────────────────────────────────────────────────────────
-
 /**
- * Estado actual de la sesión de voz.
- * - `'idle'`         — Sin sesión activa.
- * - `'connecting'`   — Adquiriendo micrófono y abriendo WebSocket.
- * - `'listening'`    — Escuchando al usuario.
- * - `'speaking'`     — La IA está reproduciendo audio.
- * - `'sleeping'`     — Silencio prolongado; WebSocket cerrado pero mic activo.
- * - `'reconnecting'` — Reconectando WebSocket tras cierre o timeout.
- * - `'needs-tap'`    — iOS requiere gesto del usuario para reactivar AudioContext.
+ * - `sleeping`: silencio prolongado; WebSocket cerrado, micrófono abierto.
+ * - `needs-tap`: iOS cortó el micrófono y hace falta un gesto del usuario.
+ * - `cap-reached`: se agotaron los minutos de voz del mes.
  */
 export type VoiceState =
   | 'idle'
@@ -149,80 +104,45 @@ export type VoiceState =
   | 'needs-tap'
   | 'cap-reached';
 
-/** Entrada en la transcripción de la conversación de voz. */
 export interface VoiceTranscriptEntry {
-  /** Quién habló: 'chef' para la IA, 'user' para el usuario. */
   agent: 'chef' | 'user';
-  /** Texto transcripto del turno. */
   text: string;
 }
 
-// ── Tipos internos ────────────────────────────────────────────────────────────
-
-/**
- * Interfaz del adaptador de sesión proxy (envuelve el WebSocket).
- * Mantiene la misma forma que la sesión nativa de Gemini SDK para
- * que `onaudioprocess` no necesite saber el transporte subyacente.
- */
+/** Envuelve el WebSocket con la forma de la sesión del SDK de Gemini. */
 interface ProxySession {
-  /** Envía un chunk de audio al proxy en tiempo real. */
   sendRealtimeInput(input: { audio?: { data: string; mimeType: string } }): void;
-  /** Envía contenido de texto al modelo como turno de usuario. */
   sendClientContent(params: { turns: Array<{ role: string; parts: Array<{ text: string }> }>; turnComplete: boolean }): void;
-  /** Cierra el WebSocket. */
   close(): void;
 }
 
-/**
- * Mensajes que el proxy envía al navegador vía WebSocket.
- * Cada tipo representa un evento distinto de la sesión de voz.
- */
+/** Mensajes que el proxy envía por el WebSocket. */
 type ProxyMsg =
-  | { type: 'open' }                           // Sesión Gemini Live lista
-  | { type: 'audio'; data: string }            // Chunk de audio PCM16 base64 del chef
-  | { type: 'modelText'; text: string }        // Fragmento de texto del modelo
-  | { type: 'turnComplete' }                   // El chef terminó de hablar
-  | { type: 'inputTranscription'; text: string } // Transcripción del usuario
-  | { type: 'close' }                          // WebSocket cerrado
-  | { type: 'error'; message: string };        // Error en el proxy
+  | { type: 'open' }                             // sesión de Gemini Live lista
+  | { type: 'audio'; data: string }              // PCM16 base64
+  | { type: 'modelText'; text: string }
+  | { type: 'turnComplete' }
+  | { type: 'inputTranscription'; text: string } // llega en fragmentos
+  | { type: 'close' }
+  | { type: 'error'; message: string };
 
-// ── Constantes de VAD (Voice Activity Detection) ──────────────────────────────
-
-/** Umbral de RMS por encima del cual se considera que hay voz. */
 const VOICE_RMS_THRESHOLD = 0.05;
-/** Segundos de silencio antes de dormir la sesión. */
-const SILENCE_TIMEOUT_MS  = 15_000;
-/** Umbral de RMS para despertar desde modo sleeping. */
+/** Silencio antes de dormir la sesión. La UI muestra esta misma cuenta atrás. */
+export const SILENCE_TIMEOUT_MS = 15_000;
+// Umbral y frames algo más exigentes que el VAD para que un ruido suelto no despierte la sesión.
 const WAKE_RMS_THRESHOLD  = 0.06;
-/** Frames consecutivos con energía suficiente para activar el despertar. */
 const WAKE_FRAMES_NEEDED  = 6;
 
-// ── Otras constantes de audio ─────────────────────────────────────────────────
-
-/** Frecuencia de muestreo del micrófono enviada al proxy (Hz). */
 const INPUT_SAMPLE_RATE       = 16000;
-/** Frecuencia de muestreo del audio recibido del chef (Hz). */
 const OUTPUT_SAMPLE_RATE      = 24000;
-/** Tamaño del buffer del ScriptProcessorNode (muestras). */
 const BUFFER_SIZE             = 4096;
-/** Turnos del historial enviados al proxy al reconectar. */
 const RECONNECT_CONTEXT_TURNS = 8;
 
-/** Duración máxima de una sesión de voz activa antes de pasar a sleeping (20 min). */
 const MAX_SESSION_MS = 20 * 60_000;
-/**
- * Tiempo adicional de envío de audio después de que el RMS baja del umbral.
- * Evita cortar las últimas sílabas de cada palabra.
- */
+/** Se sigue enviando audio un poco después de que baja el RMS para no cortar las últimas sílabas. */
 const VOICE_TAIL_MS  = 400;
 
-// ── URL del proxy WebSocket ───────────────────────────────────────────────────
-
-/**
- * Determina la URL del WebSocket del proxy según el entorno.
- * - Producción: convierte `API_URL` (https/http) a wss/ws.
- * - Desarrollo: usa el mismo host con el protocolo correcto (Vite proxy).
- */
+/** Con `API_URL` usa su host (https → wss); en desarrollo, el mismo host vía el proxy de Vite. */
 function getProxyWsUrl(): string {
   if (API_URL) {
     return API_URL.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:') + '/api/live';
@@ -231,24 +151,13 @@ function getProxyWsUrl(): string {
   return `${proto}//${location.host}/api/live`;
 }
 
-/**
- * Clave YYYY-MM del mes actual (zona del cliente). Usada para detectar cuándo
- * una sesión cruza al mes siguiente y forzar reset del cap.
- */
+/** YYYY-MM en la zona del cliente; detecta cuándo una sesión cruza de mes. */
 function getMonthKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-// ── Hook principal ────────────────────────────────────────────────────────────
-
-/**
- * Hook para conversaciones de voz en tiempo real con el chef IA.
- *
- * @param customSystemPrompt - System prompt opcional que sobreescribe el prompt
- *                             del chef genérico (útil para MilprepModule, FlavorsModule).
- * @returns Objeto con estado de voz, transcripción y funciones de control.
- */
+/** `customSystemPrompt` reemplaza el prompt genérico del chef (Mealprep, Sabores, Cocinemos). */
 export function useGeminiLive(customSystemPrompt?: string) {
   const [voiceState, setVoiceState]           = useState<VoiceState>('idle');
   const [transcript, setTranscript]           = useState<VoiceTranscriptEntry[]>([]);
@@ -256,7 +165,6 @@ export function useGeminiLive(customSystemPrompt?: string) {
   const [voiceError, setVoiceError]           = useState<string | null>(null);
   const [silenceSeconds, setSilenceSeconds]   = useState(0);
 
-  // ── Refs de sesión y audio ─────────────────────────────────────────────────
   const voiceStateRef       = useRef<VoiceState>('idle');
   const sessionRef          = useRef<ProxySession | null>(null);
   const streamRef           = useRef<MediaStream | null>(null);
@@ -264,61 +172,36 @@ export function useGeminiLive(customSystemPrompt?: string) {
   const outputAudioCtxRef   = useRef<AudioContext | null>(null);
   const processorRef        = useRef<ScriptProcessorNode | null>(null);
   const sourceNodeRef       = useRef<MediaStreamAudioSourceNode | null>(null);
-  /** Fuente de silencio para mantener el AudioContext de iOS activo. */
+  /** Loop silencioso que evita que iOS suspenda el AudioContext. */
   const silentSourceRef     = useRef<AudioBufferSourceNode | null>(null);
-  /** Cola de nodos de reproducción de audio del chef (reproducción secuencial). */
   const playbackQueueRef    = useRef<AudioBufferSourceNode[]>([]);
-  /** Próximo tiempo de inicio disponible en el AudioContext de salida. */
   const nextPlayTimeRef     = useRef(0);
-  /** Texto del modelo acumulado en el turno actual (se limpia en turnComplete). */
+  /** Se limpia en turnComplete. */
   const currentModelTextRef = useRef('');
-  /** `true` mientras el proxy está enviando chunks de audio del chef. */
   const isSpeakingRef       = useRef(false);
-  /** `true` mientras el usuario quiere que la sesión de voz esté activa. */
+  /** Intención del usuario; si es `false` no se reconecta. */
   const wantsVoiceRef       = useRef(false);
   const customPromptRef     = useRef(customSystemPrompt);
-  /** Instancia de NoSleep.js (fallback para dispositivos sin Wake Lock API). */
+  /** Respaldo para dispositivos sin Wake Lock API. */
   const noSleepRef          = useRef<InstanceType<typeof NoSleep> | null>(null);
   const wakeLockRef         = useRef<WakeLockSentinel | null>(null);
-  /** Evita que dos reconexiones ocurran simultáneamente. */
   const isReconnectingRef   = useRef(false);
-  /** Copia ref del transcript para acceso en closures sin causar re-renders. */
+  /** Copia para leer el transcript desde closures. */
   const transcriptRef       = useRef<VoiceTranscriptEntry[]>([]);
-  // ── Refs de VAD ────────────────────────────────────────────────────────────
-  /** Timestamp de la última vez que se detectó actividad de voz. */
   const lastVoiceTimeRef    = useRef<number>(Date.now());
-  /** Contador de frames consecutivos con energía > WAKE_RMS_THRESHOLD. */
   const wakeFrameCountRef   = useRef(0);
-  /** Frecuencia de muestreo nativa del AudioContext de entrada. */
   const nativeRateRef       = useRef(44100);
-  /** ID del intervalo del contador de silencio (UI). */
   const silenceIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-  /** Timestamp hasta el que se debe seguir enviando audio (post-voz). */
   const voiceTailUntilRef   = useRef(0);
-  /** Timestamp del inicio de la sesión activa (para MAX_SESSION_MS). */
   const sessionStartRef     = useRef(0);
-  /** Ref de `reconnectSession` para romper dependencias circulares en closures. */
+  /** Rompe la dependencia circular entre reconnectSession y handleProxyMsg. */
   const reconnectSessionRef = useRef<() => void>(() => {});
-  /**
-   * Último timestamp en que se reportó 1 segundo de uso de voz al tracker.
-   * Inicializa en 0 cada vez que se abre/reabre el WS. Solo se incrementa
-   * mientras hay sesión activa (no en sleeping).
-   * Ver utils/voiceUsage.ts.
-   */
+  /** Último reporte de uso a utils/voiceUsage.ts. 0 = sin sesión activa (sleeping no cuenta). */
   const lastUsageReportRef  = useRef(0);
-  /**
-   * Mes (YYYY-MM) en que arrancó la sesión activa actual. Si cambia mid-
-   * sesión (cruce de medianoche del último día del mes), forzamos sleep
-   * para evitar que el usuario consuma 2× su cap.
-   */
+  /** Mes en que arrancó la sesión; si cambia a mitad de sesión se duerme para no gastar dos topes. */
   const sessionMonthKeyRef  = useRef<string>('');
 
-  // ── Utilidades de estado ───────────────────────────────────────────────────
-
-  /**
-   * Actualiza el transcript en estado Y en ref simultáneamente,
-   * para que los closures del ScriptProcessor tengan acceso al valor actual.
-   */
+  // Estado y ref a la vez: los closures del ScriptProcessor leen la ref.
   const updateTranscript = useCallback((updater: (prev: VoiceTranscriptEntry[]) => VoiceTranscriptEntry[]) => {
     setTranscript(prev => {
       const next = updater(prev);
@@ -327,10 +210,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
     });
   }, []);
 
-  /**
-   * Actualiza `voiceState` en estado Y en ref simultáneamente,
-   * garantizando que `onaudioprocess` (closure) vea el estado más reciente.
-   */
+  // Igual que arriba: onaudioprocess necesita ver el estado más reciente.
   const setVoiceStateSync = useCallback((s: VoiceState | ((prev: VoiceState) => VoiceState)) => {
     setVoiceState(prev => {
       const next = typeof s === 'function' ? s(prev) : s;
@@ -339,13 +219,10 @@ export function useGeminiLive(customSystemPrompt?: string) {
     });
   }, []);
 
-  // ── Wake Lock + MediaSession ───────────────────────────────────────────────
-
   /**
-   * Adquiere todos los mecanismos disponibles para mantener la pantalla encendida:
-   * 1. Screen Wake Lock API (Chrome/Edge/Safari iOS 17+).
-   * 2. NoSleep.js (fallback vía video invisible para navegadores sin Wake Lock).
-   * 3. MediaSession API (indica al SO que hay reproducción activa).
+   * Usa todo lo disponible para mantener la pantalla encendida: Wake Lock API,
+   * NoSleep.js (video invisible) como respaldo, y MediaSession para que el SO
+   * vea reproducción activa.
    */
   const requestWakeLock = useCallback(async () => {
     if ('wakeLock' in navigator) {
@@ -360,15 +237,14 @@ export function useGeminiLive(customSystemPrompt?: string) {
     if ('mediaSession' in navigator) {
       try {
         navigator.mediaSession.metadata = new MediaMetadata({
-          title: 'Chef Sous escuchando',
-          artist: 'Sous · Asistente de cocina',
+          title: 'Sous está escuchando',
+          artist: 'Sous, asistente de cocina',
         });
         navigator.mediaSession.playbackState = 'playing';
       } catch { /* no fatal */ }
     }
   }, []);
 
-  /** Libera el Wake Lock, desactiva NoSleep y limpia MediaSession. */
   const releaseWakeLock = useCallback(() => {
     if (wakeLockRef.current && !wakeLockRef.current.released) {
       wakeLockRef.current.release().catch(() => {});
@@ -380,15 +256,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
     }
   }, []);
 
-  // ── Bucle de silencio para iOS ─────────────────────────────────────────────
-
-  /**
-   * Inicia un loop de audio silencioso (ganancia 0.001) en el AudioContext
-   * de salida. Imprescindible en iOS para que el contexto no se suspenda
-   * cuando la IA no está hablando.
-   *
-   * @param ctx - AudioContext de reproducción.
-   */
+  // Ganancia 0.001 y no 0: iOS suspende el contexto si no suena nada mientras la IA calla.
   const startSilentLoop = useCallback((ctx: AudioContext) => {
     if (silentSourceRef.current) return;
     const buf  = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
@@ -399,26 +267,19 @@ export function useGeminiLive(customSystemPrompt?: string) {
     silentSourceRef.current = src;
   }, []);
 
-  /** Detiene el bucle de silencio. */
   const stopSilentLoop = useCallback(() => {
     try { silentSourceRef.current?.stop(); } catch { /* ok */ }
     silentSourceRef.current = null;
   }, []);
 
-  // ── Contador de silencio (UI) ──────────────────────────────────────────────
-
-  /**
-   * Inicia el intervalo que actualiza `silenceSeconds` en la UI cada segundo.
-   * Se muestra al usuario para indicar cuánto tiempo lleva sin hablar.
-   */
+  /** Alimenta `silenceSeconds` para la cuenta atrás de la UI. */
   const startSilenceCountdown = useCallback(() => {
     if (silenceIntervalRef.current) return;
     lastVoiceTimeRef.current = Date.now();
     let lastEmitted = -1;
     silenceIntervalRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - lastVoiceTimeRef.current) / 1000);
-      // Solo re-renderiza si el segundo cambió (evita re-renders idénticos
-      // si por alguna razón el setInterval dispara dos veces el mismo valor).
+      // Evita re-renders si el intervalo dispara dos veces en el mismo segundo.
       if (elapsed !== lastEmitted) {
         lastEmitted = elapsed;
         setSilenceSeconds(elapsed);
@@ -426,19 +287,12 @@ export function useGeminiLive(customSystemPrompt?: string) {
     }, 1000);
   }, []);
 
-  /** Detiene el intervalo del contador de silencio y reinicia el contador a 0. */
   const stopSilenceCountdown = useCallback(() => {
     if (silenceIntervalRef.current) { clearInterval(silenceIntervalRef.current); silenceIntervalRef.current = null; }
     setSilenceSeconds(0);
   }, []);
 
-  // ── Limpieza de recursos ───────────────────────────────────────────────────
-
-  /**
-   * Libera todos los recursos de audio y cierra el WebSocket.
-   * Llama a releaseWakeLock, stopSilentLoop y stopSilenceCountdown.
-   * Seguro de llamar múltiples veces (idempotente).
-   */
+  /** Libera micrófono, audio, wake lock y WebSocket. Idempotente. */
   const cleanup = useCallback(() => {
     releaseWakeLock();
     stopSilentLoop();
@@ -453,28 +307,19 @@ export function useGeminiLive(customSystemPrompt?: string) {
     if (sessionRef.current) { try { sessionRef.current.close(); } catch { /* ok */ } sessionRef.current = null; }
   }, [releaseWakeLock, stopSilentLoop, stopSilenceCountdown]);
 
-  /**
-   * Detiene la sesión completamente y vuelve al estado `idle`.
-   * Llama a cleanup y marca `wantsVoiceRef = false` para impedir reconexiones.
-   */
+  /** Fin de sesión pedido por el usuario: sin reconexiones. */
   const disconnect = useCallback(() => {
     wantsVoiceRef.current = false; isReconnectingRef.current = false;
     cleanup();
     setVoiceStateSync('idle'); setCurrentChefText(''); setVoiceError(null);
   }, [cleanup, setVoiceStateSync]);
 
-  // ── VAD: modo sleeping ─────────────────────────────────────────────────────
-
-  /**
-   * Pone la sesión en modo sleeping: cierra el WebSocket pero mantiene el
-   * micrófono activo para detectar cuando el usuario vuelve a hablar.
-   * Se activa automáticamente tras SILENCE_TIMEOUT_MS de silencio.
-   */
+  /** Cierra el WebSocket pero deja el micrófono abierto para despertar con la voz. */
   const goToSleep = useCallback(() => {
     if (voiceStateRef.current === 'sleeping') return;
     stopSilenceCountdown();
     wakeFrameCountRef.current = 0;
-    // Reseteamos el tracker — no queremos contar el tiempo de sleep como uso.
+    // El tiempo dormido no cuenta como uso.
     lastUsageReportRef.current = 0;
     sessionMonthKeyRef.current = ''; // se rehidrata al reanudar
     if (sessionRef.current) { try { sessionRef.current.close(); } catch { /* ok */ } sessionRef.current = null; }
@@ -482,15 +327,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
     setVoiceStateSync('sleeping');
   }, [setVoiceStateSync, stopSilenceCountdown]);
 
-  // ── Reproducción de audio del chef ────────────────────────────────────────
-
-  /**
-   * Encola y reproduce un chunk de audio PCM16 base64 recibido del proxy.
-   * Usa `nextPlayTimeRef` para reproducir chunks en secuencia sin gaps.
-   * Al terminar el último chunk, vuelve al estado `listening`.
-   *
-   * @param b64 - Audio PCM16 codificado en base64.
-   */
+  /** Encadena los chunks con `nextPlayTimeRef` para que suenen sin huecos. */
   const playAudioChunk = useCallback((b64: string) => {
     if (!outputAudioCtxRef.current) return;
     const ctx = outputAudioCtxRef.current;
@@ -512,14 +349,6 @@ export function useGeminiLive(customSystemPrompt?: string) {
     };
   }, [setVoiceStateSync]);
 
-  // ── Manejador de mensajes del proxy ───────────────────────────────────────
-
-  /**
-   * Procesa cada mensaje entrante del proxy vía WebSocket.
-   * Despacha el estado de voz y actualiza el transcript según el tipo de evento.
-   *
-   * @param msg - Mensaje tipado recibido del proxy.
-   */
   const handleProxyMsg = useCallback((msg: ProxyMsg) => {
     if (msg.type === 'audio') {
       isSpeakingRef.current = true;
@@ -539,7 +368,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
       if (playbackQueueRef.current.length === 0) { setVoiceStateSync('listening'); setCurrentChefText(''); }
 
     } else if (msg.type === 'inputTranscription' && msg.text?.trim()) {
-      // Actualizar o agregar el último turno del usuario (puede llegar en fragmentos)
+      // La transcripción llega en fragmentos: reemplaza el último turno del usuario.
       const t = msg.text;
       updateTranscript(prev => {
         const last = prev[prev.length - 1];
@@ -557,7 +386,6 @@ export function useGeminiLive(customSystemPrompt?: string) {
         currentModelTextRef.current = '';
       }
       setCurrentChefText('');
-      // Si el usuario sigue queriendo voz y no está en sleeping → reconectar
       if (wantsVoiceRef.current && voiceStateRef.current !== 'sleeping') {
         setTimeout(() => reconnectSessionRef.current(), 500);
       }
@@ -567,33 +395,18 @@ export function useGeminiLive(customSystemPrompt?: string) {
     }
   }, [playAudioChunk, setVoiceStateSync, updateTranscript]);
 
-  // Mantener ref actualizada para que los closures accedan a la versión más reciente
+  // Los handlers del WebSocket leen siempre la versión más reciente.
   const handleProxyMsgRef = useRef(handleProxyMsg);
   useEffect(() => { handleProxyMsgRef.current = handleProxyMsg; }, [handleProxyMsg]);
 
-  // ── Contexto FIFO para reconexión ─────────────────────────────────────────
-
-  /**
-   * Construye el historial de los últimos RECONNECT_CONTEXT_TURNS turnos
-   * en el formato que espera el proxy para reinyectarlo como contexto al reconectar.
-   */
+  /** Últimos turnos para reinyectar como contexto al reconectar. */
   const buildReconnectHistory = useCallback((): Array<{ role: string; parts: [{ text: string }] }> => {
     const recent = transcriptRef.current.slice(-(RECONNECT_CONTEXT_TURNS * 2));
     if (recent.length === 0) return [];
     return recent.map(e => ({ role: e.agent === 'user' ? 'user' : 'model', parts: [{ text: e.text }] as [{ text: string }] }));
   }, []);
 
-  // ── Creación del WebSocket proxy ──────────────────────────────────────────
-
-  /**
-   * Abre un WebSocket al proxy, envía el mensaje `start` con el system prompt
-   * e historial, y devuelve un adaptador `ProxySession`.
-   *
-   * @param systemPrompt - Instrucciones de sistema para el modelo.
-   * @param history      - Historial de turnos previos para contextualizar.
-   * @param onOpen       - Callback que se dispara cuando Gemini Live responde `open`.
-   * @returns Adaptador ProxySession que envuelve el WebSocket.
-   */
+  /** `onOpen` se llama cuando Gemini Live confirma la sesión, no al abrir el socket. */
   const createProxySession = useCallback((
     systemPrompt: string,
     history: Array<{ role: string; parts: [{ text: string }] }>,
@@ -621,11 +434,10 @@ export function useGeminiLive(customSystemPrompt?: string) {
     };
 
     ws.onerror = () => {
-      // El handler onclose se dispara automáticamente después del error
+      // onclose se dispara después y se encarga de reconectar.
       console.error('[Proxy] WebSocket error');
     };
 
-    // Adaptador que mantiene la misma interfaz que la sesión nativa de Gemini SDK
     return {
       sendRealtimeInput({ audio }) {
         if (audio && ws.readyState === WebSocket.OPEN) {
@@ -643,13 +455,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
     };
   }, []);
 
-  // ── Reconexión del WebSocket (micrófono sigue activo) ─────────────────────
-
-  /**
-   * Reconecta el WebSocket al proxy manteniendo el micrófono activo e
-   * inyectando el historial reciente como contexto.
-   * Usa `isReconnectingRef` para evitar reconexiones simultáneas.
-   */
+  /** Reabre el WebSocket sin tocar el micrófono. */
   const reconnectSession = useCallback(() => {
     if (!wantsVoiceRef.current)     return;
     if (isReconnectingRef.current)  return;
@@ -668,7 +474,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
         () => {
           isReconnectingRef.current = false;
           voiceTailUntilRef.current = 0;
-          sessionMonthKeyRef.current = getMonthKey(); // anclar mes al reconectar
+          sessionMonthKeyRef.current = getMonthKey();
           setVoiceStateSync('listening');
           startSilenceCountdown();
         },
@@ -681,33 +487,30 @@ export function useGeminiLive(customSystemPrompt?: string) {
     }
   }, [buildReconnectHistory, createProxySession, setVoiceStateSync, stopSilenceCountdown, startSilenceCountdown]);
 
-  // Mantener ref actualizado para romper la circularidad con handleProxyMsg
   useEffect(() => { reconnectSessionRef.current = reconnectSession; }, [reconnectSession]);
 
-  // ── Recuperación al volver la pestaña ─────────────────────────────────────
+  // Al volver a primer plano: reanudar audio y reconectar si hace falta.
   useEffect(() => {
     const onVisibilityChange = async () => {
       if (!wantsVoiceRef.current) return;
 
       if (document.visibilityState === 'hidden') {
-        // Mantener MediaSession activa para que iOS no suspenda el AudioContext
+        // MediaSession en 'playing' para que iOS no suspenda el AudioContext.
         if ('mediaSession' in navigator) {
           try { navigator.mediaSession.playbackState = 'playing'; } catch { /* ok */ }
         }
         return;
       }
 
-      // Al volver: reanudar AudioContexts y solicitar Wake Lock nuevamente
       await inputAudioCtxRef.current?.resume().catch(() => {});
       await outputAudioCtxRef.current?.resume().catch(() => {});
       requestWakeLock();
 
-      // Verificar si el micrófono sigue activo (iOS lo puede cortar)
+      // iOS puede cortar el micrófono en segundo plano.
       const micTracks = streamRef.current?.getAudioTracks() ?? [];
       const micAlive  = micTracks.length > 0 && micTracks[0].readyState === 'live';
       if (!micAlive) { setVoiceStateSync('needs-tap'); return; }
 
-      // Reconectar WebSocket si es necesario
       if (!sessionRef.current && !isReconnectingRef.current && voiceStateRef.current !== 'sleeping') {
         reconnectSessionRef.current();
       }
@@ -717,29 +520,16 @@ export function useGeminiLive(customSystemPrompt?: string) {
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, [requestWakeLock, setVoiceStateSync]);
 
-  // Limpieza total al desmontar el componente
   useEffect(() => { return () => { cleanup(); }; }, []); // eslint-disable-line
 
-  // ── Iniciar sesión de voz completa ────────────────────────────────────────
-
   /**
-   * Inicia una nueva sesión de voz desde cero. Requiere gesto del usuario
-   * (para que el navegador permita getUserMedia y AudioContext).
-   *
-   * Flujo:
-   * 1. Solicita permisos de micrófono.
-   * 2. Crea AudioContexts de entrada (16kHz) y salida (24kHz).
-   * 3. Conecta al proxy vía WebSocket.
-   * 4. Configura el pipeline: mic → ScriptProcessor → VAD → WebSocket.
-   *
-   * Si el estado es `sleeping` y el stream sigue activo, solo reconecta el WS.
+   * Debe llamarse desde un gesto del usuario (getUserMedia y AudioContext lo exigen).
+   * Desde `sleeping` con el micrófono vivo solo reconecta el WebSocket.
    */
   const startListening = useCallback(async () => {
     if (voiceStateRef.current !== 'idle' && voiceStateRef.current !== 'needs-tap' && voiceStateRef.current !== 'sleeping') return;
 
-    // Pre-flight: si el usuario ya consumió todo su cap del mes, no abrimos
-    // sesión (ahorra costos + comunica el estado en la UI). Ver MONETIZATION.md
-    // y utils/voiceUsage.ts.
+    // Sin minutos de voz no se abre sesión. Ver utils/voiceUsage.ts.
     if (voiceCapReached()) {
       setVoiceStateSync('cap-reached');
       return;
@@ -747,7 +537,6 @@ export function useGeminiLive(customSystemPrompt?: string) {
 
     const resumingFromSleep = voiceStateRef.current === 'sleeping';
 
-    // Reanudar desde sleeping sin reiniciar el micrófono
     if (resumingFromSleep && streamRef.current?.active) {
       reconnectSessionRef.current();
       return;
@@ -760,7 +549,6 @@ export function useGeminiLive(customSystemPrompt?: string) {
     setCurrentChefText(''); setVoiceError(null);
     currentModelTextRef.current = '';
 
-    // Limpiar recursos de sesión anterior
     if (inputAudioCtxRef.current)  { inputAudioCtxRef.current.close().catch(() => {});   inputAudioCtxRef.current = null; }
     if (outputAudioCtxRef.current) { outputAudioCtxRef.current.close().catch(() => {}); outputAudioCtxRef.current = null; }
     if (processorRef.current)      { processorRef.current.disconnect();  processorRef.current = null; }
@@ -769,13 +557,11 @@ export function useGeminiLive(customSystemPrompt?: string) {
     stopSilentLoop();
 
     try {
-      // 1. Solicitar micrófono con configuraciones óptimas para reconocimiento de voz
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
       streamRef.current = stream;
 
-      // 2. Crear AudioContexts
       const inputCtx = new AudioContext();
       inputAudioCtxRef.current  = inputCtx;
       outputAudioCtxRef.current = new AudioContext({ sampleRate: OUTPUT_SAMPLE_RATE });
@@ -787,13 +573,12 @@ export function useGeminiLive(customSystemPrompt?: string) {
       requestWakeLock();
       startSilentLoop(outputAudioCtxRef.current);
 
-      // 3. Conectar al proxy (la clave de API de Gemini permanece en el servidor)
       const session = createProxySession(
         customSystemPrompt ?? CHEF_SYSTEM_PROMPT,
         [],
         () => {
           sessionStartRef.current   = Date.now();
-          sessionMonthKeyRef.current = getMonthKey(); // FIX #2: anclar mes
+          sessionMonthKeyRef.current = getMonthKey();
           voiceTailUntilRef.current = 0;
           setVoiceStateSync('listening');
           startSilenceCountdown();
@@ -801,7 +586,6 @@ export function useGeminiLive(customSystemPrompt?: string) {
       );
       sessionRef.current = session;
 
-      // 4. Pipeline: mic → ScriptProcessor → VAD → proxy
       const source    = inputCtx.createMediaStreamSource(stream);
       sourceNodeRef.current = source;
       const processor = inputCtx.createScriptProcessor(BUFFER_SIZE, 1, 1);
@@ -811,7 +595,6 @@ export function useGeminiLive(customSystemPrompt?: string) {
         const raw = e.inputBuffer.getChannelData(0);
         const rms = calcRMS(raw);
 
-        // ── Modo sleeping: detectar energía para despertar ──────────────────
         if (voiceStateRef.current === 'sleeping') {
           if (rms > WAKE_RMS_THRESHOLD) {
             wakeFrameCountRef.current++;
@@ -825,7 +608,6 @@ export function useGeminiLive(customSystemPrompt?: string) {
           return;
         }
 
-        // ── Modo activo: VAD silencio → dormir ──────────────────────────────
         const now = Date.now();
         if (rms > VOICE_RMS_THRESHOLD) {
           lastVoiceTimeRef.current  = now;
@@ -836,7 +618,6 @@ export function useGeminiLive(customSystemPrompt?: string) {
           return;
         }
 
-        // ── Límite de sesión: dormir automáticamente a los 20 min ───────────
         if (sessionStartRef.current > 0 && now - sessionStartRef.current > MAX_SESSION_MS) {
           goToSleep();
           return;
@@ -844,37 +625,25 @@ export function useGeminiLive(customSystemPrompt?: string) {
 
         if (!sessionRef.current) return;
 
-        // ── Tracking de uso para el cap mensual ─────────────────────────────
-        // Reportamos 1 segundo cada vez que pasa 1 segundo real con sesión WS
-        // activa (estado 'listening' o 'speaking'). No contamos sleep ni
-        // reconnecting.
+        // Uso del tope mensual: solo cuenta tiempo con WebSocket activo.
         if (lastUsageReportRef.current === 0) {
           lastUsageReportRef.current = now;
         } else if (now - lastUsageReportRef.current >= 1000) {
-          // FIX #3 — clamp contra throttling de background tab:
-          // si el browser puso la pestaña en background, el setInterval/audio
-          // puede entregar un delta de minutos de golpe. Sin clamp, cobraríamos
-          // tiempo en el que el usuario no estaba realmente hablando.
-          // 5s es el techo razonable: un audio buffer cada ~85ms NO puede dar
-          // saltos legítimos mayores a eso si la pestaña está activa.
+          // Tope de 5 s: en segundo plano el navegador puede entregar minutos de
+          // golpe, y con un buffer cada ~85 ms no hay saltos legítimos mayores.
           const rawElapsedSec = Math.floor((now - lastUsageReportRef.current) / 1000);
           const elapsedSec = Math.min(rawElapsedSec, 5);
           if (elapsedSec > 0) {
             addVoiceSeconds(elapsedSec);
             lastUsageReportRef.current += elapsedSec * 1000;
 
-            // FIX #2 — detectar cruce de mes mid-session:
-            // si el usuario cocinó hasta cruzar medianoche del último día del
-            // mes, los segundos siguientes irían contra un cap fresco y
-            // podría usar 2× su asignación. Forzamos sleep si cambia el mes.
+            // Si la sesión cruza de mes, los segundos siguientes irían contra un tope nuevo.
             if (sessionMonthKeyRef.current !== getMonthKey()) {
               goToSleep();
               return;
             }
 
-            // FIX #1 — si con este segundo se llegó al cap, cleanup() COMPLETO
-            // (libera mic, AudioContext, wake lock, NoSleep). Antes solo
-            // cerrábamos el WS y el mic seguía activo consumiendo batería.
+            // cleanup completo: cerrar solo el WebSocket dejaría el micrófono gastando batería.
             if (voiceRemainingSeconds() <= 0) {
               wantsVoiceRef.current = false;
               cleanup();
@@ -884,11 +653,10 @@ export function useGeminiLive(customSystemPrompt?: string) {
           }
         }
 
-        // ── Gate de costo: solo enviar audio cuando hay voz o cola post-voz ──
-        // Ahorra ~70% del audio facturado en sesiones con silencios largos.
+        // Solo se envía audio con voz o en la cola posterior: el silencio también se factura.
         if (now > voiceTailUntilRef.current) return;
 
-        // `raw` ya es un Float32Array — pasamos directo, downsample no muta.
+        // downsample no muta `raw`.
         const resampled = downsample(raw, nativeRateRef.current, INPUT_SAMPLE_RATE);
         sessionRef.current.sendRealtimeInput({ audio: { data: float32ToPCM16Base64(resampled), mimeType: 'audio/pcm;rate=16000' } });
       };
@@ -905,20 +673,12 @@ export function useGeminiLive(customSystemPrompt?: string) {
   }, [customSystemPrompt, cleanup, stopSilentLoop, createProxySession, setVoiceStateSync,
       requestWakeLock, startSilentLoop, startSilenceCountdown, goToSleep]);
 
-  /**
-   * Despierta la sesión manualmente desde el estado `sleeping`.
-   * Equivalente a hablarle al micrófono pero activado por botón.
-   */
+  /** Despertar con botón en vez de con la voz. */
   const wakeUp = useCallback(() => {
     if (voiceStateRef.current === 'sleeping') reconnectSessionRef.current();
   }, []);
 
-  /**
-   * Envía un mensaje de texto al modelo en la sesión de voz activa.
-   * Útil para inyectar contexto programáticamente (ej. cambio de receta).
-   *
-   * @param text - Texto a enviar como turno de usuario.
-   */
+  /** Inyecta un turno de texto en la sesión de voz (p. ej. cambio de receta). */
   const sendTextToVoice = useCallback((text: string) => {
     if (!sessionRef.current) return;
     try { sessionRef.current.sendClientContent({ turns: [{ role: 'user', parts: [{ text }] }], turnComplete: true }); }

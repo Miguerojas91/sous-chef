@@ -1,16 +1,7 @@
 /**
- * milprepRecipes.ts
- *
- * Catálogo de recetas del módulo Mealprep (meal prep semanal).
- * Cada receta incluye ingredientes con cantidades base para 1 persona,
- * que el módulo escala automáticamente según el número de comensales.
- *
- * Las recetas están organizadas en dos grupos:
- * - Recetas personalizadas (primero, para fácil acceso al seleccionar).
- * - Recetas clásicas del catálogo estándar.
- *
- * La IA del módulo usa estas recetas para generar la lista de mercado
- * consolidada y el plan de batch cooking semanal.
+ * Catálogo de recetas de Mealprep. `baseAmount` es la cantidad para 1 persona:
+ * `MilprepModule` la multiplica por el número de personas y suma los
+ * ingredientes repetidos para armar la lista de compras.
  */
 
 export type Ingredient = {
@@ -29,7 +20,7 @@ export type Recipe = {
 };
 
 export const MILPREP_RECIPES: Recipe[] = [
-    // --- RECETAS PERSONALIZADAS (primero para fácil acceso) ---
+    // Personalizadas: van primero para encontrarlas rápido al elegir.
     {
         id: 'custom1', title: 'Gyozas de Cerdo con Ensalada de Mango', time: '50 min', img: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&q=80&w=400&h=250',
         ingredients: [
@@ -85,7 +76,7 @@ export const MILPREP_RECIPES: Recipe[] = [
         ]
     },
 
-    // --- 6 RECETAS DE POLLO (CHICKEN) ---
+    // Pollo
     {
         id: 'p1', title: 'Pollo Teriyaki con Brócoli', time: '30 min', img: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&q=80&w=400&h=250',
         ingredients: [
@@ -141,7 +132,7 @@ export const MILPREP_RECIPES: Recipe[] = [
         ]
     },
 
-    // --- 6 RECETAS DE CARNE DE RES (BEEF) ---
+    // Res
     {
         id: 'r1', title: 'Boloñesa Clásica', time: '120 min', img: 'https://images.unsplash.com/photo-1622973536968-3ead9e780960?auto=format&fit=crop&q=80&w=400&h=250',
         ingredients: [
@@ -197,7 +188,7 @@ export const MILPREP_RECIPES: Recipe[] = [
         ]
     },
 
-    // --- 6 RECETAS DE CARNE DE CERDO (PORK) ---
+    // Cerdo
     {
         id: 'c1', title: 'Pulled Pork (Cerdo Desmechado BBQ)', time: '240 min', img: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=400&h=250',
         ingredients: [
@@ -253,7 +244,7 @@ export const MILPREP_RECIPES: Recipe[] = [
         ]
     },
 
-    // --- 6 RECETAS DE PESCADOS Y MARISCOS (SEAFOOD) ---
+    // Pescados y mariscos
     {
         id: 'm1', title: 'Curry de Pescado Blanco en Coco', time: '30 min', img: 'https://images.unsplash.com/photo-1559058789-672da06263d8?auto=format&fit=crop&q=80&w=400&h=250',
         ingredients: [
@@ -308,7 +299,7 @@ export const MILPREP_RECIPES: Recipe[] = [
             { name: 'Ajo y Perejil picado', category: 'Verduras y Frutas', baseAmount: 10, unit: 'g' },
         ]
     },
-    // --- 6 RECETAS VEGETARIANAS (VEGETARIAN) ---
+    // Vegetarianas
     {
         id: 'v1', title: 'Lasaña de Berenjena y Queso', time: '60 min', img: 'https://images.unsplash.com/photo-1574894709920-11b28e7367e3?auto=format&fit=crop&q=80&w=400&h=250',
         ingredients: [

@@ -1,24 +1,8 @@
 /**
- * recipeFilters.ts
- *
- * Catálogo de filtros que el usuario puede activar antes de empezar a cocinar.
- * Cada filtro define un bloque de texto (`promptText`) que se inyecta al
- * system prompt del Chef IA, instruyéndole a respetar la restricción de manera
- * inviolable.
- *
- * Hay dos tipos:
- *  - `session` — filtros del momento (cambian cada vez): "sin horno hoy",
- *    "3 ingredientes", "económico", "para niños".
- *  - `dietary` — preferencias persistentes del usuario (se guardan en perfil
- *    y se pre-seleccionan en cada sesión): "diabético", "keto", "vegetariano",
- *    "sin gluten".
- *
- * Fundamento (informe de mercado):
- * - "Sin horno": muchos hogares latinoamericanos no tienen horno (falencia #4).
- * - "3 ingredientes": el video con más likes del dataset (6,389 likes).
- * - "Diabético / keto / sin gluten": personalización por dieta (virtud #4).
- * - "Para niños": segmento mamás + cocina para niños (114 menciones combinadas).
- * - "Económico": tema emergente, alto valor percibido.
+ * Filtros que el usuario activa antes de cocinar. Cada `promptText` se inyecta
+ * al system prompt como restricción obligatoria.
+ *  - `session`: cambian cada vez ("sin horno hoy", "3 ingredientes").
+ *  - `dietary`: se guardan en el perfil y se preseleccionan en cada sesión.
  */
 
 export type FilterKind = 'session' | 'dietary';
@@ -33,7 +17,6 @@ export interface RecipeFilter {
 }
 
 export const RECIPE_FILTERS: RecipeFilter[] = [
-  // ── Filtros de sesión ──────────────────────────────────────────────────────
   {
     id: 'sin-horno',
     label: 'Sin horno',
@@ -42,7 +25,7 @@ export const RECIPE_FILTERS: RecipeFilter[] = [
     promptText:
       'PROHIBIDO usar horno. Solo recetas en sartén, olla, microondas, parrilla, ' +
       'plancha o sin cocción. Si la receta tradicionalmente lleva horno, adáptala ' +
-      'a sartén o microondas — no asumas que el usuario tiene horno.',
+      'a sartén o microondas. No asumas que el usuario tiene horno.',
   },
   {
     id: 'tres-ingredientes',
@@ -80,14 +63,13 @@ export const RECIPE_FILTERS: RecipeFilter[] = [
       'divertido si es posible (forma, color). Pequeñas porciones.',
   },
 
-  // ── Preferencias dietéticas persistentes ───────────────────────────────────
   {
     id: 'diabetico',
     label: 'Diabético',
     emoji: '🩺',
     kind: 'dietary',
     promptText:
-      'RESTRICCIÓN MÉDICA — DIABETES. NO uses azúcar ni endulzantes calóricos ' +
+      'Restricción médica: diabetes. NO uses azúcar ni endulzantes calóricos ' +
       '(miel, panela, papelón, jarabe de agave). Si hace falta dulzor, sugiere ' +
       'stevia o eritritol y sé explícito. EVITA carbohidratos refinados de alta ' +
       'carga glucémica: pan blanco, arroz blanco abundante, papa en grandes ' +
@@ -133,30 +115,23 @@ export const RECIPE_FILTERS: RecipeFilter[] = [
       'salsa de soya regular, seitán. PERMITIDO: arroz, maíz, papa, yuca, quinua, ' +
       'amaranto, trigo sarraceno, harina de almendra/coco/garbanzo, tamari (soya ' +
       'sin gluten). Verifica explícitamente que NO haya gluten oculto en salsas ' +
-      'procesadas — si sugieres una salsa comercial, aclara "versión sin gluten".',
+      'procesadas. Si sugieres una salsa comercial, aclara "versión sin gluten".',
   },
 ];
 
-/** Obtiene un filtro por su id. */
 export function getFilter(id: string): RecipeFilter | undefined {
   return RECIPE_FILTERS.find(f => f.id === id);
 }
 
-/** Devuelve los filtros del tipo `session` (chips toggleables por sesión). */
 export function getSessionFilters(): RecipeFilter[] {
   return RECIPE_FILTERS.filter(f => f.kind === 'session');
 }
 
-/** Devuelve los filtros del tipo `dietary` (preferencias persistentes). */
 export function getDietaryFilters(): RecipeFilter[] {
   return RECIPE_FILTERS.filter(f => f.kind === 'dietary');
 }
 
-/**
- * Construye el bloque de texto que se inyecta al system prompt, dadas
- * las restricciones activas para la sesión actual. Si no hay nada activo
- * devuelve string vacío.
- */
+/** Bloque de restricciones para el system prompt; cadena vacía si no hay ninguna activa. */
 export function buildFiltersPromptBlock(opts: {
   activeFilterIds?: string[];
   allergies?: string[];
@@ -172,14 +147,12 @@ export function buildFiltersPromptBlock(opts: {
     return '';
   }
 
-  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  lines.push('🚨 RESTRICCIONES DE ESTA SESIÓN — RESPETAR SIEMPRE');
-  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  lines.push('Restricciones de esta sesión. Respétalas siempre:');
   lines.push('');
 
   if (opts.allergies && opts.allergies.length > 0) {
     lines.push(
-      `⚠️ ALERGIAS DEL USUARIO (NO usar nunca, riesgo de salud): ${opts.allergies.join(', ')}. ` +
+      `ALERGIAS DEL USUARIO (NO usar nunca, riesgo de salud): ${opts.allergies.join(', ')}. ` +
       `Si una receta lo lleva tradicionalmente, OMÍTELO o sustitúyelo y alerta al usuario.`
     );
     lines.push('');
@@ -187,14 +160,14 @@ export function buildFiltersPromptBlock(opts: {
 
   if (opts.dislikes && opts.dislikes.length > 0) {
     lines.push(
-      `🙅 NO LE GUSTAN: ${opts.dislikes.join(', ')}. ` +
+      `No le gustan: ${opts.dislikes.join(', ')}. ` +
       `Evita estos ingredientes salvo que el usuario los pida explícitamente.`
     );
     lines.push('');
   }
 
   for (const f of active) {
-    lines.push(`${f.emoji} ${f.label.toUpperCase()}:`);
+    lines.push(`${f.label}:`);
     lines.push(f.promptText);
     lines.push('');
   }
@@ -202,7 +175,6 @@ export function buildFiltersPromptBlock(opts: {
   lines.push('Estas restricciones son inviolables. Antes de proponer cualquier');
   lines.push('receta verifica que las cumple TODAS. Si no hay receta posible, dilo');
   lines.push('honestamente en lugar de ignorar una restricción.');
-  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   return lines.join('\n');
 }

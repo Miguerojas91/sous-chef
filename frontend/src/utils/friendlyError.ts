@@ -1,16 +1,4 @@
-/**
- * friendlyError.ts
- *
- * Utilidad para convertir mensajes de error técnicos de la API de voz
- * en textos comprensibles para el usuario final.
- */
-
-/**
- * Transforma un mensaje de error técnico en un texto amigable para mostrar en la UI.
- *
- * @param raw - Mensaje de error original (puede contener códigos HTTP, nombres de excepción, etc.)
- * @returns Mensaje legible en español, listo para mostrar al usuario.
- */
+/** Traduce errores técnicos de la API de voz a un mensaje que el usuario entienda. */
 export function friendlyVoiceError(raw: string): string {
   const r = raw.toLowerCase();
 
@@ -18,7 +6,7 @@ export function friendlyVoiceError(raw: string): string {
     return 'Sin conexión con el servidor. Revisa tu internet e intenta de nuevo.';
   }
   if (r.includes('microphone') || r.includes('permission') || r.includes('notallowederror')) {
-    return 'No se pudo acceder al micrófono. Verifica que hayas dado permiso en el navegador.';
+    return 'No se pudo acceder al micrófono. Revisa que la app tenga permiso para usarlo.';
   }
   if (r.includes('quota') || r.includes('429') || r.includes('rate limit')) {
     return 'Demasiadas solicitudes. Espera unos segundos e intenta de nuevo.';
@@ -27,7 +15,7 @@ export function friendlyVoiceError(raw: string): string {
     return 'El servidor tuvo un problema. Intenta reconectarte.';
   }
   if (r.includes('401') || r.includes('403') || r.includes('unauthorized')) {
-    return 'Error de autenticación con el servicio. Contacta soporte.';
+    return 'No se pudo verificar tu sesión con el servicio de voz. Escribe a soporte.';
   }
 
   return 'No se pudo conectar con Sous. Intenta de nuevo.';

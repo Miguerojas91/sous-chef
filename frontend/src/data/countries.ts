@@ -1,35 +1,13 @@
 /**
- * countries.ts
- *
- * Catálogo de países hispanohablantes soportados por Sous Chef + bloque de
- * conocimiento que se inyecta al system prompt del Chef IA para que use
- * ingredientes locales, nombres regionales y referencias culturales correctas.
- *
- * Esto resuelve la falencia #2 del informe de mercado (5,421 likes de quejas
- * por recetas no localizadas).
- *
- * Para agregar un país nuevo:
- *  - Añadirlo a `COUNTRIES` con su flag, nombre y código.
- *  - Añadir un bloque de `localContext` con ingredientes/jerga típica.
+ * Países soportados y el contexto que se inyecta al system prompt para que la
+ * IA use ingredientes que el usuario consigue y los nombres de su país.
+ * Para agregar un país: añade el código a `CountryCode` y su entrada en `COUNTRIES`.
  */
 
 export type CountryCode =
-  | 'CO'  // Colombia
-  | 'MX'  // México
-  | 'AR'  // Argentina
-  | 'ES'  // España
-  | 'CL'  // Chile
-  | 'PE'  // Perú
-  | 'VE'  // Venezuela
-  | 'EC'  // Ecuador
-  | 'UY'  // Uruguay
-  | 'BO'  // Bolivia
-  | 'PY'  // Paraguay
-  | 'CR'  // Costa Rica
-  | 'PA'  // Panamá
-  | 'DO'  // República Dominicana
-  | 'GT'  // Guatemala
-  | 'US'  // Estados Unidos (hispano)
+  | 'CO' | 'MX' | 'AR' | 'ES' | 'CL' | 'PE' | 'VE' | 'EC'
+  | 'UY' | 'BO' | 'PY' | 'CR' | 'PA' | 'DO' | 'GT'
+  | 'US'  // comunidad hispana en EE. UU.
   | 'OTHER';
 
 export interface Country {
@@ -49,7 +27,7 @@ export const COUNTRIES: Country[] = [
 - Ingredientes locales accesibles: panela, yuca, plátano (verde/maduro/dominico), arepa, ahogao (sofrito de tomate + cebolla larga), ají, cilantro, cebolla larga, queso costeño, queso campesino, papa criolla, papa pastusa, frijol cargamanto, hogao.
 - Usa nombres locales: aguacate (no palta), cilantro (no culantro), cebolla larga (no cebolla de verdeo), fríjol (no judía), maíz tierno (no choclo), papa (no patata), tomate (no jitomate).
 - Platos referencia: bandeja paisa, ajiaco, sancocho, sudado, fríjoles, arroz con coco, mondongo, lechona.
-- Evita: aceite de oliva extra virgen como base (es caro), parmesano fresco, anchoas, ricotta — sugiérelos solo si el usuario los menciona.`,
+- Evita: aceite de oliva extra virgen como base (es caro), parmesano fresco, anchoas, ricotta. Sugiérelos solo si el usuario los menciona.`,
   },
   {
     code: 'MX',
@@ -59,7 +37,7 @@ export const COUNTRIES: Country[] = [
 - Ingredientes locales accesibles: masa de maíz (nixtamalizada), tortillas de maíz/harina, chile (poblano, jalapeño, serrano, guajillo, chipotle, ancho, pasilla), tomatillo (tomate verde), cilantro, epazote, cebolla blanca, queso fresco (Oaxaca, panela, cotija), crema mexicana, frijol negro/pinto, aguacate, lima, jitomate.
 - Usa nombres locales: jitomate (rojo) / tomate verde (tomatillo), papa (no patata), elote (no choclo ni mazorca), aguacate, chile (no ají ni pimiento picante).
 - Platos referencia: tacos, enchiladas, mole, pozole, chilaquiles, sopes, tamales, tinga, picadillo, frijoles charros.
-- Evita: anchoas, parmesano fresco como base. La sal "kosher" no se vende — usa sal de mesa o de grano.`,
+- Evita: anchoas, parmesano fresco como base. La sal "kosher" no se vende: usa sal de mesa o de grano.`,
   },
   {
     code: 'AR',
@@ -193,8 +171,8 @@ export const COUNTRIES: Country[] = [
 - Ingredientes accesibles: gran variedad en supermercados (Walmart, HEB, Whole Foods, mercados latinos como Fiesta, Northgate, etc.).
 - Productos importados: la mayoría de ingredientes latinos disponibles en tiendas especializadas (Goya, Iberia, Maseca, Knorr).
 - Usa medidas en sistema métrico O imperial según el usuario indique; muchos hispanos en EE.UU. usan ambos. Por defecto usa métrico y entre paréntesis imperial si es útil.
-- Platos referencia: variará según país de origen del usuario — pregúntale si tiene preferencia.
-- Considera el contexto: el usuario puede tener acceso a ingredientes asiáticos o europeos también; pero NO los asumas — sigue la regla inviolable.`,
+- Platos referencia: variará según país de origen del usuario. Pregúntale si tiene preferencia.
+- Considera el contexto: el usuario puede tener acceso a ingredientes asiáticos o europeos también, pero no los asumas. Sigue la regla inviolable de ingredientes.`,
   },
   {
     code: 'OTHER',
@@ -208,14 +186,13 @@ export const COUNTRIES: Country[] = [
   },
 ];
 
-/** Helper para obtener el bloque de contexto de un país por código. */
+/** Cadena vacía si no hay código o no se reconoce. */
 export function getCountryContext(code: string | undefined | null): string {
   if (!code) return '';
   const found = COUNTRIES.find(c => c.code === code);
   return found?.localContext ?? '';
 }
 
-/** Helper para obtener un país completo por código. */
 export function getCountry(code: string | undefined | null): Country | undefined {
   if (!code) return undefined;
   return COUNTRIES.find(c => c.code === code);

@@ -4,6 +4,9 @@ Crea el usuario administrador de Sous Chef.
 Las credenciales se leen del entorno; nunca se escriben en el código:
     ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD
 
+Requiere el esquema creado con `alembic upgrade head` (incluye las políticas RLS);
+este script no crea tablas.
+
 Uso: ADMIN_USERNAME=... ADMIN_EMAIL=... ADMIN_PASSWORD=... python create_user.py
 """
 import asyncio
@@ -12,8 +15,8 @@ import sys
 
 from sqlalchemy import select
 
-from app.api.auth import get_password_hash
-from app.core.database import AsyncSessionLocal, Base, engine
+from app.core.passwords import get_password_hash
+from app.core.database import AsyncSessionLocal
 from app.models import User
 
 
@@ -28,9 +31,6 @@ async def create_user() -> None:
     username = _require_env("ADMIN_USERNAME")
     email = _require_env("ADMIN_EMAIL")
     password = _require_env("ADMIN_PASSWORD")
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(User).where(User.email == email))

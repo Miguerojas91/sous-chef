@@ -13,21 +13,12 @@ export type ChatMessage = {
   text: string;
 };
 
-/** Se conserva por compatibilidad con useCookingSocket; el chat SSE siempre devuelve `null`. */
-export type SafetyAlert = {
-  severity: 'info' | 'warning' | 'critical';
-  message: string;
-  action_required: boolean;
-};
-
 interface UseGeminiChatOptions {
-  /** Elige el system prompt por defecto si no se pasa `systemPrompt`. */
-  mode?: 'cooking' | 'milprep';
-  /** Se envía al modelo solo en el primer turno. */
-  initialContext?: Record<string, unknown>;
-  storageKey?: string;
-  /** Puede cambiar en cualquier momento. */
-  systemPrompt?: string;
+  storageKey: string;
+  /** Puede cambiar en cualquier momento. Vacío = prompt por defecto del modo. */
+  systemPrompt: string;
+  /** Solo para analytics y para elegir el prompt por defecto. */
+  analyticsMode: 'cooking' | 'milprep' | 'flavors';
 }
 
 // Límites para controlar costos.
@@ -43,31 +34,36 @@ function loadMessages(key: string): ChatMessage[] {
   return [];
 }
 
-/** Conserva solo los últimos 100 mensajes. */
+/** Conserva los últimos 100 mensajes. Sin mensajes borra la clave: otras
+ * pantallas usan su existencia para saber si hay una sesión en curso. */
 function saveMessages(key: string, msgs: ChatMessage[]): void {
   try {
-    localStorage.setItem(key, JSON.stringify(msgs.slice(-100)));
+    if (msgs.length === 0) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(msgs.slice(-100)));
   } catch { /* ignorar si el storage está lleno */ }
 }
 
-export const useGeminiChat = ({
-  mode = 'cooking',
-  initialContext,
-  storageKey,
-  systemPrompt,
-}: UseGeminiChatOptions = {}) => {
-  const key = storageKey ?? `sous_chat_${mode}`;
+const defaultPrompt = (mode: UseGeminiChatOptions['analyticsMode']) =>
+  mode === 'milprep' ? MILPREP_SYSTEM_PROMPT : CHEF_SYSTEM_PROMPT;
 
+export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: UseGeminiChatOptions) => {
   const [messages, setMessages]   = useState<ChatMessage[]>(() => loadMessages(key));
   const [isLoading, setIsLoading] = useState(false);
 
   // Refs para que callAPI lea siempre el valor más reciente sin recrearse.
-  const systemPromptRef   = useRef(systemPrompt ?? (mode === 'milprep' ? MILPREP_SYSTEM_PROMPT : CHEF_SYSTEM_PROMPT));
-  const initialContextRef = useRef(initialContext);
+  const systemPromptRef = useRef(systemPrompt || defaultPrompt(analyticsMode));
+  // Copia de los mensajes para el guardado al desmontar: la clausura del efecto
+  // tendría los mensajes de antes de un clearMessages hecho en el mismo ciclo.
+  const messagesRef = useRef(messages);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (systemPrompt) systemPromptRef.current = systemPrompt;
-  }, [systemPrompt]);
+    systemPromptRef.current = systemPrompt || defaultPrompt(analyticsMode);
+  }, [systemPrompt, analyticsMode]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Debounce: sin él, cada chunk del stream haría un JSON.stringify y una
   // escritura síncrona a localStorage.
@@ -78,13 +74,13 @@ export const useGeminiChat = ({
 
   // Guardado inmediato al desmontar o pasar a segundo plano, para no perder el último estado.
   useEffect(() => {
-    const flush = () => saveMessages(key, messages);
+    const flush = () => saveMessages(key, messagesRef.current);
     window.addEventListener('pagehide', flush);
     return () => {
       window.removeEventListener('pagehide', flush);
       flush();
     };
-  }, [key, messages]);
+  }, [key]);
 
   /** Procesa el stream SSE y va rellenando el último mensaje (el placeholder del chef). */
   const callAPI = useCallback(async (
@@ -92,6 +88,7 @@ export const useGeminiChat = ({
   ): Promise<void> => {
     // 60 s cubre el arranque en frío de Railway más un Gemini lento.
     const controller = new AbortController();
+    abortRef.current = controller;
     const timeoutId = setTimeout(() => controller.abort('timeout'), 60_000);
     let fullText = '';
 
@@ -154,6 +151,8 @@ export const useGeminiChat = ({
         });
       }
     } catch (error) {
+      // Cancelado por clearMessages: ya no hay mensaje al que agregar el error.
+      if (controller.signal.reason === 'cleared') return;
       const isAbort = error instanceof DOMException && error.name === 'AbortError';
       const errMsg = isAbort
         ? 'Tardé demasiado en responder. Intenta de nuevo.'
@@ -174,7 +173,10 @@ export const useGeminiChat = ({
       });
     } finally {
       clearTimeout(timeoutId);
-      setIsLoading(false);
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -191,11 +193,6 @@ export const useGeminiChat = ({
     const historyWindow = messages.slice(-(MAX_CONTEXT_TURNS * 2));
     const contents: Array<{ role: string; parts: [{ text: string }] }> = [];
 
-    if (messages.length === 0 && initialContextRef.current) {
-      contents.push({ role: 'user',  parts: [{ text: `Contexto de sesión:\n${JSON.stringify(initialContextRef.current, null, 2)}` }] });
-      contents.push({ role: 'model', parts: [{ text: 'Tengo el contexto. ¿Empezamos?' }] });
-    }
-
     historyWindow.forEach(m => {
       contents.push({ role: m.agent === 'user' ? 'user' : 'model', parts: [{ text: m.text }] });
     });
@@ -203,7 +200,7 @@ export const useGeminiChat = ({
 
     // Solo el conteo, nunca el contenido del mensaje (PII).
     track(Events.ChatMessageSent, {
-      mode,
+      mode: analyticsMode,
       char_count: trimmed.length,
       turn_number: Math.ceil(messages.length / 2) + 1,
     });
@@ -212,20 +209,16 @@ export const useGeminiChat = ({
     setMessages(prev => [...prev, { agent: 'user', text: trimmed }, { agent: 'chef', text: '' }]);
     setIsLoading(true);
     callAPI(contents);
-  }, [isLoading, messages, callAPI]);
+  }, [isLoading, messages, callAPI, analyticsMode]);
 
   const clearMessages = useCallback((): void => {
+    abortRef.current?.abort('cleared');
+    abortRef.current = null;
+    messagesRef.current = [];
     setMessages([]);
+    setIsLoading(false);
     localStorage.removeItem(key);
   }, [key]);
 
-  return {
-    /** Siempre `true`: el chat SSE no mantiene una conexión abierta. */
-    isConnected: true,
-    isLoading,
-    messages,
-    latestSafetyAlert: null as SafetyAlert | null,
-    sendMessage,
-    clearMessages,
-  };
+  return { isLoading, messages, sendMessage, clearMessages };
 };

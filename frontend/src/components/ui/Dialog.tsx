@@ -1,22 +1,17 @@
 /**
  * Diálogo modal accesible. En móvil sale como hoja desde abajo (al alcance del
- * pulgar y sin quedar bajo el teclado); desde `sm` se centra.
- *
- * Gestiona lo que los modales hechos a mano no hacían: `role="dialog"`,
- * cierre con Escape, foco inicial dentro del diálogo, foco atrapado con Tab
- * y devolución del foco al elemento que lo abrió.
+ * pulgar y sin quedar bajo el teclado); desde `sm` se centra. El foco, Escape y
+ * el bloqueo del scroll vienen de `useModal`.
  */
-import { useEffect, useId, useRef } from 'react';
+import { useId, useRef } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { createPortal } from 'react-dom';
-
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+import { useModal } from '../../hooks/useModal';
 
 interface DialogProps {
   title: ReactNode;
   onClose: () => void;
-  children: ReactNode;
+  children?: ReactNode;
   /** Pie fijo (botones de acción); queda sobre el área segura inferior. */
   footer?: ReactNode;
   description?: ReactNode;
@@ -36,46 +31,7 @@ export const Dialog = ({
   const titleId = useId();
   const descId = useId();
 
-  // onClose cambia en cada render del padre; guardarlo en ref evita que el
-  // efecto de foco se reinicie y robe el foco mientras el usuario escribe.
-  const onCloseRef = useRef(onClose);
-  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
-
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    const panel = panelRef.current;
-    const first = initialFocusRef?.current ?? panel?.querySelector<HTMLElement>(FOCUSABLE);
-    (first ?? panel)?.focus();
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onCloseRef.current();
-        return;
-      }
-      if (e.key !== 'Tab' || !panel) return;
-      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (items.length === 0) return;
-      const firstItem = items[0];
-      const lastItem = items[items.length - 1];
-      if (e.shiftKey && document.activeElement === firstItem) {
-        e.preventDefault();
-        lastItem.focus();
-      } else if (!e.shiftKey && document.activeElement === lastItem) {
-        e.preventDefault();
-        firstItem.focus();
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = prevOverflow;
-      previouslyFocused?.focus?.();
-    };
-  }, [initialFocusRef]);
+  useModal(panelRef, { onEscape: onClose, initialFocusRef });
 
   const dark = tone === 'dark';
 
@@ -97,7 +53,7 @@ export const Dialog = ({
           dark ? 'bg-neutral-900 text-white border border-neutral-700' : 'bg-white text-neutral-900'
         }`}
       >
-        <div className="px-5 pt-5 overflow-y-auto overscroll-contain">
+        <div className={`px-5 pt-5 ${children ? '' : 'pb-4'} overflow-y-auto overscroll-contain`}>
           <h2 id={titleId} className={hideTitle ? 'sr-only' : 'text-lg font-extrabold'}>
             {title}
           </h2>
@@ -106,7 +62,7 @@ export const Dialog = ({
               {description}
             </p>
           )}
-          <div className="pb-5">{children}</div>
+          {children && <div className="pb-5">{children}</div>}
         </div>
         {footer && (
           <div className={`px-5 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4 border-t ${dark ? 'border-neutral-800' : 'border-neutral-100'}`}>
@@ -170,8 +126,6 @@ export const ConfirmDialog = ({
           </button>
         </div>
       }
-    >
-      {null}
-    </Dialog>
+    />
   );
 };

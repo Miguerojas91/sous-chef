@@ -4,8 +4,9 @@
  *   eligieron país, y desde el perfil.
  * - `inline`: dentro del registro en AuthScreen.
  *
- * `onSkip` en modo modal guarda 'OTHER' (lo decide quien llama) para no volver
- * a preguntar.
+ * En modo modal, `onSkip` es la respuesta explícita "Prefiero no decirlo" (quien
+ * llama decide si la guarda). `onDismiss` es cerrar sin responder (Escape,
+ * tocar fuera): no debe guardar nada, para volver a preguntar otro día.
  */
 import React from 'react';
 import { COUNTRIES } from '../data/countries';
@@ -15,6 +16,7 @@ interface CountryPickerProps {
   mode?: 'modal' | 'inline';
   onSelect: (code: string) => void;
   onSkip?: () => void;
+  onDismiss?: () => void;
 }
 
 const INTRO = 'Así Sous te propone recetas con ingredientes que consigues donde compras.';
@@ -36,13 +38,13 @@ const CountryList = ({ onSelect }: { onSelect: (code: string) => void }) => (
   </ul>
 );
 
-export const CountryPicker: React.FC<CountryPickerProps> = ({ mode = 'inline', onSelect, onSkip }) => {
+export const CountryPicker: React.FC<CountryPickerProps> = ({ mode = 'inline', onSelect, onSkip, onDismiss }) => {
   if (mode === 'modal') {
     return (
       <Dialog
         title="¿Desde qué país cocinas?"
         description={INTRO}
-        onClose={onSkip ?? (() => {})}
+        onClose={onDismiss ?? onSkip ?? (() => {})}
         footer={onSkip && (
           <button
             type="button"

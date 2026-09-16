@@ -9,7 +9,7 @@ import sys
 
 from sqlalchemy import select
 
-from app.api.auth import verify_password
+from app.core.passwords import verify_password
 from app.core.database import AsyncSessionLocal
 from app.models import User
 

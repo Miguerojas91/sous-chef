@@ -122,7 +122,7 @@ const CookingChat: React.FC<{
   const voicePrompt = buildCookingSystemPrompt(intent, timeAvailable, 'voice', promptOpts);
 
   const { isLoading, messages, sendMessage, clearMessages } = useGeminiChat({
-    mode: 'cooking',
+    analyticsMode: 'cooking',
     storageKey: CHAT_STORAGE_KEY,
     systemPrompt: textPrompt,
   });

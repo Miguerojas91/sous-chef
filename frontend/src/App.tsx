@@ -266,7 +266,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="h-dvh bg-neutral-50 flex flex-col overflow-hidden">
       {showCountryPicker && (
-        <CountryPicker mode="modal" onSelect={handleCountrySelect} onSkip={handleCountrySkip} />
+        <CountryPicker
+          mode="modal"
+          onSelect={handleCountrySelect}
+          onSkip={handleCountrySkip}
+          onDismiss={() => setShowCountryPicker(false)}
+        />
       )}
 
       {activeLesson && (

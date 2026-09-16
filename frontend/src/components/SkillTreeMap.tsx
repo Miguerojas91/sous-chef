@@ -395,7 +395,7 @@ export const SkillTreeMap = () => {
                 tabIndex={interactive ? 0 : undefined}
                 aria-label={`${level.name}, ${isBoss ? 'jefe' : `nivel ${level.id}`}, ${statusText}`}
                 style={{ cursor: interactive ? 'pointer' : 'default', outline: 'none' }}
-                className="focus-visible:[&>circle.node]:stroke-brand-700"
+                className="[&:focus-visible>circle.node]:stroke-brand-700 [&:focus-visible>circle.node]:[stroke-width:5px]"
               >
                 {status === 'active' && (
                   <circle cx={x} cy={y} r={r + 10} fill={wc.glow} opacity={0.6} filter="url(#activeGlow)" />
@@ -449,6 +449,7 @@ export const SkillTreeMap = () => {
                 role="button"
                 tabIndex={0}
                 aria-label={`${world.name} requiere Premium. Ver plan`}
+                className="[&:focus-visible>rect:first-child]:[stroke:#fdba74] [&:focus-visible>rect:first-child]:[stroke-width:6px]"
                 style={{ cursor: 'pointer', outline: 'none' }}
               >
                 <rect x={0} y={oy} width={SVG_W} height={WORLD_H} fill="rgba(0,0,0,0.6)" />

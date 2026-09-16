@@ -6,7 +6,6 @@ Endpoints de autenticación con:
 - Audit log de cada intento.
 """
 import json
-import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -24,14 +23,10 @@ from app.core.tokens import (
     RefreshOutcome,
 )
 from app.core.audit import log_event, Action
+from app.core.passwords import get_password_hash, verify_password
 from app.models import User, RefreshToken
 
 router = APIRouter()
-
-
-# bcrypt acepta máximo 72 bytes de password: truncamos como recomienda upstream.
-def _bcrypt_safe_pw(password: str) -> bytes:
-    return password.encode("utf-8")[:72]
 
 
 class UserCreate(BaseModel):
@@ -74,17 +69,6 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
-
-
-def verify_password(plain: str, hashed: str) -> bool:
-    try:
-        return bcrypt.checkpw(_bcrypt_safe_pw(plain), hashed.encode("utf-8"))
-    except Exception:  # noqa: BLE001 - hash inválido / corrupto
-        return False
-
-
-def get_password_hash(password: str) -> str:
-    return bcrypt.hashpw(_bcrypt_safe_pw(password), bcrypt.gensalt()).decode("utf-8")
 
 
 def _user_to_public(u: User) -> UserPublic:

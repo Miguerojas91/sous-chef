@@ -490,7 +490,7 @@ No uses el carácter —. No abras con elogios ni cierres ofreciendo más ayuda.
   const storageKey = `sous_flavor_${recipe.name.replace(/\s+/g, '_').toLowerCase()}`;
   // Vacío hasta que empieza el chat: ahí ya se conoce el estado real del mercado.
   const [systemPrompt, setSystemPrompt] = useState('');
-  const { messages, isLoading, sendMessage, clearMessages } = useGeminiChat({ storageKey, systemPrompt });
+  const { messages, isLoading, sendMessage, clearMessages } = useGeminiChat({ storageKey, systemPrompt, analyticsMode: 'flavors' });
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

@@ -236,8 +236,8 @@ Reglas de comunicación:
   // Con el chat activo el prompt se arma en cada render: así una sesión
   // restaurada tras un F5 y los cambios de ingredientes hechos después de
   // empezar llegan al modelo (el hook guarda el último valor en un ref).
-  const systemPrompt = chatStarted ? buildMilprepSystemPrompt() : undefined;
-  const { isLoading, messages, sendMessage, clearMessages } = useGeminiChat({ mode: 'milprep', systemPrompt, storageKey: MILPREP_CHAT_KEY });
+  const systemPrompt = chatStarted ? buildMilprepSystemPrompt() : '';
+  const { isLoading, messages, sendMessage, clearMessages } = useGeminiChat({ analyticsMode: 'milprep', systemPrompt, storageKey: MILPREP_CHAT_KEY });
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const pendingMsgRef = useRef('');
 

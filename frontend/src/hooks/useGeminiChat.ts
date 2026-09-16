@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { API_URL, CHEF_SYSTEM_PROMPT, MILPREP_SYSTEM_PROMPT } from '../services/gemini';
+import { API_URL } from '../services/gemini';
 import { track, Events } from '../utils/analytics';
 
 export type ChatMessage = {
@@ -15,13 +15,14 @@ export type ChatMessage = {
 
 interface UseGeminiChatOptions {
   storageKey: string;
-  /** Puede cambiar en cualquier momento. Vacío = prompt por defecto del modo. */
+  /** Puede cambiar en cualquier momento: cada envío usa el valor del render actual. */
   systemPrompt: string;
-  /** Solo para analytics y para elegir el prompt por defecto. */
+  /** Solo para analytics. */
   analyticsMode: 'cooking' | 'milprep' | 'flavors';
 }
 
-// Límites para controlar costos.
+// Límites para controlar costos. El tope de caracteres es para lo que escribe
+// el usuario; el primer mensaje lo arma la app (Mealprep con 7 recetas pasa de 500).
 const MAX_INPUT_CHARS = 500;
 /** Pares usuario/modelo que se envían como contexto en cada llamada. */
 const MAX_CONTEXT_TURNS = 5;
@@ -43,23 +44,16 @@ function saveMessages(key: string, msgs: ChatMessage[]): void {
   } catch { /* ignorar si el storage está lleno */ }
 }
 
-const defaultPrompt = (mode: UseGeminiChatOptions['analyticsMode']) =>
-  mode === 'milprep' ? MILPREP_SYSTEM_PROMPT : CHEF_SYSTEM_PROMPT;
+type ChatContents = Array<{ role: string; parts: [{ text: string }] }>;
 
 export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: UseGeminiChatOptions) => {
   const [messages, setMessages]   = useState<ChatMessage[]>(() => loadMessages(key));
   const [isLoading, setIsLoading] = useState(false);
 
-  // Refs para que callAPI lea siempre el valor más reciente sin recrearse.
-  const systemPromptRef = useRef(systemPrompt || defaultPrompt(analyticsMode));
   // Copia de los mensajes para el guardado al desmontar: la clausura del efecto
   // tendría los mensajes de antes de un clearMessages hecho en el mismo ciclo.
   const messagesRef = useRef(messages);
   const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    systemPromptRef.current = systemPrompt || defaultPrompt(analyticsMode);
-  }, [systemPrompt, analyticsMode]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -83,9 +77,7 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
   }, [key]);
 
   /** Procesa el stream SSE y va rellenando el último mensaje (el placeholder del chef). */
-  const callAPI = useCallback(async (
-    contents: Array<{ role: string; parts: [{ text: string }] }>
-  ): Promise<void> => {
+  const callAPI = useCallback(async (contents: ChatContents, systemInstruction: string): Promise<void> => {
     // 60 s cubre el arranque en frío de Railway más un Gemini lento.
     const controller = new AbortController();
     abortRef.current = controller;
@@ -98,7 +90,7 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents,
-          systemInstruction: systemPromptRef.current,
+          systemInstruction,
         }),
         signal: controller.signal,
       });
@@ -151,7 +143,7 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
         });
       }
     } catch (error) {
-      // Cancelado por clearMessages: ya no hay mensaje al que agregar el error.
+      // Cancelado por clearMessages o startConversation: el mensaje ya no existe.
       if (controller.signal.reason === 'cleared') return;
       const isAbort = error instanceof DOMException && error.name === 'AbortError';
       const errMsg = isAbort
@@ -180,36 +172,57 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
     }
   }, []);
 
-  const sendMessage = useCallback(async (text: string): Promise<void> => {
-    if (isLoading) return;
+  /** Agrega el turno del usuario a `history` y pide la respuesta con el prompt de este render. */
+  const submit = useCallback((history: ChatMessage[], text: string): void => {
+    const contents: ChatContents = history
+      .slice(-(MAX_CONTEXT_TURNS * 2))
+      .map(m => ({ role: m.agent === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
+    contents.push({ role: 'user', parts: [{ text }] });
 
+    // Solo el conteo, nunca el contenido del mensaje (PII).
+    track(Events.ChatMessageSent, {
+      mode: analyticsMode,
+      char_count: text.length,
+      turn_number: Math.ceil(history.length / 2) + 1,
+    });
+
+    // El mensaje vacío del chef se rellena con el stream.
+    const next: ChatMessage[] = [...history, { agent: 'user', text }, { agent: 'chef', text: '' }];
+    messagesRef.current = next;
+    setMessages(next);
+    setIsLoading(true);
+    callAPI(contents, systemPrompt);
+  }, [analyticsMode, callAPI, systemPrompt]);
+
+  /** Mensaje escrito por el usuario. */
+  const sendMessage = useCallback((text: string): void => {
+    if (isLoading) return;
     const trimmed = text.trim();
     if (!trimmed) return;
     if (trimmed.length > MAX_INPUT_CHARS) {
       console.warn(`[useGeminiChat] Mensaje descartado (${trimmed.length} chars > ${MAX_INPUT_CHARS}).`);
       return;
     }
+    submit(messages, trimmed);
+  }, [isLoading, messages, submit]);
 
-    const historyWindow = messages.slice(-(MAX_CONTEXT_TURNS * 2));
-    const contents: Array<{ role: string; parts: [{ text: string }] }> = [];
-
-    historyWindow.forEach(m => {
-      contents.push({ role: m.agent === 'user' ? 'user' : 'model', parts: [{ text: m.text }] });
-    });
-    contents.push({ role: 'user', parts: [{ text: trimmed }] });
-
-    // Solo el conteo, nunca el contenido del mensaje (PII).
-    track(Events.ChatMessageSent, {
-      mode: analyticsMode,
-      char_count: trimmed.length,
-      turn_number: Math.ceil(messages.length / 2) + 1,
-    });
-
-    // El mensaje vacío del chef se rellena con el stream.
-    setMessages(prev => [...prev, { agent: 'user', text: trimmed }, { agent: 'chef', text: '' }]);
-    setIsLoading(true);
-    callAPI(contents);
-  }, [isLoading, messages, callAPI, analyticsMode]);
+  /**
+   * Borra la conversación y envía `firstMessage` en el mismo paso, con el
+   * prompt de este render. Lo arma la app, así que no tiene tope de caracteres.
+   */
+  const startConversation = useCallback((firstMessage: string): void => {
+    abortRef.current?.abort('cleared');
+    abortRef.current = null;
+    localStorage.removeItem(key);
+    const trimmed = firstMessage.trim();
+    if (!trimmed) {
+      messagesRef.current = [];
+      setMessages([]);
+      setIsLoading(false);
+      return;
+    }
+    submit([], trimmed);
+  }, [key, submit]);
 
   const clearMessages = useCallback((): void => {
     abortRef.current?.abort('cleared');
@@ -220,5 +233,5 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
     localStorage.removeItem(key);
   }, [key]);
 
-  return { isLoading, messages, sendMessage, clearMessages };
+  return { isLoading, messages, sendMessage, startConversation, clearMessages };
 };

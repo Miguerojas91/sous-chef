@@ -14,10 +14,11 @@ import { Trophy, Star, X } from 'lucide-react';
 import { isPremiumUser } from '../utils/membership';
 import { Dialog } from './ui/Dialog';
 import { ScreenHeader } from './ui/ScreenHeader';
-import { WORLDS, LEVELS, getLevelStatus, readLevelStars } from '../data/adventure';
+import { WORLDS, LEVELS, getLevelStatus } from '../data/adventure';
 import type { PlacedLevel, LevelStatus } from '../data/adventure';
 import { WORLD_CLASSES } from '../data/worlds';
 import { WORLD_TOKENS } from '../data/worldTokens';
+import { readLevelStars } from '../utils/progress';
 
 const SVG_W    = 300;
 const BANNER_H = 88;

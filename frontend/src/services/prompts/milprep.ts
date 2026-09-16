@@ -3,19 +3,15 @@
  * y cambios de ingredientes) para que Sous sepa lo mismo en los dos modos.
  */
 
-export interface MilprepPromptContext {
+import { describeMarketChanges, withQuantity, type MarketChanges } from '../../hooks/useMarketList';
+
+/** `swaps` y `missing` llevan la cantidad de la lista de compras. */
+export interface MilprepPromptContext extends MarketChanges {
   recipes: { title: string; time: string }[];
   people: number;
-  /** Ingredientes reemplazados, con su cantidad en la lista. */
-  swaps: { name: string; quantity?: string; substitute: string }[];
-  /** No conseguidos y sin sustituto. */
-  missing: { name: string; quantity?: string }[];
 }
 
 export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
-const withQuantity = (i: { name: string; quantity?: string }) =>
-  i.quantity ? `${i.name} (${i.quantity})` : i.name;
 
 const recipeLines = (ctx: MilprepPromptContext, empty: string) =>
   ctx.recipes.length > 0
@@ -70,12 +66,7 @@ export function buildMilprepFirstMessage(ctx: MilprepPromptContext, extraQuestio
   let msg = `Hola Sous, quiero empezar mi mealprep de esta semana.\n\n`;
   msg += `Voy a cocinar para ${plural(ctx.people, 'persona', 'personas')}.\n\n`;
   msg += `Mis recetas de esta semana:\n${recipeLines(ctx, 'Sin recetas seleccionadas aún')}`;
-  if (ctx.swaps.length > 0) {
-    msg += `\n\nCambié estos ingredientes:\n${ctx.swaps.map(s => `  • ${withQuantity(s)}: ${s.substitute}`).join('\n')}`;
-  }
-  if (ctx.missing.length > 0) {
-    msg += `\n\nNo conseguí estos ingredientes: ${ctx.missing.map(withQuantity).join(', ')}`;
-  }
+  for (const line of describeMarketChanges(ctx)) msg += `\n\n${line}`;
   msg += `\n\n¿Por dónde empezamos?`;
   if (extraQuestion) msg += `\n\n${extraQuestion}`;
   return msg;

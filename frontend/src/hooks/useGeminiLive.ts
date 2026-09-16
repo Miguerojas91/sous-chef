@@ -9,14 +9,13 @@
  * - Tras SILENCE_TIMEOUT_MS de silencio pasa a `sleeping`: cierra el WebSocket
  *   pero deja el micrófono abierto y se despierta al detectar voz.
  * - Si el WebSocket se cierra, reconecta reinyectando los últimos turnos.
- * - Wake Lock + NoSleep.js + MediaSession para que iOS/Android no suspendan
- *   la pantalla ni el AudioContext.
+ * - La pantalla encendida y MediaSession los maneja `useWakeLock` desde
+ *   `useCookingChatSession`, no este hook.
  * - Máximo 20 min de sesión activa; luego pasa a `sleeping`.
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import NoSleep from 'nosleep.js';
-import { API_URL, CHEF_SYSTEM_PROMPT } from '../services/gemini';
+import { API_URL } from '../services/gemini';
 import {
   addUsedSeconds as addVoiceSeconds,
   hasReachedCap as voiceCapReached,
@@ -152,8 +151,8 @@ function getProxyWsUrl(): string {
   return `${proto}//${location.host}/api/live`;
 }
 
-/** `customSystemPrompt` reemplaza el prompt genérico del chef (Mealprep, Sabores, Cocinemos). */
-export function useGeminiLive(customSystemPrompt?: string) {
+/** `systemPrompt` se fija al abrir la sesión y se reutiliza en las reconexiones. */
+export function useGeminiLive(systemPrompt: string) {
   const [voiceState, setVoiceState]           = useState<VoiceState>('idle');
   const [transcript, setTranscript]           = useState<VoiceTranscriptEntry[]>([]);
   const [currentChefText, setCurrentChefText] = useState('');
@@ -176,10 +175,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
   const isSpeakingRef       = useRef(false);
   /** Intención del usuario; si es `false` no se reconecta. */
   const wantsVoiceRef       = useRef(false);
-  const customPromptRef     = useRef(customSystemPrompt);
-  /** Respaldo para dispositivos sin Wake Lock API. */
-  const noSleepRef          = useRef<InstanceType<typeof NoSleep> | null>(null);
-  const wakeLockRef         = useRef<WakeLockSentinel | null>(null);
+  const promptRef           = useRef(systemPrompt);
   const isReconnectingRef   = useRef(false);
   /** Copia para leer el transcript desde closures. */
   const transcriptRef       = useRef<VoiceTranscriptEntry[]>([]);
@@ -212,43 +208,6 @@ export function useGeminiLive(customSystemPrompt?: string) {
       voiceStateRef.current = next;
       return next;
     });
-  }, []);
-
-  /**
-   * Usa todo lo disponible para mantener la pantalla encendida: Wake Lock API,
-   * NoSleep.js (video invisible) como respaldo, y MediaSession para que el SO
-   * vea reproducción activa.
-   */
-  const requestWakeLock = useCallback(async () => {
-    if ('wakeLock' in navigator) {
-      try {
-        wakeLockRef.current = await navigator.wakeLock.request('screen');
-      } catch { /* fallback a NoSleep */ }
-    }
-    try {
-      if (!noSleepRef.current) noSleepRef.current = new NoSleep();
-      await noSleepRef.current.enable();
-    } catch { /* no es fatal */ }
-    if ('mediaSession' in navigator) {
-      try {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: 'Sous está escuchando',
-          artist: 'Sous, asistente de cocina',
-        });
-        navigator.mediaSession.playbackState = 'playing';
-      } catch { /* no fatal */ }
-    }
-  }, []);
-
-  const releaseWakeLock = useCallback(() => {
-    if (wakeLockRef.current && !wakeLockRef.current.released) {
-      wakeLockRef.current.release().catch(() => {});
-      wakeLockRef.current = null;
-    }
-    noSleepRef.current?.disable();
-    if ('mediaSession' in navigator) {
-      try { navigator.mediaSession.playbackState = 'none'; } catch { /* ok */ }
-    }
   }, []);
 
   // Ganancia 0.001 y no 0: iOS suspende el contexto si no suena nada mientras la IA calla.
@@ -287,9 +246,8 @@ export function useGeminiLive(customSystemPrompt?: string) {
     setSilenceSeconds(0);
   }, []);
 
-  /** Libera micrófono, audio, wake lock y WebSocket. Idempotente. */
+  /** Libera micrófono, audio y WebSocket. Idempotente. */
   const cleanup = useCallback(() => {
-    releaseWakeLock();
     stopSilentLoop();
     stopSilenceCountdown();
     if (processorRef.current)   { processorRef.current.disconnect();  processorRef.current = null; }
@@ -300,7 +258,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
     if (inputAudioCtxRef.current?.state  !== 'closed') { inputAudioCtxRef.current?.close().catch(() => {});  inputAudioCtxRef.current = null; }
     if (outputAudioCtxRef.current?.state !== 'closed') { outputAudioCtxRef.current?.close().catch(() => {}); outputAudioCtxRef.current = null; }
     if (sessionRef.current) { try { sessionRef.current.close(); } catch { /* ok */ } sessionRef.current = null; }
-  }, [releaseWakeLock, stopSilentLoop, stopSilenceCountdown]);
+  }, [stopSilentLoop, stopSilenceCountdown]);
 
   /** Fin de sesión pedido por el usuario: sin reconexiones. */
   const disconnect = useCallback(() => {
@@ -464,7 +422,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
 
     try {
       const session = createProxySession(
-        customPromptRef.current ?? CHEF_SYSTEM_PROMPT,
+        promptRef.current,
         history,
         () => {
           isReconnectingRef.current = false;
@@ -489,17 +447,10 @@ export function useGeminiLive(customSystemPrompt?: string) {
     const onVisibilityChange = async () => {
       if (!wantsVoiceRef.current) return;
 
-      if (document.visibilityState === 'hidden') {
-        // MediaSession en 'playing' para que iOS no suspenda el AudioContext.
-        if ('mediaSession' in navigator) {
-          try { navigator.mediaSession.playbackState = 'playing'; } catch { /* ok */ }
-        }
-        return;
-      }
+      if (document.visibilityState === 'hidden') return;
 
       await inputAudioCtxRef.current?.resume().catch(() => {});
       await outputAudioCtxRef.current?.resume().catch(() => {});
-      requestWakeLock();
 
       // iOS puede cortar el micrófono en segundo plano.
       const micTracks = streamRef.current?.getAudioTracks() ?? [];
@@ -513,7 +464,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
 
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-  }, [requestWakeLock, setVoiceStateSync]);
+  }, [setVoiceStateSync]);
 
   useEffect(() => { return () => { cleanup(); }; }, []); // eslint-disable-line
 
@@ -538,7 +489,7 @@ export function useGeminiLive(customSystemPrompt?: string) {
     }
 
     wantsVoiceRef.current   = true;
-    customPromptRef.current = customSystemPrompt;
+    promptRef.current = systemPrompt;
     isReconnectingRef.current = false;
     // Los frames llegan antes de que abra la sesión: sin reiniciar estos relojes,
     // un chat abierto hace más de 15 s (o una sesión vieja) dormía la voz al instante.
@@ -569,11 +520,10 @@ export function useGeminiLive(customSystemPrompt?: string) {
       if (inputCtx.state === 'suspended')                await inputCtx.resume();
       if (outputAudioCtxRef.current.state === 'suspended') await outputAudioCtxRef.current.resume();
 
-      requestWakeLock();
       startSilentLoop(outputAudioCtxRef.current);
 
       const session = createProxySession(
-        customSystemPrompt ?? CHEF_SYSTEM_PROMPT,
+        systemPrompt,
         [],
         () => {
           sessionStartRef.current   = Date.now();
@@ -669,8 +619,8 @@ export function useGeminiLive(customSystemPrompt?: string) {
       cleanup();
       setVoiceStateSync('idle');
     }
-  }, [customSystemPrompt, cleanup, stopSilentLoop, createProxySession, setVoiceStateSync,
-      requestWakeLock, startSilentLoop, startSilenceCountdown, goToSleep]);
+  }, [systemPrompt, cleanup, stopSilentLoop, createProxySession, setVoiceStateSync,
+      startSilentLoop, startSilenceCountdown, goToSleep]);
 
   /** Despertar con botón en vez de con la voz. */
   const wakeUp = useCallback(() => {

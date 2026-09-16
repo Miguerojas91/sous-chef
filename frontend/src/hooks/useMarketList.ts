@@ -20,12 +20,16 @@ export interface MarketItem {
   category: GroceryCategory;
 }
 
-interface MarketState {
+/** Marcas del usuario, en la forma en que se guardan en localStorage. */
+export interface MarketMarks {
   checked: string[];
   unavailable: string[];
   /** id → sustituto elegido. */
   swapped: Record<string, string>;
-  /** Fila con el panel de sustitutos abierto. */
+}
+
+interface MarketState extends MarketMarks {
+  /** Fila con el panel de sustitutos abierto. No se guarda. */
   expanded: string | null;
 }
 
@@ -38,7 +42,7 @@ type MarketAction =
   | { type: 'setChecked'; ids: string[] }
   | { type: 'reset' };
 
-const INITIAL: MarketState = { checked: [], unavailable: [], swapped: {}, expanded: null };
+const EMPTY_MARKS: MarketMarks = { checked: [], unavailable: [], swapped: {} };
 
 const without = (list: string[], id: string) => list.filter(x => x !== id);
 
@@ -81,8 +85,31 @@ function reducer(state: MarketState, action: MarketAction): MarketState {
     case 'setChecked':
       return { ...state, checked: action.ids };
     case 'reset':
-      return INITIAL;
+      return { ...EMPTY_MARKS, expanded: null };
   }
+}
+
+const isStringArray = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every(x => typeof x === 'string');
+
+/** Valida marcas leídas de localStorage. Devuelve `null` si no tienen la forma esperada. */
+export function parseMarketMarks(value: unknown): MarketMarks | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const { checked, unavailable, swapped } = value as Record<string, unknown>;
+  if (!isStringArray(checked) || !isStringArray(unavailable)) return null;
+  if (typeof swapped !== 'object' || swapped === null || Array.isArray(swapped)) return null;
+  if (!Object.values(swapped).every(x => typeof x === 'string')) return null;
+  return { checked, unavailable, swapped: swapped as Record<string, string> };
+}
+
+export type MarketItemMark = 'none' | 'checked' | 'unavailable' | 'swapped';
+
+export interface MarketItemStatus {
+  mark: MarketItemMark;
+  /** Solo con `mark === 'swapped'`. */
+  substitute?: string;
+  /** Panel de sustitutos abierto. */
+  expanded: boolean;
 }
 
 export interface MarketSummary {
@@ -93,41 +120,84 @@ export interface MarketSummary {
   notMarked: MarketItem[];
 }
 
-export function useMarketList(items: MarketItem[]) {
-  const [state, dispatch] = useReducer(reducer, INITIAL);
+/** Cambios de ingredientes para los mensajes a Sous, con la cantidad si la hay. */
+export interface MarketChanges {
+  swaps: { name: string; quantity?: string; substitute: string }[];
+  missing: { name: string; quantity?: string }[];
+}
+
+export const marketChanges = (summary: MarketSummary): MarketChanges => ({
+  swaps: summary.swapped.map(({ item, substitute }) => ({ name: item.name, quantity: item.quantity, substitute })),
+  missing: summary.missing.map(({ name, quantity }) => ({ name, quantity })),
+});
+
+export const withQuantity = (i: { name: string; quantity?: string }) =>
+  i.quantity ? `${i.name} (${i.quantity})` : i.name;
+
+/**
+ * Frases de "cambié X por Y" y "no conseguí Z" que el usuario le cuenta a Sous
+ * en el primer mensaje. Sin cambios, lista vacía.
+ */
+export function describeMarketChanges({ swaps, missing }: MarketChanges): string[] {
+  const lines: string[] = [];
+  if (swaps.length > 0) {
+    lines.push(`Cambié estos ingredientes: ${swaps.map(s => `${withQuantity(s)} por ${s.substitute}`).join(', ')}.`);
+  }
+  if (missing.length > 0) {
+    lines.push(`No conseguí estos ingredientes: ${missing.map(withQuantity).join(', ')}.`);
+  }
+  return lines;
+}
+
+export function useMarketList(items: MarketItem[], initialMarks?: MarketMarks | null) {
+  const [state, dispatch] = useReducer(
+    reducer,
+    initialMarks,
+    (marks): MarketState => ({ ...(marks ?? EMPTY_MARKS), expanded: null }),
+  );
+  const { checked, unavailable, swapped, expanded } = state;
 
   // Las marcas de ingredientes que ya no están en la lista (receta quitada) se
   // conservan por si vuelve, pero no cuentan.
   const summary = useMemo<MarketSummary>(() => {
     const result: MarketSummary = { obtained: [], missing: [], swapped: [], notMarked: [] };
     for (const item of items) {
-      const substitute = state.swapped[item.id];
+      const substitute = swapped[item.id];
       if (substitute !== undefined) result.swapped.push({ item, substitute });
-      else if (state.unavailable.includes(item.id)) result.missing.push(item);
-      else if (state.checked.includes(item.id)) result.obtained.push(item);
+      else if (unavailable.includes(item.id)) result.missing.push(item);
+      else if (checked.includes(item.id)) result.obtained.push(item);
       else result.notMarked.push(item);
     }
     return result;
-  }, [items, state]);
+  }, [items, checked, unavailable, swapped]);
+
+  const marks = useMemo<MarketMarks>(() => ({ checked, unavailable, swapped }), [checked, unavailable, swapped]);
+
+  const statusOf = useCallback((id: string): MarketItemStatus => {
+    const isExpanded = expanded === id;
+    const substitute = swapped[id];
+    if (substitute !== undefined) return { mark: 'swapped', substitute, expanded: isExpanded };
+    if (unavailable.includes(id)) return { mark: 'unavailable', expanded: isExpanded };
+    if (checked.includes(id)) return { mark: 'checked', expanded: isExpanded };
+    return { mark: 'none', expanded: isExpanded };
+  }, [checked, unavailable, swapped, expanded]);
 
   const checkable = useMemo(
-    () => items.filter(i => !state.unavailable.includes(i.id) && !(i.id in state.swapped)),
-    [items, state.unavailable, state.swapped],
+    () => items.filter(i => !unavailable.includes(i.id) && !(i.id in swapped)),
+    [items, unavailable, swapped],
   );
-  const allChecked = checkable.length > 0 && checkable.every(i => state.checked.includes(i.id));
+  const allChecked = checkable.length > 0 && checkable.every(i => checked.includes(i.id));
 
   const toggleAllChecked = useCallback(() => {
     dispatch({ type: 'setChecked', ids: allChecked ? [] : checkable.map(i => i.id) });
   }, [allChecked, checkable]);
 
   return {
-    state,
-    /** Estado por grupos, para el resumen y los prompts. */
+    /** Estado por grupos, para el resumen, los avisos y los prompts. */
     summary,
-    pending: summary.missing,
-    swappedCount: summary.swapped.length,
-    /** Sin marcar como conseguido ni reemplazado. */
-    uncheckedCount: summary.notMarked.length + summary.missing.length,
+    /** Marcas para guardar; se restauran con `initialMarks`. */
+    marks,
+    statusOf,
     allChecked,
     toggleAllChecked,
     toggleChecked: (id: string) => dispatch({ type: 'toggleChecked', id }),
@@ -139,4 +209,4 @@ export function useMarketList(items: MarketItem[]) {
   };
 }
 
-export type MarketList = ReturnType<typeof useMarketList>;
+export type MarketListController = ReturnType<typeof useMarketList>;

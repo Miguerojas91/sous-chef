@@ -1,8 +1,7 @@
 /**
- * Base de los niveles normales del Modo Aventura. Cada nivel (JulianaLevel,
- * BrunoiseLevel, etc.) pasa su contenido: misión, pasos, errores, receta y
- * criterios. Nombre, emoji, XP, número y mundo salen de `data/adventure.ts`
- * según la ruta actual.
+ * Pantalla de un nivel normal del Modo Aventura. `level` trae la identidad
+ * (nombre, emoji, XP, número y mundo) del registro y `content` el contenido de
+ * `data/levels/<slug>.ts`.
  *
  * - Aprende: acordeón de pasos. Los pasos hechos persisten en `sous_steps_{ruta}`.
  * - Evalúa: el usuario sube una foto y `usePhotoEvaluation` la puntúa.
@@ -10,72 +9,27 @@
  *   Con 0 estrellas se muestra el motivo y no se marca el nivel.
  */
 
-import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { getLevelStars, saveLevelStars, addXP } from '../utils/progress';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { recordLevelResult } from '../utils/progress';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { usePhotoEvaluation } from '../hooks/usePhotoEvaluation';
-import type { EvaluationCriterion } from '../hooks/usePhotoEvaluation';
 import { track, Events } from '../utils/analytics';
 import {
-  BookOpen, Upload, CheckCircle, Star, ChevronRight, Lightbulb,
+  BookOpen, Star, ChevronRight, Lightbulb,
   AlertTriangle, Camera, Trophy, Clock, Users, BarChart2, Check,
 } from 'lucide-react';
 import { EditableText } from './cms/EditableText';
 import { BlockZone } from './cms/BlockZone';
 import { SafeText } from '../utils/safeText';
-import { ScreenHeader } from './ui/ScreenHeader';
+import { LevelHeader, LevelProgressBar } from './LevelHeader';
+import { PhotoChallenge } from './PhotoChallenge';
 import { WORLD_CLASSES } from '../data/worlds';
-import { requireLevel } from '../data/adventure';
+import type { PlacedLevel } from '../data/adventure';
+import type { LevelContent } from '../data/levels/types';
 
-export interface LevelStep {
-  num: number;
-  title: string;
-  emoji: string;
-  desc: string;
-  tip: string;
-}
-
-export interface LevelError {
-  icon: string;
-  error: string;
-  fix: string;
-}
-
-export interface LevelPageProps {
-  missionTitle?: string;
-  missionText: string;
-  missionTags: { icon: string; label: string }[];
-  steps: LevelStep[];
-  errors: LevelError[];
-
-  recipe?: {
-    name: string;
-    description: string;
-    servings: string;
-    time: string;
-    difficulty: string;
-    ingredients: string[];
-    method: string[];
-  };
-
-  challengeTitle?: string;
-  challengeHint?: string;
-  evaluationCriteria?: EvaluationCriterion[];
-
-  backPath?: string;
-}
-
-export const LevelPage = ({
-  missionTitle = 'Tu misión', missionText, missionTags,
-  steps, errors, recipe,
-  challengeTitle = 'Sube tu reto',
-  challengeHint = 'Fotografía tu resultado y súbelo para completar el nivel.',
-  evaluationCriteria,
-  backPath = '/mapa',
-}: LevelPageProps) => {
-  const location = useLocation();
-  const level = requireLevel(location.pathname);
+export const LevelPage = ({ level, content }: { level: PlacedLevel; content: LevelContent }) => {
+  const { missionText, missionTags, steps, errors, recipe, challengeHint, evaluationCriteria } = content;
   const { num: levelNum, title: levelName, emoji: levelEmoji, xp: xpReward } = level;
   const worldName = level.world.name;
   const w = WORLD_CLASSES[level.world.id];
@@ -85,11 +39,9 @@ export const LevelPage = ({
 
   useEffect(() => {
     track(Events.LevelOpened, { level: levelName, world: worldName });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [levelName, worldName]);
 
   const navigate = useNavigate();
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const stepsKey = `sous_steps_${level.path}`;
   const [activeStep, setActiveStep] = useState(0);
@@ -100,25 +52,23 @@ export const LevelPage = ({
     } catch { return new Set(); }
   });
   const [xpEarned, setXpEarned] = useState(0);
-  const [dragOver, setDragOver] = useState(false);
   const [showRecipe, setShowRecipe] = useState(false);
 
   const photo = usePhotoEvaluation({
     subject: levelName,
-    criteria: evaluationCriteria ?? [],
+    criteria: evaluationCriteria,
     onSubmit: () => track(Events.LevelPhotoSubmitted, { level: levelName, world: worldName }),
     onFail: () => track(Events.LevelEvalFailed, { level: levelName, stars: 0 }),
     onPass: (result) => {
-      const isFirstCompletion = getLevelStars(level.path) === 0;
-      saveLevelStars(level.path, result.stars);
-      if (isFirstCompletion) addXP(xpReward);
-      setXpEarned(isFirstCompletion ? xpReward : 0);
+      const { firstCompletion } = recordLevelResult(level.path, result.stars, xpReward);
+      const earned = firstCompletion ? xpReward : 0;
+      setXpEarned(earned);
       track(Events.LevelCompleted, {
         level: levelName,
         world: worldName,
         stars: result.stars,
-        first_completion: isFirstCompletion,
-        xp_earned: isFirstCompletion ? xpReward : 0,
+        first_completion: firstCompletion,
+        xp_earned: earned,
       });
     },
   });
@@ -137,13 +87,6 @@ export const LevelPage = ({
     });
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) photo.submit(file);
-  };
-
   const resetPhoto = () => {
     photo.reset();
     setXpEarned(0);
@@ -151,12 +94,10 @@ export const LevelPage = ({
 
   return (
     <div className="flex flex-col h-full bg-neutral-50">
-      <ScreenHeader
+      <LevelHeader
         title={<EditableText elementKey={`lvl_${levelNum}_levelName`} defaultText={levelName} />}
         subtitle={<><EditableText elementKey={`lvl_${levelNum}_worldName`} defaultText={worldName} /> · Nivel {levelNum}</>}
-        onBack={() => navigate(backPath)}
-        backLabel="Volver al mapa"
-        actions={<span className="pr-3 text-sm font-semibold text-brand-700 whitespace-nowrap">+{xpReward} XP</span>}
+        xp={xpReward}
       />
 
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -166,23 +107,12 @@ export const LevelPage = ({
               <EditableText elementKey={`lvl_${levelNum}_levelEmoji`} defaultText={levelEmoji} />
             </span>
             <div className="flex-1 min-w-0">
-              <div className="flex justify-between gap-2 text-sm mb-1.5">
-                <span className="font-semibold">{completedSteps.size} de {steps.length} pasos</span>
-                <span className="font-bold">{Math.round(progress)}%</span>
-              </div>
-              <div
-                className="h-2 bg-white/30 rounded-full overflow-hidden"
-                role="progressbar"
-                aria-label="Pasos completados"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(progress)}
-              >
-                <div
-                  className="h-full bg-white rounded-full transition-all duration-500 ease-out motion-reduce:transition-none"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+              <LevelProgressBar
+                tone="inverse"
+                label="Pasos completados"
+                caption={`${completedSteps.size} de ${steps.length} pasos`}
+                percent={progress}
+              />
             </div>
           </div>
         </div>
@@ -208,7 +138,7 @@ export const LevelPage = ({
           <section className="bg-white border border-neutral-200 rounded-card overflow-hidden">
             <div className={`${w.soft} px-4 py-4`}>
               <h2 className="font-bold text-neutral-900 text-base mb-1">
-                <EditableText elementKey={`lvl_${levelNum}_missionTitle`} defaultText={missionTitle} />
+                <EditableText elementKey={`lvl_${levelNum}_missionTitle`} defaultText="Tu misión" />
               </h2>
               {/* SafeText admite **negrita** y <strong> sin innerHTML, así no abre un XSS si el texto pasa a ser dinámico. */}
               <div className="text-neutral-800 text-sm leading-relaxed">
@@ -218,7 +148,7 @@ export const LevelPage = ({
             <ul className="border-t border-neutral-200 px-4 py-3 flex flex-wrap gap-2">
               {missionTags.map((tag, i) => (
                 <li key={i} className="text-xs font-semibold bg-neutral-100 text-neutral-800 px-2.5 py-1 rounded-full">
-                  {tag.label}
+                  {tag}
                 </li>
               ))}
               <li className="flex items-center gap-1 text-xs font-semibold bg-amber-50 text-amber-800 px-2.5 py-1 rounded-full">
@@ -413,61 +343,22 @@ export const LevelPage = ({
           <section className="bg-white border border-neutral-200 rounded-card overflow-hidden">
             <div className={`${w.soft} border-b ${w.line} px-4 py-4`}>
               <h2 className="font-bold text-neutral-900 text-base flex items-center gap-2">
-                <Camera size={18} className={w.text} aria-hidden /> {challengeTitle}
+                <Camera size={18} className={w.text} aria-hidden /> Sube tu reto
               </h2>
               <p className="text-neutral-800 text-sm mt-1">{challengeHint}</p>
             </div>
 
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) photo.submit(f); }}
-            />
+            <div className="p-4 space-y-4">
+              <PhotoChallenge
+                photo={photo}
+                w={w}
+                uploadLabel="Toma o sube una foto"
+                imageAlt="Foto de tu resultado"
+                reviewingText="Revisando tu foto…"
+              />
 
-            <div className="p-4">
-              {!uploadedImage ? (
-                <button
-                  type="button"
-                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileRef.current?.click()}
-                  className={`w-full rounded-card border-2 border-dashed transition-colors text-center py-8 px-4 ${
-                    dragOver ? `${w.border} ${w.soft}` : 'border-neutral-300 hover:bg-neutral-50'
-                  }`}
-                >
-                  <Upload size={28} className={`${w.text} mx-auto mb-2`} aria-hidden />
-                  <span className="block font-semibold text-neutral-900">Toma o sube una foto</span>
-                  <span className="block text-sm text-neutral-600 mt-1">JPG o PNG, hasta 10 MB</span>
-                </button>
-              ) : (
-                <div className="space-y-4">
-                  <div className="relative rounded-card overflow-hidden">
-                    <img src={uploadedImage} alt="Foto de tu resultado" className="w-full max-h-72 object-cover" />
-                    {uploadState === 'reviewing' && (
-                      <div role="status" className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 text-white">
-                        <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin motion-reduce:animate-none" aria-hidden />
-                        <p className="font-semibold text-sm">Revisando tu foto…</p>
-                      </div>
-                    )}
-                    {uploadState === 'approved' && (
-                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center" aria-hidden>
-                        <div className="bg-emerald-700 rounded-full p-4">
-                          <CheckCircle size={40} className="text-white" />
-                        </div>
-                      </div>
-                    )}
-                    {uploadState === 'rejected' && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center" aria-hidden>
-                        <div className="bg-red-700 rounded-full p-4">
-                          <AlertTriangle size={40} className="text-white" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
+              {uploadedImage && (
+                <>
                   {uploadState === 'approved' && evaluationResult && (
                     <div role="status" className={`${w.bg} text-white rounded-card p-5 text-center`}>
                       <Trophy size={32} className="mx-auto mb-2" aria-hidden />
@@ -507,11 +398,11 @@ export const LevelPage = ({
                       {uploadState === 'rejected' ? 'Intentar con otra foto' : 'Cambiar foto'}
                     </button>
                   )}
-                </div>
+                </>
               )}
             </div>
 
-            {!uploadedImage && evaluationCriteria && (
+            {!uploadedImage && (
               <div className="border-t border-neutral-200 bg-neutral-50 px-4 py-4">
                 <h3 className="text-sm font-semibold text-neutral-600 mb-2">¿Cómo se evalúa?</h3>
                 <ul className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -531,7 +422,7 @@ export const LevelPage = ({
           {uploadState === 'approved' && (
             <button
               type="button"
-              onClick={() => navigate(backPath)}
+              onClick={() => navigate('/mapa')}
               className={`w-full min-h-12 rounded-control font-bold text-white text-base ${w.bg} hover:opacity-90 transition-opacity`}
             >
               <EditableText elementKey={`lvl_${levelNum}_btn_back`} defaultText="Volver al mapa" as="span" />

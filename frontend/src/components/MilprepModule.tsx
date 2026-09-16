@@ -9,20 +9,23 @@
  * - Cocinar: chat de texto y voz. Los prompts de los dos modos se arman con
  *   las recetas, personas y cambios de ingredientes (`services/prompts/milprep.ts`).
  *
- * Recetas, personas, pestaña y si el chat empezó se guardan en localStorage
- * para sobrevivir a un F5 o a salir y volver al módulo. Las marcas del mercado
- * viven solo en memoria.
+ * Recetas, personas, pestaña y marcas del mercado se guardan en localStorage
+ * para sobrevivir a un F5 o a salir y volver al módulo: el prompt se rearma con
+ * ellas y tiene que coincidir con el chat restaurado.
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, BookOpen, MessageSquare, CheckCircle2, Clock, ChevronRight, Minus, Plus } from 'lucide-react';
+import { ShoppingCart, BookOpen, MessageSquare, CheckCircle2, Clock, ChevronRight } from 'lucide-react';
 import { EditableText } from './cms/EditableText';
 import { MILPREP_RECIPES, type Recipe } from '../data/milprepRecipes';
 import { ChatSessionScreen } from './ChatSessionScreen';
-import { MarketList, MarketSummaryBanner } from './MarketItemRow';
+import { MarketList } from './MarketItemRow';
+import { MAX_SERVINGS, MIN_SERVINGS, ServingsStepper } from './ServingsStepper';
 import { Dialog } from './ui/Dialog';
 import { useCookingChatSession } from '../hooks/useCookingChatSession';
-import { useMarketList, type MarketItem } from '../hooks/useMarketList';
+import {
+  marketChanges, parseMarketMarks, useMarketList, type MarketItem, type MarketMarks,
+} from '../hooks/useMarketList';
 import {
   buildMilprepFirstMessage, buildMilprepTextPrompt, buildMilprepVoicePrompt, plural,
   type MilprepPromptContext,
@@ -32,20 +35,39 @@ import { showToast } from '../utils/events';
 const MILPREP_SESSION_KEY = 'sous_milprep_session';
 const MILPREP_CHAT_KEY    = 'sous_chat_milprep';
 const MAX_RECIPES = 7;
-const MAX_PEOPLE = 20;
 
 type Tab = 'mercado' | 'recetas' | 'chat';
+const TAB_IDS: readonly Tab[] = ['recetas', 'mercado', 'chat'];
 
 interface MilprepSession {
   selectedRecipeIds: string[];
   peopleCount: number;
-  chatStarted: boolean;
   activeTab: Tab;
+  market: MarketMarks;
 }
 
-function loadMilprepSession(): MilprepSession | null {
-  try { return JSON.parse(localStorage.getItem(MILPREP_SESSION_KEY) ?? 'null'); }
-  catch { return null; }
+/**
+ * Lee la sesión guardada campo por campo: lo que no tenga la forma esperada se
+ * descarta. Las sesiones viejas traen `chatStarted`, que ahora se ignora (se
+ * deriva del historial del chat) y no tienen `market`.
+ */
+function loadMilprepSession(): Partial<MilprepSession> {
+  let raw: unknown;
+  try { raw = JSON.parse(localStorage.getItem(MILPREP_SESSION_KEY) ?? 'null'); }
+  catch { return {}; }
+  if (typeof raw !== 'object' || raw === null) return {};
+  const { selectedRecipeIds, peopleCount, activeTab, market } = raw as Record<string, unknown>;
+  const session: Partial<MilprepSession> = {};
+  if (Array.isArray(selectedRecipeIds) && selectedRecipeIds.every(id => typeof id === 'string')) {
+    session.selectedRecipeIds = selectedRecipeIds.slice(0, MAX_RECIPES);
+  }
+  if (typeof peopleCount === 'number' && Number.isInteger(peopleCount)) {
+    session.peopleCount = Math.min(MAX_SERVINGS, Math.max(MIN_SERVINGS, peopleCount));
+  }
+  if (TAB_IDS.includes(activeTab as Tab)) session.activeTab = activeTab as Tab;
+  const marks = parseMarketMarks(market);
+  if (marks) session.market = marks;
+  return session;
 }
 function saveMilprepSession(s: MilprepSession) {
   try { localStorage.setItem(MILPREP_SESSION_KEY, JSON.stringify(s)); }
@@ -92,12 +114,11 @@ const TABS: { id: Tab; icon: typeof BookOpen; elementKey: string; label: string 
 
 export const MilprepModule: React.FC = () => {
   // La sesión guardada se lee una sola vez al montar.
-  const [savedSession] = useState<MilprepSession | null>(loadMilprepSession);
+  const [savedSession] = useState(loadMilprepSession);
 
-  const [activeTab, setActiveTab] = useState<Tab>(savedSession?.activeTab ?? 'recetas');
-  const [peopleCount, setPeopleCount] = useState(savedSession?.peopleCount ?? 1);
-  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>(savedSession?.selectedRecipeIds ?? []);
-  const [chatStarted, setChatStarted] = useState(savedSession?.chatStarted ?? false);
+  const [activeTab, setActiveTab] = useState<Tab>(savedSession.activeTab ?? 'recetas');
+  const [peopleCount, setPeopleCount] = useState(savedSession.peopleCount ?? MIN_SERVINGS);
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>(savedSession.selectedRecipeIds ?? []);
   const [showReadyBanner, setShowReadyBanner] = useState(false);
 
   const selectedRecipes = useMemo(
@@ -105,49 +126,46 @@ export const MilprepModule: React.FC = () => {
     [selectedRecipeIds],
   );
   const groceryItems = useMemo(() => getGroceryList(selectedRecipes, peopleCount), [selectedRecipes, peopleCount]);
-  const market = useMarketList(groceryItems);
+  const market = useMarketList(groceryItems, savedSession.market);
 
   // Los prompts se arman en cada render: así una sesión restaurada tras un F5 y
   // los cambios de ingredientes hechos después de empezar llegan al modelo.
   const promptContext: MilprepPromptContext = {
     recipes: selectedRecipes,
     people: peopleCount,
-    swaps: market.summary.swapped.map(({ item, substitute }) => ({ name: item.name, quantity: item.quantity, substitute })),
-    missing: market.summary.missing,
+    ...marketChanges(market.summary),
   };
   const session = useCookingChatSession({
     analyticsMode: 'milprep',
     storageKey: MILPREP_CHAT_KEY,
     textPrompt: buildMilprepTextPrompt(promptContext),
     voicePrompt: buildMilprepVoicePrompt(promptContext),
-    keepAwake: chatStarted,
   });
 
   // Se guarda en cada cambio; la escritura es síncrona, así que no hace falta
   // guardar otra vez al desmontar.
+  const { marks } = market;
   useEffect(() => {
-    saveMilprepSession({ selectedRecipeIds, peopleCount, chatStarted, activeTab });
-  }, [selectedRecipeIds, peopleCount, chatStarted, activeTab]);
+    saveMilprepSession({ selectedRecipeIds, peopleCount, activeTab, market: marks });
+  }, [selectedRecipeIds, peopleCount, activeTab, marks]);
 
   const handleEndSession = () => {
     clearMilprepSession();
-    setChatStarted(false);
     setSelectedRecipeIds([]);
-    setPeopleCount(1);
+    setPeopleCount(MIN_SERVINGS);
     market.reset();
     setActiveTab('recetas');
   };
 
   const startChat = (extraQuestion?: string) => {
     session.start(buildMilprepFirstMessage(promptContext, extraQuestion));
-    setChatStarted(true);
     setActiveTab('chat');
   };
 
   // Desde la lista de compras: si el chat no ha empezado, la pregunta va
   // junto al mensaje inicial; si ya empezó, se envía directo.
   const askChef = (question: string) => {
-    if (!chatStarted) {
+    if (!session.started) {
       startChat(question);
       return;
     }
@@ -159,7 +177,7 @@ export const MilprepModule: React.FC = () => {
     setActiveTab('chat');
   };
 
-  if ((activeTab === 'chat' && chatStarted) || session.voiceMode) {
+  if ((activeTab === 'chat' && session.started) || session.voiceMode) {
     return (
       <ChatSessionScreen
         session={session}
@@ -294,32 +312,9 @@ export const MilprepModule: React.FC = () => {
           <div className="max-w-2xl mx-auto p-4 md:p-6 pb-28 md:pb-24 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-bold text-neutral-900">Tu lista de compras</h2>
-              <div className="flex items-center gap-1 bg-white rounded-control border border-neutral-200 pl-3">
-                <span className="text-sm font-semibold text-neutral-700 mr-1">Personas</span>
-                <button
-                  type="button"
-                  onClick={() => setPeopleCount(Math.max(1, peopleCount - 1))}
-                  disabled={peopleCount <= 1}
-                  aria-label="Quitar una persona"
-                  className="w-11 h-11 flex items-center justify-center rounded-control text-neutral-800 hover:bg-neutral-100 disabled:text-neutral-400"
-                >
-                  <Minus size={18} aria-hidden />
-                </button>
-                <span aria-live="polite" className="font-bold w-6 text-center tabular-nums">{peopleCount}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (peopleCount >= MAX_PEOPLE) {
-                      showToast(`El máximo es ${MAX_PEOPLE} personas.`, 'warning');
-                    } else {
-                      setPeopleCount(peopleCount + 1);
-                    }
-                  }}
-                  aria-label="Agregar una persona"
-                  className="w-11 h-11 flex items-center justify-center rounded-control text-neutral-800 hover:bg-neutral-100"
-                >
-                  <Plus size={18} aria-hidden />
-                </button>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-semibold text-neutral-700">Personas</span>
+                <ServingsStepper value={peopleCount} onChange={setPeopleCount} />
               </div>
             </div>
 
@@ -350,7 +345,6 @@ export const MilprepModule: React.FC = () => {
                   {market.allChecked ? 'Desmarcar todo' : 'Ya tengo todo'}
                 </button>
 
-                <MarketSummaryBanner market={market} onAskChef={askChef} />
                 <MarketList items={groceryItems} market={market} onAskChef={askChef} />
               </>
             )}

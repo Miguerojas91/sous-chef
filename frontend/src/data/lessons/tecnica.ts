@@ -92,6 +92,7 @@ export const TECNICA: AcademyLevel = {
     },
     {
       id: 'maillard',
+      cmsKey: 'ReaccióndeMaillard:ElSecretodelSabor',
       emoji: '🥩',
       title: 'Reacción de Maillard y el Dorado',
       duration: '19:30',

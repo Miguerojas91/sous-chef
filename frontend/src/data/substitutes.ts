@@ -2,11 +2,12 @@
  * Sustitutos sugeridos cuando el usuario no consigue un ingrediente. Una sola
  * tabla para Sabores del Mundo y Mealprep.
  */
+import { matchLongestKeyword, prepareKeywordTable } from '../utils/keywordMatch';
 
 const SUBSTITUTES: { keywords: string[]; options: string[] }[] = [
   { keywords: ['pollo', 'pechuga', 'muslo', 'pechuga de pollo', 'muslo de pollo'], options: ['Pavo en trozos', 'Tofu firme', 'Cerdo magro'] },
   { keywords: ['carne molida', 'res', 'bistec', 'lomo de res', 'tira de asado', 'vacío', 'carne de res'], options: ['Cerdo molido', 'Cordero', 'Pollo desmenuzado'] },
-  { keywords: ['chorizo', 'morcilla', 'chicharrón', 'cerdo', 'panceta'], options: ['Pavo ahumado', 'Tofu ahumado', 'Champiñones salteados'] },
+  { keywords: ['chorizo', 'morcilla', 'chicharrón', 'cerdo', 'panceta', 'carne molida de cerdo'], options: ['Pavo ahumado', 'Tofu ahumado', 'Champiñones salteados'] },
   { keywords: ['tocino', 'bacon'], options: ['Jamón serrano', 'Pavo ahumado', 'Champiñones salteados'] },
   { keywords: ['salmón', 'salmon'], options: ['Atún fresco', 'Tilapia', 'Pechuga de pollo'] },
   { keywords: ['atún', 'atun'], options: ['Salmón', 'Sardinas', 'Pollo desmenuzado'] },
@@ -43,15 +44,15 @@ const SUBSTITUTES: { keywords: string[]; options: string[] }[] = [
   { keywords: ['champiñon', 'champiñones', 'hongos'], options: ['Berenjena', 'Zucchini', 'Tofu'] },
   { keywords: ['limón', 'limon', 'lima', 'naranjilla'], options: ['Lima', 'Vinagre blanco', 'Naranja agria'] },
   { keywords: ['maní', 'almendras', 'nueces'], options: ['Semillas de girasol', 'Pepitas de calabaza', 'Tahini'] },
+  // Nombres donde una clave más corta daría un sustituto sin sentido
+  // ("vinagre de arroz" → quinoa): mejor ninguna sugerencia y preguntar a Sous.
+  { keywords: ['vinagre de arroz', 'vinagre de vino tinto', 'caldo de res', 'brotes de soya', 'pasta miso'], options: [] },
 ];
 
-// Se busca por subcadena, así que gana la palabra clave más larga que aparezca:
-// "leche de coco" antes que "leche", "queso fresco" no cae en "res".
-const KEYWORDS_BY_LENGTH = SUBSTITUTES
-  .flatMap(entry => entry.keywords.map(keyword => ({ keyword, options: entry.options })))
-  .sort((a, b) => b.keyword.length - a.keyword.length);
+const SUBSTITUTE_KEYWORDS = prepareKeywordTable(
+  SUBSTITUTES.map(({ keywords, options }) => ({ keywords, value: options })),
+);
 
 export function getSuggestedSubstitutes(ingredientName: string): string[] {
-  const lower = ingredientName.toLowerCase();
-  return KEYWORDS_BY_LENGTH.find(k => lower.includes(k.keyword))?.options ?? [];
+  return matchLongestKeyword(SUBSTITUTE_KEYWORDS, ingredientName) ?? [];
 }

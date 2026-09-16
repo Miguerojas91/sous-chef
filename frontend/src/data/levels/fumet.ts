@@ -1,42 +1,42 @@
 /** Nivel 11, Mundo 3: Mar de Sabores (Premium). Elaboración de fumet de pescado. */
-import { LevelPage } from './LevelPage';
+import type { LevelContent, LevelError, LevelRecipe, LevelStep } from './types';
 
-const STEPS = [
+const STEPS: LevelStep[] = [
   {
-    num: 1, title: 'Qué es el fumet y por qué es diferente', emoji: '🐟',
+    title: 'Qué es el fumet y por qué es diferente',
     desc: 'El fumet de pescado (fumet de poisson) es el fondo base del mar. A diferencia del fondo de carne, el fumet se cocina solo 20–25 minutos. Las espinas de pescado, si se cocinan más, liberan un sabor amargo y gelatinoso desagradable. Rapidez es la clave.',
     tip: 'El fumet usa espinas de pescados blancos: lenguado, lubina, rodaballo, merluza. Evita los pescados azules como sardina o salmón: sus aceites enturbian y amargan el fondo en minutos.',
   },
   {
-    num: 2, title: 'Preparar las espinas: limpiar y desangrar', emoji: '🔪',
+    title: 'Preparar las espinas: limpiar y desangrar',
     desc: 'Lava las espinas bajo agua fría corriente durante 10 minutos para eliminar la sangre que generaría turbidez y amargor. Retira las agallas (si hay) porque amargan mucho. Trocea las espinas y las cabezas para que quepan en la olla y liberen mejor su sabor.',
     tip: 'El agua del lavado debe salir clara antes de pasar al siguiente paso. Si el agua sigue roja, lava más tiempo. La sangre enturbia y amarga el fumet.',
   },
   {
-    num: 3, title: 'Sudar la mirepoix de mariscos', emoji: '🥂',
+    title: 'Sudar la mirepoix de mariscos',
     desc: 'En la olla, derrite mantequilla a fuego suave. Suda (cocina sin color) la mirepoix blanca: cebolla, apio y puerro, sin zanahoria porque añade color y dulzor. 5 minutos hasta translúcida. Agrega las espinas y suda 5 minutos más.',
     tip: 'La mirepoix blanca (sin zanahoria ni tomate) es la base del fumet clásico, que debe quedar claro y de color paja. Con zanahoria se oscurece y cambia el perfil de sabor.',
   },
   {
-    num: 4, title: 'Vino blanco y agua: la cocción de 20 min', emoji: '🍾',
+    title: 'Vino blanco y agua: la cocción de 20 min',
     desc: 'Agrega vino blanco seco (150 ml), lleva a hervor y reduce 2 minutos para evaporar el alcohol. Agrega agua fría y el bouquet garni (laurel, perejil, eneldo). Sube a hervor suave, desespuma y cocina exactamente 20 minutos. No más.',
     tip: 'El eneldo es el compañero clásico del pescado. Si no tienes, usa solo perejil y laurel. Respeta los 20 minutos: si te pasas, el caldo se vuelve amargo.',
   },
   {
-    num: 5, title: 'Colar fino y usar inmediatamente', emoji: '✨',
+    title: 'Colar fino y usar inmediatamente',
     desc: 'Cuela a través de colador fino o manta de cielo sin presionar. El fumet debe quedar color paja claro y translúcido. Úsalo inmediatamente o enfría rápidamente. El fumet de pescado se conserva 2 días en frío y 1 mes congelado.',
     tip: 'El fumet fresco huele a mar, limpio y fresco. Si huele fuerte a "pescado viejo" es que las espinas no estaban frescas. Siempre pide las espinas del día en la pescadería.',
   },
 ];
 
-const ERRORS = [
+const ERRORS: LevelError[] = [
   { icon: '⏰', error: 'Cocción demasiado larga', fix: 'Más de 25 min y las espinas sueltan gelatina amarga. El reloj es tu mejor herramienta en este nivel.' },
   { icon: '🐠', error: 'Olor muy intenso a pescado', fix: 'Espinas no frescas o agallas no retiradas. Solo espinas muy frescas dan fumet limpio.' },
   { icon: '☁️', error: 'Fumet turbio', fix: 'No lavaste las espinas lo suficiente para eliminar la sangre. El proceso de desangrado es obligatorio.' },
   { icon: '🍊', error: 'Sabor demasiado dulce/naranja', fix: 'Usaste zanahoria en la mirepoix. Para fumet blanco, solo cebolla, apio y puerro.' },
 ];
 
-const RECIPE = {
+const RECIPE: LevelRecipe = {
   name: 'Chupe de Mariscos con Fumet Artesanal',
   description: 'Un caldo de mariscos donde se nota la diferencia entre usar agua de grifo y un fumet bien hecho.',
   servings: '4 personas',
@@ -64,21 +64,16 @@ const RECIPE = {
   ],
 };
 
-export const FumetLevel = () => (
-  <LevelPage
-    missionText="Preparar un <strong>fumet de pescado blanco</strong> limpio y translúcido: color paja, aroma marino limpio, sin amargores. Fotografía el fumet colado en un vaso o tazón claro."
-    missionTags={[
-      { icon: '⏱️', label: '20 minutos exactos' },
-      { icon: '🐟', label: 'Espinas de pescado blanco' },
-    ]}
-    steps={STEPS}
-    errors={ERRORS}
-    recipe={RECIPE}
-    challengeHint="Fotografía el fumet en un vaso transparente. Debe verse de color paja claro, no turbio. Muéstralo junto a las espinas usadas para contexto."
-    evaluationCriteria={[
-      { stars: '⭐⭐⭐', label: 'Color paja, transparente, aroma marino' },
-      { stars: '⭐⭐', label: 'Claro, buen aroma, algo más intenso' },
-      { stars: '⭐', label: 'Intentaste, espinas de pescado blanco' },
-    ]}
-  />
-);
+export const content: LevelContent = {
+  missionText: 'Preparar un <strong>fumet de pescado blanco</strong> limpio y translúcido: color paja, aroma marino limpio, sin amargores. Fotografía el fumet colado en un vaso o tazón claro.',
+  missionTags: ['20 minutos exactos', 'Espinas de pescado blanco'],
+  steps: STEPS,
+  errors: ERRORS,
+  recipe: RECIPE,
+  challengeHint: 'Fotografía el fumet en un vaso transparente. Debe verse de color paja claro, no turbio. Muéstralo junto a las espinas usadas para contexto.',
+  evaluationCriteria: [
+    { stars: '⭐⭐⭐', label: 'Color paja, transparente, aroma marino' },
+    { stars: '⭐⭐', label: 'Claro, buen aroma, algo más intenso' },
+    { stars: '⭐', label: 'Intentaste, espinas de pescado blanco' },
+  ],
+};

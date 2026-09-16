@@ -2,10 +2,12 @@
 
 export type WorldId = 1 | 2 | 3 | 4 | 5;
 
-// Clases completas escritas a mano: Tailwind no genera clases armadas en runtime.
-export const WORLD_CLASSES: Record<WorldId, {
+export interface WorldClasses {
   bg: string; text: string; soft: string; line: string; border: string;
-}> = {
+}
+
+// Clases completas escritas a mano: Tailwind no genera clases armadas en runtime.
+export const WORLD_CLASSES: Record<WorldId, WorldClasses> = {
   1: { bg: 'bg-world-1', text: 'text-world-1', soft: 'bg-world-1-soft', line: 'border-world-1-line', border: 'border-world-1' },
   2: { bg: 'bg-world-2', text: 'text-world-2', soft: 'bg-world-2-soft', line: 'border-world-2-line', border: 'border-world-2' },
   3: { bg: 'bg-world-3', text: 'text-world-3', soft: 'bg-world-3-soft', line: 'border-world-3-line', border: 'border-world-3' },

@@ -1,19 +1,16 @@
 /**
  * Registro único del Modo Aventura: mundos, niveles, orden y regla de
- * desbloqueo. De aquí salen las rutas de App, el mapa y los datos que muestran
- * LevelPage y BossPage.
+ * desbloqueo. De aquí salen las rutas de App, el mapa y la identidad de cada
+ * nivel que reciben LevelPage y BossPage.
  *
- * Los componentes se cargan con `import()` dinámico: los niveles importan
- * LevelPage/BossPage, que a su vez leen este módulo, y así no hay ciclo al
- * evaluar los módulos.
+ * El contenido de cada nivel vive en `data/levels/<slug>.ts` y se carga con
+ * `import()` para que cada nivel sea su propio chunk.
  */
 
-import type { ComponentType } from 'react';
 import type { WorldId } from './worlds';
+import type { BossContent, LevelContent } from './levels/types';
 
-export type LevelKind = 'normal' | 'boss';
-
-export interface AdventureLevel {
+interface LevelBase {
   slug: string;
   /** Ruta del nivel. También es la clave del progreso en `sous_level_stars`. */
   path: string;
@@ -23,9 +20,12 @@ export interface AdventureLevel {
   title: string;
   emoji: string;
   xp: number;
-  kind: LevelKind;
-  load: () => Promise<ComponentType>;
 }
+
+export type AdventureLevel = LevelBase & (
+  | { kind: 'normal'; load: () => Promise<LevelContent> }
+  | { kind: 'boss'; load: () => Promise<BossContent> }
+);
 
 export interface AdventureWorld {
   id: WorldId;
@@ -37,65 +37,64 @@ export interface AdventureWorld {
 }
 
 /** Nivel con su posición global (1 a 20) y su mundo. */
-export interface PlacedLevel extends AdventureLevel {
+export type PlacedLevel = AdventureLevel & {
   num: number;
   world: AdventureWorld;
-}
+};
 
-const level = (
-  slug: string,
-  name: string,
-  emoji: string,
-  xp: number,
-  kind: LevelKind,
-  load: AdventureLevel['load'],
-  title = name,
-): AdventureLevel => ({ slug, path: `/mapa/${slug}`, name, title, emoji, xp, kind, load });
+const base = (slug: string, name: string, emoji: string, xp: number, title = name): LevelBase =>
+  ({ slug, path: `/mapa/${slug}`, name, title, emoji, xp });
+
+const normal = (slug: string, name: string, emoji: string, xp: number, load: () => Promise<LevelContent>, title?: string): AdventureLevel =>
+  ({ ...base(slug, name, emoji, xp, title), kind: 'normal', load });
+
+const boss = (slug: string, name: string, emoji: string, xp: number, load: () => Promise<BossContent>, title?: string): AdventureLevel =>
+  ({ ...base(slug, name, emoji, xp, title), kind: 'boss', load });
 
 export const WORLDS: AdventureWorld[] = [
   {
     id: 1, name: 'Isla del Cuchillo', subtitle: 'Técnicas de corte', emoji: '🔪', premium: false,
     levels: [
-      level('juliana',      'Juliana',      '🥕', 50,  'normal', () => import('../components/JulianaLevel').then(m => m.JulianaLevel), 'Corte Juliana'),
-      level('brunoise',     'Brunoise',     '🧅', 50,  'normal', () => import('../components/BrunoiseLevel').then(m => m.BrunoiseLevel)),
-      level('chiffonade',   'Chiffonade',   '🌿', 50,  'normal', () => import('../components/ChiffonadeLevel').then(m => m.ChiffonadeLevel)),
-      level('chef-vegetal', 'Chef Vegetal', '🥦', 200, 'boss',   () => import('../components/ChefVegetalBoss').then(m => m.ChefVegetalBoss)),
+      normal('juliana',      'Juliana',      '🥕', 50,  () => import('./levels/juliana').then(m => m.content), 'Corte Juliana'),
+      normal('brunoise',     'Brunoise',     '🧅', 50,  () => import('./levels/brunoise').then(m => m.content)),
+      normal('chiffonade',   'Chiffonade',   '🌿', 50,  () => import('./levels/chiffonade').then(m => m.content)),
+      boss('chef-vegetal',   'Chef Vegetal', '🥦', 200, () => import('./levels/chef-vegetal').then(m => m.content)),
     ],
   },
   {
     id: 2, name: 'Valle del Fuego', subtitle: 'Salsas y calor', emoji: '🔥', premium: false,
     levels: [
-      level('sofrito',    'Sofrito',       '🧄', 75,  'normal', () => import('../components/SofritoLevel').then(m => m.SofritoLevel)),
-      level('maillard',   'Maillard',      '🥩', 75,  'normal', () => import('../components/MaillardLevel').then(m => m.MaillardLevel), 'Reacción de Maillard'),
-      level('emulsion',   'Emulsión',      '🥚', 75,  'normal', () => import('../components/EmulsionLevel').then(m => m.EmulsionLevel)),
-      level('flambeador', 'El Flambeador', '🍳', 250, 'boss',   () => import('../components/FlambeadorBoss').then(m => m.FlambeadorBoss)),
+      normal('sofrito',    'Sofrito',       '🧄', 75,  () => import('./levels/sofrito').then(m => m.content)),
+      normal('maillard',   'Maillard',      '🥩', 75,  () => import('./levels/maillard').then(m => m.content), 'Reacción de Maillard'),
+      normal('emulsion',   'Emulsión',      '🥚', 75,  () => import('./levels/emulsion').then(m => m.content)),
+      boss('flambeador',   'El Flambeador', '🍳', 250, () => import('./levels/flambeador').then(m => m.content)),
     ],
   },
   {
     id: 3, name: 'Mar de Sabores', subtitle: 'Fondos y caldos', emoji: '🌊', premium: true,
     levels: [
-      level('fondo-blanco',   'Fondo Blanco',   '🍲', 100, 'normal', () => import('../components/FondoBlancoLevel').then(m => m.FondoBlancoLevel)),
-      level('fondo-oscuro',   'Fondo Oscuro',   '🥣', 100, 'normal', () => import('../components/FondoOscuroLevel').then(m => m.FondoOscuroLevel)),
-      level('fumet',          'Fumet',          '🐟', 100, 'normal', () => import('../components/FumetLevel').then(m => m.FumetLevel), 'Fumet de Pescado'),
-      level('maestro-salsas', 'Maestro Salsas', '🫕', 300, 'boss',   () => import('../components/MaestroDeSalsasBoss').then(m => m.MaestroDeSalsasBoss), 'Maestro de Salsas'),
+      normal('fondo-blanco',   'Fondo Blanco',   '🍲', 100, () => import('./levels/fondo-blanco').then(m => m.content)),
+      normal('fondo-oscuro',   'Fondo Oscuro',   '🥣', 100, () => import('./levels/fondo-oscuro').then(m => m.content)),
+      normal('fumet',          'Fumet',          '🐟', 100, () => import('./levels/fumet').then(m => m.content), 'Fumet de Pescado'),
+      boss('maestro-salsas',   'Maestro Salsas', '🫕', 300, () => import('./levels/maestro-salsas').then(m => m.content), 'Maestro de Salsas'),
     ],
   },
   {
     id: 4, name: 'Pico del Maestro', subtitle: 'Técnicas avanzadas', emoji: '🏔️', premium: true,
     levels: [
-      level('sous-vide',      'Sous-Vide',      '🌡️', 150, 'normal', () => import('../components/SousVideLevel').then(m => m.SousVideLevel)),
-      level('esferificacion', 'Esferificación', '⚗️', 150, 'normal', () => import('../components/EsferificacionLevel').then(m => m.EsferificacionLevel)),
-      level('fermentacion',   'Fermentación',   '🍞', 150, 'normal', () => import('../components/FermentacionLevel').then(m => m.FermentacionLevel)),
-      level('alquimista',     'El Alquimista',  '🔬', 400, 'boss',   () => import('../components/AlquimistaBoss').then(m => m.AlquimistaBoss)),
+      normal('sous-vide',      'Sous-Vide',      '🌡️', 150, () => import('./levels/sous-vide').then(m => m.content)),
+      normal('esferificacion', 'Esferificación', '⚗️', 150, () => import('./levels/esferificacion').then(m => m.content)),
+      normal('fermentacion',   'Fermentación',   '🍞', 150, () => import('./levels/fermentacion').then(m => m.content)),
+      boss('alquimista',       'El Alquimista',  '🔬', 400, () => import('./levels/alquimista').then(m => m.content)),
     ],
   },
   {
     id: 5, name: 'Castillo del Chef', subtitle: 'Alta cocina', emoji: '👑', premium: true,
     levels: [
-      level('menu-degustacion', 'Menú Degustación', '🍽️', 200,  'normal', () => import('../components/MenuDegustacionLevel').then(m => m.MenuDegustacionLevel)),
-      level('maridaje',         'Maridaje',         '🍷', 200,  'normal', () => import('../components/MarinajeLevel').then(m => m.MarinajeLevel)),
-      level('alta-cocina',      'Alta Cocina',      '🥂', 200,  'normal', () => import('../components/AltaCocinaLevel').then(m => m.AltaCocinaLevel)),
-      level('gran-chef',        'El Gran Chef',     '👨‍🍳', 1000, 'boss',   () => import('../components/GranChefBoss').then(m => m.GranChefBoss)),
+      normal('menu-degustacion', 'Menú Degustación', '🍽️', 200,  () => import('./levels/menu-degustacion').then(m => m.content)),
+      normal('maridaje',         'Maridaje',         '🍷', 200,  () => import('./levels/maridaje').then(m => m.content)),
+      normal('alta-cocina',      'Alta Cocina',      '🥂', 200,  () => import('./levels/alta-cocina').then(m => m.content)),
+      boss('gran-chef',          'El Gran Chef',     '👨‍🍳', 1000, () => import('./levels/gran-chef').then(m => m.content)),
     ],
   },
 ];
@@ -104,26 +103,12 @@ export const WORLDS: AdventureWorld[] = [
 export const LEVELS: PlacedLevel[] = WORLDS.flatMap(world => world.levels.map(l => ({ ...l, world })))
   .map((l, i) => ({ ...l, num: i + 1 }));
 
-const BY_PATH = new Map(LEVELS.map(l => [l.path, l]));
+const normalizePath = (path: string) => path.replace(/\/+$/, '').toLowerCase();
 
-export const getLevel = (path: string): PlacedLevel | undefined =>
-  BY_PATH.get(path.length > 1 ? path.replace(/\/+$/, '') : path);
+const BY_PATH = new Map(LEVELS.map(l => [normalizePath(l.path), l]));
 
-/** Para LevelPage y BossPage: fuera de una ruta registrada es un error de programación. */
-export function requireLevel(path: string): PlacedLevel {
-  const found = getLevel(path);
-  if (!found) throw new Error(`Nivel de aventura no registrado: ${path}`);
-  return found;
-}
-
-/** Estrellas por ruta de nivel. Sin almacenamiento o con datos corruptos, vacío. */
-export function readLevelStars(): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem('sous_level_stars') || '{}') as Record<string, number>;
-  } catch {
-    return {};
-  }
-}
+/** Tolera mayúsculas y barra final, igual que el router. */
+const getLevel = (path: string): PlacedLevel | undefined => BY_PATH.get(normalizePath(path));
 
 export type LevelStatus = 'completed' | 'active' | 'locked';
 
@@ -132,9 +117,9 @@ export type LevelStatus = 'completed' | 'active' | 'locked';
  * las rutas no registradas siempre están abiertos.
  */
 export function isUnlocked(path: string, stars: Record<string, number>): boolean {
-  const idx = LEVELS.findIndex(l => l.path === path);
-  if (idx <= 0) return true;
-  return (stars[LEVELS[idx - 1].path] ?? 0) > 0;
+  const level = getLevel(path);
+  if (!level || level.num === 1) return true;
+  return (stars[LEVELS[level.num - 2].path] ?? 0) > 0;
 }
 
 export function getLevelStatus(path: string, stars: Record<string, number>): LevelStatus {

@@ -1,8 +1,7 @@
 /** Jefe del nivel 16 (Pico del Maestro, Premium): sous-vide, esferificación y fermentación. */
-import { BossPage } from './BossPage';
-import type { BossRecipe } from './BossPage';
+import type { BossChallenge, BossContent, BossRecipe } from './types';
 
-const CHALLENGES = [
+const CHALLENGES: BossChallenge[] = [
   {
     id: 1, emoji: '🌡️', name: 'Sous-vide al punto',
     desc: 'Proteína cocinada sous-vide a temperatura precisa con costra Maillard exterior. Interior de cocción uniforme.',
@@ -25,7 +24,7 @@ const CHALLENGES = [
   },
 ];
 
-const TIPS = [
+const TIPS: string[] = [
   'El Alquimista juzga la precisión. Cada técnica tiene parámetros exactos: aquí el ojo no basta.',
   'Para el plato final: piensa en contraste de texturas. Sous-vide + esfera aportan suavidad y explosión líquida.',
   'La presentación cuenta como técnica en este nivel. Un plato mal emplatado pierde puntos aunque la técnica sea correcta.',
@@ -62,15 +61,13 @@ const RECIPE: BossRecipe = {
   plating: 'Plato plano blanco. Crema de queso en trazo grueso diagonal. Huevo entero sobre la crema (yema intacta). Tres esferas en triángulo alrededor. Kimchi en pequeño nido lateral. Micro brotes y flor de sal encima de la yema justo al servir.',
 };
 
-export const AlquimistaBoss = () => (
-  <BossPage
-    bossSubtitle="Guardián del Pico del Maestro"
-    quote="63 °C durante 60 minutos, 90 segundos en el baño de calcio, 48 horas de fermentación. Aquí se cocina con termómetro y cronómetro: anota tus tiempos y respétalos."
-    requirement="Requisito: sous-vide, esferificación y fermentación"
-    nextWorld="Castillo del Chef desbloqueado"
-    victoryDesc="Yema fluida a 63 °C, esferas de piquillo con el centro líquido y un kimchi ácido y crujiente. El Alquimista anota tu receta en su cuaderno."
-    challenges={CHALLENGES}
-    tips={TIPS}
-    mainRecipe={RECIPE}
-  />
-);
+export const content: BossContent = {
+  bossSubtitle: 'Guardián del Pico del Maestro',
+  quote: '63 °C durante 60 minutos, 90 segundos en el baño de calcio, 48 horas de fermentación. Aquí se cocina con termómetro y cronómetro: anota tus tiempos y respétalos.',
+  requirement: 'Requisito: sous-vide, esferificación y fermentación',
+  nextWorld: 'Castillo del Chef desbloqueado',
+  victoryDesc: 'Yema fluida a 63 °C, esferas de piquillo con el centro líquido y un kimchi ácido y crujiente. El Alquimista anota tu receta en su cuaderno.',
+  challenges: CHALLENGES,
+  tips: TIPS,
+  mainRecipe: RECIPE,
+};

@@ -1,7 +1,6 @@
 /**
- * Base de los niveles de jefe del Modo Aventura. Cada jefe (ChefVegetalBoss,
- * FlambeadorBoss, etc.) pasa su contenido: retos, consejos, receta y textos.
- * Nombre, emoji, XP, número y mundo salen de `data/adventure.ts` según la ruta.
+ * Pantalla de un jefe del Modo Aventura. `level` trae la identidad del registro
+ * y `content` los retos, consejos, receta y textos de `data/levels/<slug>.ts`.
  *
  * - Cada reto se supera subiendo una foto que `usePhotoEvaluation` puntúa.
  * - Con 1 estrella o más el reto queda superado; con 0 se muestra el motivo y la
@@ -11,60 +10,24 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { getLevelStars, saveLevelStars, addXP } from '../utils/progress';
+import { useNavigate } from 'react-router-dom';
+import { recordLevelResult } from '../utils/progress';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { usePhotoEvaluation } from '../hooks/usePhotoEvaluation';
-import { CheckCircle, ChevronRight, Swords, Upload, Clock, Users, Star, Trophy } from 'lucide-react';
-import { ScreenHeader } from './ui/ScreenHeader';
+import { CheckCircle, ChevronRight, Swords, Clock, Users, Star, Trophy } from 'lucide-react';
+import { LevelHeader, LevelProgressBar } from './LevelHeader';
+import { PhotoChallenge } from './PhotoChallenge';
 import { WORLD_CLASSES } from '../data/worlds';
-import { LEVELS, requireLevel } from '../data/adventure';
-
-export interface BossChallenge {
-  id: number;
-  emoji: string;
-  name: string;
-  desc: string;
-  eval: string;
-}
-
-export interface BossRecipe {
-  name: string;
-  emoji: string;
-  servings: string;
-  time: string;
-  difficulty: string;
-  /** Un elemento que termina en ":" se muestra como subtítulo de grupo. */
-  ingredients: string[];
-  steps: string[];
-  plating?: string;
-}
-
-export interface BossPageProps {
-  bossSubtitle: string;
-
-  quote: string;
-  requirement: string;
-  nextWorld: string;
-
-  victoryTitle?: string;
-  victoryDesc: string;
-  returnLabel?: string;
-
-  challenges: BossChallenge[];
-  tips: string[];
-  mainRecipe?: BossRecipe;
-
-  backPath?: string;
-}
+import type { WorldClasses } from '../data/worlds';
+import { LEVELS } from '../data/adventure';
+import type { PlacedLevel } from '../data/adventure';
+import type { BossChallenge, BossContent } from '../data/levels/types';
 
 // Pausa entre el último reto superado y la pantalla de victoria.
 const VICTORY_DELAY_MS = 600;
 const REJECTED_PHOTO_MS = 2500;
 
 const starsText = (n: number) => `${n} ${n === 1 ? 'estrella' : 'estrellas'} de 3`;
-
-type WorldClasses = (typeof WORLD_CLASSES)[keyof typeof WORLD_CLASSES];
 
 const ChallengeCard = ({
   challenge, bossName, w, isDone, isExpanded, onToggle, onPassed,
@@ -82,7 +45,7 @@ const ChallengeCard = ({
     criteria: [{ stars: '⭐⭐⭐', label: challenge.eval }],
     onPass: () => onPassed(challenge.id),
   });
-  const { image: img, status, result, clearImage } = photo;
+  const { status, result, clearImage } = photo;
   const isReviewing = status === 'reviewing';
   const panelId = `boss-challenge-${challenge.id}`;
 
@@ -129,38 +92,13 @@ const ChallengeCard = ({
             <strong className="font-semibold text-neutral-900">Criterio: </strong>{challenge.eval}
           </p>
 
-          {!img ? (
-            <label className="block cursor-pointer rounded-card focus-within:ring-2 focus-within:ring-brand-700">
-              <span className="block rounded-card border-2 border-dashed border-neutral-300 bg-white hover:bg-neutral-50 transition-colors text-center py-8 px-4">
-                <Upload size={26} className={`${w.text} mx-auto mb-2`} aria-hidden />
-                <span className="block font-semibold text-neutral-900 text-sm">Toma o sube una foto del reto</span>
-                <span className="block text-sm text-neutral-600 mt-1">JPG o PNG, hasta 10 MB</span>
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) photo.submit(f); }}
-              />
-            </label>
-          ) : (
-            <div className="relative rounded-card overflow-hidden">
-              <img src={img} alt={`Foto del reto ${challenge.name}`} className="w-full max-h-64 object-cover" />
-              {isReviewing && (
-                <div role="status" className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 text-white">
-                  <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin motion-reduce:animate-none" aria-hidden />
-                  <p className="font-semibold text-sm">{bossName} está revisando tu foto…</p>
-                </div>
-              )}
-              {isDone && !isReviewing && (
-                <div className="absolute inset-0 bg-black/20 flex items-center justify-center" aria-hidden>
-                  <div className={`${w.bg} rounded-full p-3`}>
-                    <CheckCircle size={32} className="text-white" />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <PhotoChallenge
+            photo={photo}
+            w={w}
+            uploadLabel="Toma o sube una foto del reto"
+            imageAlt={`Foto del reto ${challenge.name}`}
+            reviewingText={`${bossName} está revisando tu foto…`}
+          />
 
           {isDone && result && (
             <div role="status" className="bg-white border border-neutral-200 rounded-control px-4 py-3">
@@ -181,15 +119,12 @@ const ChallengeCard = ({
   );
 };
 
-export const BossPage = ({
-  bossSubtitle,
-  quote, requirement, nextWorld,
-  victoryTitle = '¡Jefe derrotado!', victoryDesc, returnLabel = 'Volver al mapa',
-  challenges, tips, mainRecipe,
-  backPath = '/mapa',
-}: BossPageProps) => {
-  const location = useLocation();
-  const level = requireLevel(location.pathname);
+export const BossPage = ({ level, content }: { level: PlacedLevel; content: BossContent }) => {
+  const {
+    bossSubtitle, quote, requirement, nextWorld,
+    victoryTitle = '¡Jefe derrotado!', victoryDesc, returnLabel = 'Volver al mapa',
+    challenges, tips, mainRecipe,
+  } = content;
   const { title: bossName, emoji: bossEmoji, num: levelNum, xp: xpReward } = level;
   const worldName = level.world.name;
   const isFinalBoss = level.num === LEVELS.length;
@@ -219,11 +154,8 @@ export const BossPage = ({
     const t = setTimeout(() => {
       if (!xpAwardedRef.current) {
         xpAwardedRef.current = true;
-        // Se mira antes de guardar las estrellas: al repetir el jefe no hay XP.
-        const isFirstCompletion = getLevelStars(level.path) === 0;
-        saveLevelStars(level.path, 3);
-        if (isFirstCompletion) addXP(xpReward);
-        setFirstWin(isFirstCompletion);
+        const { firstCompletion } = recordLevelResult(level.path, 3, xpReward);
+        setFirstWin(firstCompletion);
       }
       setBossDefeated(true);
     }, VICTORY_DELAY_MS);
@@ -232,44 +164,23 @@ export const BossPage = ({
 
   return (
     <div className="flex flex-col h-full bg-neutral-50">
-      <ScreenHeader
+      <LevelHeader
         title={bossName}
         subtitle={`${isFinalBoss ? 'Jefe final' : 'Jefe'} · ${worldName}`}
-        onBack={() => navigate(backPath)}
-        backLabel="Volver al mapa"
-        actions={<span className="pr-3 text-sm font-semibold text-brand-700 whitespace-nowrap">+{xpReward} XP</span>}
+        xp={xpReward}
       />
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="bg-white border-b border-neutral-200">
           <div className="max-w-3xl mx-auto px-4 py-3">
-            <div className="flex justify-between gap-2 text-sm mb-1.5">
-              <span className="font-semibold text-neutral-800">
-                Vida del jefe: {completedChallenges.size} de {challenges.length} retos superados
-              </span>
-              <span className="font-bold text-neutral-900 flex-shrink-0">{Math.round(hpPercent)}%</span>
-            </div>
-            <div
-              className="h-3 bg-neutral-200 rounded-full overflow-hidden relative"
-              role="progressbar"
-              aria-label="Vida del jefe"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(hpPercent)}
-            >
-              <div
-                className={`h-full transition-all duration-500 ease-out motion-reduce:transition-none ${hpPercent < 25 ? 'bg-red-700' : w.bg}`}
-                style={{ width: `${hpPercent}%` }}
-              />
-              {challenges.slice(0, -1).map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute top-0 h-full w-px bg-white"
-                  style={{ left: `${((i + 1) / challenges.length) * 100}%` }}
-                  aria-hidden
-                />
-              ))}
-            </div>
+            <LevelProgressBar
+              tone="light"
+              label="Vida del jefe"
+              caption={`Vida del jefe: ${completedChallenges.size} de ${challenges.length} retos superados`}
+              percent={hpPercent}
+              fillClassName={hpPercent < 25 ? 'bg-red-700' : w.bg}
+              segments={challenges.length}
+            />
           </div>
         </div>
 
@@ -427,7 +338,7 @@ export const BossPage = ({
           {allDone && bossDefeated && (
             <button
               type="button"
-              onClick={() => navigate(backPath)}
+              onClick={() => navigate('/mapa')}
               className={`w-full min-h-12 rounded-control font-bold text-white text-base ${w.bg} hover:opacity-90 transition-opacity`}
             >
               {returnLabel}

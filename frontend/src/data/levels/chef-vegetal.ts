@@ -1,8 +1,7 @@
 /** Jefe del nivel 4 (Isla del Cuchillo): juliana, brunoise y chiffonade en un mismo reto. */
-import { BossPage } from './BossPage';
-import type { BossRecipe } from './BossPage';
+import type { BossChallenge, BossContent, BossRecipe } from './types';
 
-const CHALLENGES = [
+const CHALLENGES: BossChallenge[] = [
   {
     id: 1, emoji: '🥕', name: 'Juliana de Zanahoria',
     desc: 'Corta una zanahoria entera en juliana: bastones de 3 mm × 3 mm × 6 cm.',
@@ -25,7 +24,7 @@ const CHALLENGES = [
   },
 ];
 
-const TIPS = [
+const TIPS: string[] = [
   'El Chef Vegetal mira cada corte de cerca: un milímetro de diferencia se nota en la foto.',
   'El tiempo de preparación también se valora. Organiza tu mise en place antes de empezar.',
   'Un cuchillo sin filo es tu peor enemigo aquí. Afila antes de empezar.',
@@ -60,16 +59,14 @@ const RECIPE: BossRecipe = {
   plating: 'Usa un aro de 8 cm: juliana en base, brunoise en el centro, chiffonade encima como corona. Un hilo de mantequilla glaseada alrededor. Garnish: brote de guisante o flor de tomillo.',
 };
 
-export const ChefVegetalBoss = () => (
-  <BossPage
-    bossSubtitle="Guardián de la Isla del Cuchillo"
-    quote="Juliana, brunoise y chiffonade en la misma tabla. Si los bastones, los cubos y las tiras salen parejos, te abro el paso al Valle del Fuego."
-    requirement="Requisito: juliana, brunoise y chiffonade"
-    nextWorld="Valle del Fuego desbloqueado"
-    victoryDesc="Bastones de 3 mm, cubos parejos y albahaca sin magullar. El Chef Vegetal aprueba tu tabla."
-    returnLabel="Volver al mapa"
-    challenges={CHALLENGES}
-    tips={TIPS}
-    mainRecipe={RECIPE}
-  />
-);
+export const content: BossContent = {
+  bossSubtitle: 'Guardián de la Isla del Cuchillo',
+  quote: 'Juliana, brunoise y chiffonade en la misma tabla. Si los bastones, los cubos y las tiras salen parejos, te abro el paso al Valle del Fuego.',
+  requirement: 'Requisito: juliana, brunoise y chiffonade',
+  nextWorld: 'Valle del Fuego desbloqueado',
+  victoryDesc: 'Bastones de 3 mm, cubos parejos y albahaca sin magullar. El Chef Vegetal aprueba tu tabla.',
+  returnLabel: 'Volver al mapa',
+  challenges: CHALLENGES,
+  tips: TIPS,
+  mainRecipe: RECIPE,
+};

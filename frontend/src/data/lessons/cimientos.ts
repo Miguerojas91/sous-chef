@@ -402,6 +402,7 @@ export const CIMIENTOS: AcademyLevel = {
     },
     {
       id: 'miseenplace',
+      cmsKey: 'MiseenPlace:ElArtedelaPreparación',
       emoji: '🥩',
       title: 'Mise en Place: Organiza tu Estación',
       duration: '10:00',
@@ -570,6 +571,7 @@ export const CIMIENTOS: AcademyLevel = {
     },
     {
       id: 'fondos',
+      cmsKey: 'FondosBásicos:ElAlmadelaCocina',
       emoji: '🥣',
       title: 'Fondos Básicos de Cocina',
       duration: '22:00',

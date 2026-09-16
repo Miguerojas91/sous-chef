@@ -2,11 +2,14 @@
  * Sesión de cocina con Sous que alterna texto (SSE) y voz manos libres
  * (WebSocket) sin perder la conversación. La usan Cocinemos, Sabores del Mundo
  * y Mealprep; cada módulo solo arma sus prompts y su primer mensaje.
+ *
+ * La voz no se expone entera: entrar pasa siempre por `startVoice`, que aplica
+ * el tope de minutos y registra analytics.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGeminiChat } from './useGeminiChat';
 import { useGeminiLive } from './useGeminiLive';
-import { useWakeLock } from './useWakeLock';
+import { acquireNoSleepInGesture, useWakeLock } from './useWakeLock';
 import { capReachedMessage, getVoiceUsageSummary, hasReachedCap } from '../utils/voiceUsage';
 import { isPremiumUser } from '../utils/membership';
 import { track, Events } from '../utils/analytics';
@@ -19,7 +22,10 @@ interface UseCookingChatSessionOptions {
   textPrompt: string;
   voicePrompt: string;
   analyticsMode: 'cooking' | 'milprep' | 'flavors';
-  /** Pantalla encendida. Con voz activa siempre se mantiene. */
+  /**
+   * Pantalla encendida mientras haya conversación. `false` la deja apagarse
+   * (p. ej. con el chat cerrado). Con voz activa siempre se mantiene.
+   */
   keepAwake?: boolean;
 }
 
@@ -42,27 +48,27 @@ function showVoiceOnboardingOnce(): void {
 export function useCookingChatSession({
   storageKey, textPrompt, voicePrompt, analyticsMode, keepAwake = true,
 }: UseCookingChatSessionOptions) {
-  const { isLoading, messages, sendMessage, clearMessages } = useGeminiChat({
+  const { isLoading, messages, sendMessage, startConversation, clearMessages } = useGeminiChat({
     storageKey,
     systemPrompt: textPrompt,
     analyticsMode,
   });
   const voice = useGeminiLive(voicePrompt);
   const [voiceMode, setVoiceMode] = useState(false);
-  // Primer mensaje en espera: se envía después del commit, cuando useGeminiChat
-  // ya copió el prompt nuevo a su ref (su efecto corre antes que este) y
-  // `sendMessage` ya ve la conversación vacía.
-  const pendingFirstRef = useRef<string | null>(null);
-  const [startCount, setStartCount] = useState(0);
+  const started = messages.length > 0;
+  // Referencia a NoSleep tomada dentro del gesto de "hablar".
+  const releaseNoSleepRef = useRef<(() => void) | null>(null);
 
-  useWakeLock(keepAwake || voiceMode);
+  useWakeLock(voiceMode || (keepAwake && started), {
+    mediaSessionTitle: voiceMode ? 'Sous está escuchando' : undefined,
+  });
 
-  useEffect(() => {
-    const first = pendingFirstRef.current;
-    if (first === null) return;
-    pendingFirstRef.current = null;
-    sendMessage(first);
-  }, [startCount, sendMessage]);
+  const releaseNoSleep = useCallback(() => {
+    releaseNoSleepRef.current?.();
+    releaseNoSleepRef.current = null;
+  }, []);
+
+  useEffect(() => releaseNoSleep, [releaseNoSleep]);
 
   useEffect(() => {
     if (voice.voiceState === 'cap-reached') {
@@ -73,14 +79,7 @@ export function useCookingChatSession({
     }
   }, [voice.voiceState]);
 
-  /** Empieza una conversación nueva con `firstMessage`. */
-  const start = useCallback((firstMessage: string) => {
-    clearMessages();
-    pendingFirstRef.current = firstMessage;
-    setStartCount(c => c + 1);
-  }, [clearMessages]);
-
-  const { disconnect, startListening } = voice;
+  const { disconnect, startListening, sendTextToVoice, wakeUp } = voice;
 
   const startVoice = useCallback(async () => {
     const premium = isPremiumUser();
@@ -89,6 +88,13 @@ export function useCookingChatSession({
       showToast(capReachedMessage(premium).short, 'warning');
       return;
     }
+    // Antes de cualquier await: iOS solo arranca el video de NoSleep dentro del
+    // gesto. En un reintento se toma la nueva antes de soltar la anterior para
+    // no apagarlo entre medio.
+    const previous = releaseNoSleepRef.current;
+    releaseNoSleepRef.current = acquireNoSleepInGesture();
+    previous?.();
+
     track(Events.VoiceStarted, { is_premium: premium });
     showVoiceOnboardingOnce();
     setVoiceMode(true);
@@ -97,27 +103,41 @@ export function useCookingChatSession({
 
   const exitVoice = useCallback(() => {
     disconnect();
+    releaseNoSleep();
     setVoiceMode(false);
-  }, [disconnect]);
+  }, [disconnect, releaseNoSleep]);
 
   /** Corta la voz y borra la conversación. El módulo limpia su propio estado. */
   const end = useCallback(() => {
-    disconnect();
-    setVoiceMode(false);
-    pendingFirstRef.current = null;
+    exitVoice();
     clearMessages();
-  }, [disconnect, clearMessages]);
+  }, [exitVoice, clearMessages]);
+
+  const test = useCallback(() => sendTextToVoice('Hola Sous, ¿me escuchas?'), [sendTextToVoice]);
+
+  const voiceView = useMemo(() => ({
+    voiceState: voice.voiceState,
+    transcript: voice.transcript,
+    currentChefText: voice.currentChefText,
+    voiceError: voice.voiceError,
+    silenceSeconds: voice.silenceSeconds,
+    wakeUp,
+    test,
+  }), [voice.voiceState, voice.transcript, voice.currentChefText, voice.voiceError, voice.silenceSeconds, wakeUp, test]);
 
   return {
     messages,
     isLoading,
+    /** `messages.length > 0`: hay conversación, nueva o restaurada. */
+    started,
     send: sendMessage,
-    start,
+    /** Empieza una conversación nueva con `firstMessage`, borrando la anterior. */
+    start: startConversation,
     end,
     voiceMode,
     startVoice,
     exitVoice,
-    voice,
+    voiceView,
   };
 }
 

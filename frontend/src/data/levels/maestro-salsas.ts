@@ -1,8 +1,7 @@
 /** Jefe del nivel 12 (Mar de Sabores, Premium): fondo blanco, fondo oscuro, fumet y un plato con ellos. */
-import { BossPage } from './BossPage';
-import type { BossRecipe } from './BossPage';
+import type { BossChallenge, BossContent, BossRecipe } from './types';
 
-const CHALLENGES = [
+const CHALLENGES: BossChallenge[] = [
   {
     id: 1, emoji: '🍲', name: 'Fondo Blanco Transparente',
     desc: 'Prepara un fondo blanco de pollo. Debe quedar claro, color paja y gelatinizar al enfriar.',
@@ -25,7 +24,7 @@ const CHALLENGES = [
   },
 ];
 
-const TIPS = [
+const TIPS: string[] = [
   'Un buen fondo se reconoce en el vaso: claro y sin grasa flotando.',
   'Si el fondo gelatiniza al enfriar, extrajiste bien el colágeno.',
   'En el plato final también cuenta el acabado: bordes limpios y garnish.',
@@ -64,15 +63,13 @@ const RECIPE: BossRecipe = {
   plating: 'Cuenco de barro precalentado. El caldo se vierte primero (traslúcido y azafranado). Los trozos de pescado sobre el caldo, mejillones con concha. Rouille en crostini flotando encima. Perejil fresco y un hilo de aceite de oliva.',
 };
 
-export const MaestroDeSalsasBoss = () => (
-  <BossPage
-    bossSubtitle="Guardián del Mar de Sabores"
-    quote="Fondo blanco de pollo, jus de huesos tostados y fumet de 20 minutos. Muéstrame los tres en el vaso y después usa uno en un plato terminado."
-    requirement="Requisito: fondo blanco, fondo oscuro y fumet"
-    nextWorld="Pico del Maestro desbloqueado"
-    victoryDesc="Un fondo que gelatiniza al enfriar y un fumet color paja sin amargor. El Maestro de Salsas te abre el camino al Pico."
-    challenges={CHALLENGES}
-    tips={TIPS}
-    mainRecipe={RECIPE}
-  />
-);
+export const content: BossContent = {
+  bossSubtitle: 'Guardián del Mar de Sabores',
+  quote: 'Fondo blanco de pollo, jus de huesos tostados y fumet de 20 minutos. Muéstrame los tres en el vaso y después usa uno en un plato terminado.',
+  requirement: 'Requisito: fondo blanco, fondo oscuro y fumet',
+  nextWorld: 'Pico del Maestro desbloqueado',
+  victoryDesc: 'Un fondo que gelatiniza al enfriar y un fumet color paja sin amargor. El Maestro de Salsas te abre el camino al Pico.',
+  challenges: CHALLENGES,
+  tips: TIPS,
+  mainRecipe: RECIPE,
+};

@@ -75,3 +75,5 @@ export function usePhotoEvaluation({ subject, criteria, onSubmit, onPass, onFail
 
   return { image, status, result, submit, reset, clearImage };
 }
+
+export type PhotoEvaluation = ReturnType<typeof usePhotoEvaluation>;

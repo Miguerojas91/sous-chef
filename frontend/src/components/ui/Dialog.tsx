@@ -17,6 +17,8 @@ interface DialogProps {
   description?: ReactNode;
   /** Elemento que recibe el foco al abrir. Por defecto, el primero enfocable. */
   initialFocusRef?: RefObject<HTMLElement | null>;
+  /** Destino del foco al cerrar si el elemento que abrió el diálogo ya no existe. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
   tone?: 'light' | 'dark';
   /** Oculta el título visualmente (sigue nombrando al diálogo). */
   hideTitle?: boolean;
@@ -24,14 +26,14 @@ interface DialogProps {
 }
 
 export const Dialog = ({
-  title, onClose, children, footer, description, initialFocusRef,
+  title, onClose, children, footer, description, initialFocusRef, returnFocusRef,
   tone = 'light', hideTitle = false, size = 'md',
 }: DialogProps) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descId = useId();
 
-  useModal(panelRef, { onEscape: onClose, initialFocusRef });
+  useModal(panelRef, { onEscape: onClose, initialFocusRef, returnFocusRef });
 
   const dark = tone === 'dark';
 

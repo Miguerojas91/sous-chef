@@ -5,28 +5,31 @@
  * Flujo de cada receta: resumen y porciones → lista de mercado (marcar,
  * "no lo consigo", sustitutos) → chat con Sous. El prompt incluye lo que el
  * usuario consiguió o reemplazó. El chat alterna texto (SSE) y voz manos
- * libres (WebSocket) sin perder la conversación.
+ * libres (WebSocket) sin perder la conversación, y queda guardado por receta:
+ * al volver se puede continuar o empezar de nuevo.
  */
 
 import { useState, useId, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { ChevronDown, ChevronRight, ShoppingCart, Clock, ChefHat, Minus, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, ShoppingCart, Clock, ChefHat, MessageSquare } from 'lucide-react';
 import { ChatSessionScreen } from './ChatSessionScreen';
-import { MarketList, MarketSummaryBanner } from './MarketItemRow';
+import { MarketList } from './MarketItemRow';
+import { ServingsStepper } from './ServingsStepper';
 import { ScreenHeader } from './ui/ScreenHeader';
+import { ConfirmDialog } from './ui/Dialog';
 import { useCookingChatSession } from '../hooks/useCookingChatSession';
-import { useMarketList, type MarketItem, type MarketSummary } from '../hooks/useMarketList';
+import {
+  describeMarketChanges, marketChanges, useMarketList, type MarketItem, type MarketSummary,
+} from '../hooks/useMarketList';
 import { REGIONS, type Country, type Difficulty, type Recipe, type Region } from '../data/flavorsRecipes';
 import { categorizeIngredient } from '../data/groceryCategories';
+import { showToast } from '../utils/events';
 
 const DIFFICULTY_CLASS: Record<Difficulty, string> = {
   Básico: 'bg-emerald-50 border-emerald-200 text-emerald-800',
   Intermedio: 'bg-amber-50 border-amber-200 text-amber-800',
   Difícil: 'bg-red-50 border-red-200 text-red-800',
 };
-
-const MIN_SERVINGS = 1;
-const MAX_SERVINGS = 20;
 
 type FlowStep = 'intro' | 'mercado' | 'chat';
 
@@ -55,32 +58,6 @@ ESTADO DE INGREDIENTES:
 Adapta la receta a los ingredientes disponibles y sus sustitutos. Guía paso a paso para ${personas}. Responde SOLO sobre esta receta. Máximo 60 palabras por respuesta.
 No uses el carácter —. No abras con elogios ni cierres ofreciendo más ayuda.`;
 }
-
-const ServingsStepper = ({ servings, onChange }: { servings: number; onChange: (n: number) => void }) => (
-  <div className="flex items-center gap-1 flex-shrink-0">
-    <button
-      type="button"
-      onClick={() => onChange(Math.max(MIN_SERVINGS, servings - 1))}
-      disabled={servings <= MIN_SERVINGS}
-      aria-label="Una persona menos"
-      className="w-11 h-11 rounded-full border border-neutral-300 bg-white text-neutral-800 flex items-center justify-center hover:bg-neutral-50 disabled:bg-neutral-100 disabled:text-neutral-500 focus-visible:ring-2 focus-visible:ring-brand-700"
-    >
-      <Minus size={16} aria-hidden />
-    </button>
-    <span aria-live="polite" className="w-8 text-center text-lg font-extrabold text-neutral-900 tabular-nums">
-      <span className="sr-only">Personas: </span>{servings}
-    </span>
-    <button
-      type="button"
-      onClick={() => onChange(Math.min(MAX_SERVINGS, servings + 1))}
-      disabled={servings >= MAX_SERVINGS}
-      aria-label="Una persona más"
-      className="w-11 h-11 rounded-full border border-neutral-300 bg-white text-neutral-800 flex items-center justify-center hover:bg-neutral-50 disabled:bg-neutral-100 disabled:text-neutral-500 focus-visible:ring-2 focus-visible:ring-brand-700"
-    >
-      <Plus size={16} aria-hidden />
-    </button>
-  </div>
-);
 
 const PrimaryFooterButton = ({ onClick, children }: { onClick: () => void; children: ReactNode }) => (
   <div className="flex-shrink-0 px-4 py-3 bg-white border-t border-neutral-200">
@@ -115,7 +92,9 @@ interface RecipeFlowProps {
 const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProps) => {
   const [step, setStep] = useState<FlowStep>('intro');
   const [servings, setServings] = useState(2);
-  const [chatStarted, setChatStarted] = useState(false);
+  // Pantalla de chat visible. Si hay conversación lo dice `session.started`.
+  const [chatOpen, setChatOpen] = useState(false);
+  const [confirmRestart, setConfirmRestart] = useState(false);
 
   const items = useMemo<MarketItem[]>(
     () => recipe.ingredients.map(name => ({ id: name, name, label: name, category: categorizeIngredient(name) })),
@@ -131,19 +110,39 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
     textPrompt,
     voicePrompt: `${textPrompt}\nMODO VOZ: Habla naturalmente, sin listas ni markdown. Frases cortas. No interrumpas el silencio del usuario.`,
     analyticsMode: 'flavors',
-    keepAwake: chatStarted,
+    keepAwake: chatOpen,
   });
 
-  /** Arranca el chat con el resumen del mercado; `question` reemplaza el pedido de guía. */
+  /** Conversación nueva con el resumen del mercado; `question` reemplaza el pedido de guía. */
   const startChat = (question?: string) => {
-    const swaps = summary.swapped.map(({ item, substitute }) => `${item.name} por ${substitute}`);
-    let msg = `Hola Sous, voy a preparar "${recipe.name}" para ${personas}.`;
-    if (swaps.length > 0) msg += ` Cambié estos ingredientes: ${swaps.join(', ')}.`;
-    if (summary.missing.length > 0) msg += ` No pude conseguir: ${names(summary.missing).join(', ')}.`;
-    msg += question ? ` ${question}` : ' Guíame paso a paso.';
+    const msg = [
+      `Hola Sous, voy a preparar "${recipe.name}" para ${personas}.`,
+      ...describeMarketChanges(marketChanges(summary)),
+      question ?? 'Guíame paso a paso.',
+    ].join(' ');
     session.start(msg);
-    setChatStarted(true);
     setStep('chat');
+    setChatOpen(true);
+  };
+
+  const continueChat = () => {
+    setStep('chat');
+    setChatOpen(true);
+  };
+
+  // Desde la lista: sin conversación, la pregunta va en el primer mensaje;
+  // con conversación guardada se suma a ella en vez de borrarla.
+  const askChef = (question: string) => {
+    if (!session.started) {
+      startChat(question);
+      return;
+    }
+    if (session.isLoading) {
+      showToast('Espera a que Sous termine de responder.', 'warning');
+      return;
+    }
+    session.send(question);
+    continueChat();
   };
 
   const handleBack = () => {
@@ -152,16 +151,16 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
     setStep('mercado');
   };
 
-  if (step === 'chat' && chatStarted) {
+  if (chatOpen || session.voiceMode) {
     return (
       <ChatSessionScreen
         session={session}
         title={recipe.name}
         subtitle={`${countryFlag} ${countryName} · ${personas}`}
-        onBack={() => setChatStarted(false)}
+        onBack={() => setChatOpen(false)}
         backLabel="Volver al resumen de la receta"
         endDescription="Se borra el chat de esta receta."
-        onEnd={() => { setChatStarted(false); setStep('intro'); }}
+        onEnd={() => { setChatOpen(false); setStep('intro'); }}
       />
     );
   }
@@ -190,9 +189,23 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
 
           <p className="text-base text-neutral-800 leading-relaxed">{recipe.description}</p>
 
+          {session.started && (
+            <div className="bg-white border border-neutral-200 rounded-card p-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="min-w-0 text-sm text-neutral-800">Tienes una conversación guardada de esta receta.</p>
+              <button
+                type="button"
+                onClick={continueChat}
+                className="min-h-11 px-4 flex items-center gap-1.5 rounded-control border border-neutral-300 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 flex-shrink-0 transition-colors"
+              >
+                <MessageSquare size={16} aria-hidden />
+                Continuar la conversación
+              </button>
+            </div>
+          )}
+
           <div className="bg-white border border-neutral-200 rounded-card pl-4 pr-2 py-2 flex items-center justify-between gap-3">
             <span className="text-sm font-semibold text-neutral-900">¿Para cuántas personas?</span>
-            <ServingsStepper servings={servings} onChange={setServings} />
+            <ServingsStepper value={servings} onChange={setServings} />
           </div>
 
           <section className="bg-white border border-neutral-200 rounded-card p-4">
@@ -214,7 +227,7 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
   );
 
   if (step === 'mercado') {
-    const unchecked = market.uncheckedCount;
+    const unchecked = summary.notMarked.length + summary.missing.length;
     return (
       <div className="flex flex-col h-full bg-neutral-50">
         {header}
@@ -229,12 +242,11 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
               </p>
               <div className="flex items-center gap-1">
                 <span className="text-sm text-neutral-600">Personas</span>
-                <ServingsStepper servings={servings} onChange={setServings} />
+                <ServingsStepper value={servings} onChange={setServings} />
               </div>
             </div>
 
-            <MarketSummaryBanner market={market} onAskChef={startChat} />
-            <MarketList items={items} market={market} onAskChef={startChat} />
+            <MarketList items={items} market={market} onAskChef={askChef} />
           </div>
         </div>
 
@@ -281,16 +293,50 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
             )}
           </section>
 
-          <button
-            type="button"
-            onClick={() => startChat()}
-            className="w-full min-h-12 flex items-center justify-center gap-2 px-4 bg-brand-700 hover:bg-brand-800 text-white font-bold text-base rounded-control transition-colors"
-          >
-            <ChefHat size={20} aria-hidden />
-            Empezar a cocinar con Sous
-          </button>
+          {session.started ? (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={continueChat}
+                className="w-full min-h-12 flex items-center justify-center gap-2 px-4 bg-brand-700 hover:bg-brand-800 text-white font-bold text-base rounded-control transition-colors"
+              >
+                <MessageSquare size={20} aria-hidden />
+                Continuar la conversación
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmRestart(true)}
+                className="w-full min-h-12 flex items-center justify-center gap-2 px-4 border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-900 font-semibold text-base rounded-control transition-colors"
+              >
+                Empezar de nuevo
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => startChat()}
+              className="w-full min-h-12 flex items-center justify-center gap-2 px-4 bg-brand-700 hover:bg-brand-800 text-white font-bold text-base rounded-control transition-colors"
+            >
+              <ChefHat size={20} aria-hidden />
+              Empezar a cocinar con Sous
+            </button>
+          )}
         </div>
       </div>
+
+      {confirmRestart && (
+        <ConfirmDialog
+          title="¿Empezar de nuevo?"
+          description="Se borra la conversación guardada de esta receta y Sous empieza con tu lista de mercado actual."
+          confirmLabel="Empezar de nuevo"
+          destructive
+          onCancel={() => setConfirmRestart(false)}
+          onConfirm={() => {
+            setConfirmRestart(false);
+            startChat();
+          }}
+        />
+      )}
     </div>
   );
 };

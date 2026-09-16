@@ -1,42 +1,42 @@
 /** Nivel 19, Mundo 5: Castillo del Chef (Premium). Alta cocina: concepto, técnicas de acabado y emplatado. */
-import { LevelPage } from './LevelPage';
+import type { LevelContent, LevelError, LevelRecipe, LevelStep } from './types';
 
-const STEPS = [
+const STEPS: LevelStep[] = [
   {
-    num: 1, title: 'Qué define la alta cocina', emoji: '🌟',
+    title: 'Qué define la alta cocina',
     desc: 'La alta cocina (haute cuisine) combina técnica precisa con una idea propia. En un plato de alta cocina cada elemento está ahí por una razón y está bien ejecutado.',
     tip: 'Ferran Adrià dijo: "La creatividad es no copiar." Un plato de alta cocina parte de una idea propia y usa la técnica para expresarla.',
   },
   {
-    num: 2, title: 'Ingredientes: temporalidad y proveniencia', emoji: '🌱',
+    title: 'Ingredientes: temporalidad y proveniencia',
     desc: 'La alta cocina trabaja con ingredientes en su punto de madurez y de proveedores conocidos. Un ingrediente en su temporada tiene mucho más aroma que fuera de ella.',
     tip: 'Antes de cocinar en alta cocina, investiga qué ingredientes están en temporada en tu región ahora mismo. Construye el plato a partir del mejor ingrediente que consigas y después elige la receta.',
   },
   {
-    num: 3, title: 'Técnicas de acabado: quenelles, xantana y gel', emoji: '✨',
+    title: 'Técnicas de acabado: quenelles, xantana y gel',
     desc: 'La alta cocina tiene un vocabulario técnico propio. Una quenelle es una porción oval elegante hecha con dos cucharas. Los geles de xantana o agar dan texturas que no logras con harina o maicena. La emulsión con lecitina de soja crea espumas. Los aceites perfumados añaden color y aroma sin peso en boca.',
     tip: 'La quenelle requiere práctica. Usa dos cucharas del mismo tamaño, mojadas en agua caliente. El movimiento es de "pasar" la cucharada de una cuchara a la otra dando forma ovalada. Practica con helado antes de hacerlo con una merluza.',
   },
   {
-    num: 4, title: 'El emplatado de alta cocina: reglas y libertad', emoji: '🎨',
+    title: 'El emplatado de alta cocina: reglas y libertad',
     desc: 'Las reglas del emplatado de alta cocina: el fondo del plato siempre limpio en los bordes, máximo 5 elementos por plato, un punto focal claro, uso de salsa como pincelada o punto (no lago), garnish con función gustativa. Dentro de estas reglas, la libertad artística es total.',
     tip: 'Usa un bote de ketchup o squeeze bottle para la salsa. El control del trazo de salsa es uno de los gestos más identificables de la alta cocina y se aprende en minutos.',
   },
   {
-    num: 5, title: 'El plato final: concepto → técnica → ejecución', emoji: '🏆',
+    title: 'El plato final: concepto → técnica → ejecución',
     desc: 'Para crear tu plato de alta cocina: 1) Define el concepto en una frase ("el mar en primavera"). 2) Identifica las técnicas que lo expresan (fumet de crustáceos + vieiras sous-vide + gel de pepino + espuma de algas). 3) Ejecuta cada elemento por separado y ensambla en el momento del servicio.',
     tip: 'El último paso es el más difícil: cada elemento puede estar bien por separado y el plato fallar si no encajan. Prueba el plato ensamblado antes del servicio y ajusta.',
   },
 ];
 
-const ERRORS = [
+const ERRORS: LevelError[] = [
   { icon: '🌊', error: 'Lago de salsa en el plato', fix: 'La salsa en alta cocina es trazo, punto o pincelada. Usa squeeze bottle. El lago arruina la presentación.' },
   { icon: '🎪', error: 'Demasiados elementos (más de 5)', fix: 'Si puedes eliminar un elemento sin mermar el plato, elimínalo.' },
   { icon: '🦷', error: 'Garnish sin función gustativa', fix: 'Todo elemento del plato debe comerse y aportar sabor o textura. El perejil solo decorativo sobra.' },
   { icon: '💤', error: 'Sin punto focal visual', fix: 'El ojo del comensal necesita saber a dónde mirar. Un elemento debe destacar sobre los demás como protagonista.' },
 ];
 
-const RECIPE = {
+const RECIPE: LevelRecipe = {
   name: 'Vieira con Gel de Manzana, Espuma de Mar y Aceite de Eneldo',
   description: 'Un plato de alta cocina clásico moderno: vieira como protagonista con tres elementos de contraste. Es exigente y reúne los principios de este nivel.',
   servings: '2 personas',
@@ -60,21 +60,16 @@ const RECIPE = {
   ],
 };
 
-export const AltaCocinaLevel = () => (
-  <LevelPage
-    missionText="Crear un <strong>plato de alta cocina completo</strong>: máximo 5 elementos, punto focal claro, salsa en trazo o punto, garnish funcional. Fotografía el plato emplatado sobre fondo negro o blanco."
-    missionTags={[
-      { icon: '🎨', label: 'Emplatado' },
-      { icon: '⏱️', label: '90 min' },
-    ]}
-    steps={STEPS}
-    errors={ERRORS}
-    recipe={RECIPE}
-    challengeHint="Fotografía el plato desde arriba sobre fondo limpio. El emplatado debe mostrar técnica, con máximo 5 elementos claramente diferenciados."
-    evaluationCriteria={[
-      { stars: '⭐⭐⭐', label: 'Emplatado profesional, técnica visible' },
-      { stars: '⭐⭐', label: 'Buena presentación, algo de técnica' },
-      { stars: '⭐', label: 'Intento de emplatado con cuidado' },
-    ]}
-  />
-);
+export const content: LevelContent = {
+  missionText: 'Crear un <strong>plato de alta cocina completo</strong>: máximo 5 elementos, punto focal claro, salsa en trazo o punto, garnish funcional. Fotografía el plato emplatado sobre fondo negro o blanco.',
+  missionTags: ['Emplatado', '90 min'],
+  steps: STEPS,
+  errors: ERRORS,
+  recipe: RECIPE,
+  challengeHint: 'Fotografía el plato desde arriba sobre fondo limpio. El emplatado debe mostrar técnica, con máximo 5 elementos claramente diferenciados.',
+  evaluationCriteria: [
+    { stars: '⭐⭐⭐', label: 'Emplatado profesional, técnica visible' },
+    { stars: '⭐⭐', label: 'Buena presentación, algo de técnica' },
+    { stars: '⭐', label: 'Intento de emplatado con cuidado' },
+  ],
+};

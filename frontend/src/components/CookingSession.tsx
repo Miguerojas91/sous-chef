@@ -92,9 +92,13 @@ const CookingChat: React.FC<{
     voicePrompt: buildCookingSystemPrompt(intent, timeAvailable, 'voice', promptOpts),
   });
 
-  // Primer mensaje automático, solo en una sesión sin historial.
+  // Primer mensaje automático, solo en una sesión sin historial. La ref evita
+  // el segundo envío del doble montaje de StrictMode.
+  const startedRef = useRef(false);
   useEffect(() => {
-    if (session.messages.length > 0) return;
+    if (startedRef.current) return;
+    startedRef.current = true;
+    if (session.started) return;
     const intentMsg: Record<CookingIntent, string> = {
       'discover-known': `Hola Sous, tengo ${timeAvailable} y ya sé lo que quiero cocinar hoy. Ayúdame a prepararlo.`,
       'discover-together': `Hola Sous, tengo ${timeAvailable} pero no sé qué cocinar. Ayúdame a decidir.`,
@@ -107,8 +111,7 @@ const CookingChat: React.FC<{
   return (
     <ChatSessionScreen
       session={session}
-      title="Sous"
-      voiceTitle="Cocinemos"
+      title="Cocinemos"
       subtitle={`${INTENT_LABEL[intent]} · ${timeAvailable}`}
       onBack={() => navigate('/home')}
       backLabel="Salir del chat (se guarda la conversación)"

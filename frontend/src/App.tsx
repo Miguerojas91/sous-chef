@@ -24,8 +24,9 @@ import { AuthScreen } from './components/AuthScreen';
 import { HomeMenu } from './components/HomeMenu';
 import { isPremiumUser } from './utils/membership';
 import { clearSession, backendLogout, getUserCountry, setUserCountry, getUser } from './utils/auth';
-import { isLevelUnlocked } from './data/levelsData';
-import { LEVELS } from './data/adventure';
+import { LEVELS, isUnlocked } from './data/adventure';
+import type { PlacedLevel } from './data/adventure';
+import { readLevelStars } from './utils/progress';
 import { CountryPicker } from './components/CountryPicker';
 import { initAnalytics, identify, resetIdentity, track, Events } from './utils/analytics';
 import { useRoutePageviews } from './hooks/useAnalytics';
@@ -49,13 +50,21 @@ const MembresiaPage  = lazyNamed(() => import('./components/MembresiaPage'),  'M
 const ProfilePage    = lazyNamed(() => import('./components/ProfilePage'),    'ProfilePage');
 const CMSTestPage    = lazyNamed(() => import('./components/cms/CMSTestPage'),'CMSTestPage');
 
-// Niveles y jefes del Modo Aventura. Se crean una sola vez, fuera del render,
-// para que React.lazy no vuelva a cargar el componente en cada pintado.
-const ADVENTURE_ROUTES = LEVELS.map(level => ({
-  path: level.path,
-  premium: level.world.premium,
-  Component: lazy(async () => ({ default: await level.load() })),
-}));
+// Niveles y jefes del Modo Aventura. Cada página carga su contenido y la
+// pantalla base en paralelo, así cada nivel es un chunk propio. Se crean una
+// sola vez, fuera del render, para que React.lazy no recargue en cada pintado.
+function lazyAdventurePage(level: PlacedLevel) {
+  return lazy(async () => {
+    if (level.kind === 'boss') {
+      const [content, { BossPage }] = await Promise.all([level.load(), import('./components/BossPage')]);
+      return { default: () => <BossPage level={level} content={content} /> };
+    }
+    const [content, { LevelPage }] = await Promise.all([level.load(), import('./components/LevelPage')]);
+    return { default: () => <LevelPage level={level} content={content} /> };
+  });
+}
+
+const ADVENTURE_ROUTES = LEVELS.map(level => ({ level, Page: lazyAdventurePage(level) }));
 
 const RouteFallback = () => (
   <div role="status" aria-live="polite" className="flex items-center justify-center h-full min-h-[60vh]">
@@ -393,7 +402,7 @@ const PremiumRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const LevelRoute = ({ children, path }: { children: React.ReactNode; path: string }) => {
-  if (!isLevelUnlocked(path)) {
+  if (!isUnlocked(path, readLevelStars())) {
     return <ToastRedirect to="/mapa" msg="Completa el nivel anterior para abrir este." type="warning" />;
   }
   return <>{children}</>;
@@ -443,9 +452,9 @@ function App() {
                 <Route path="/cocinar" element={<CookingSession />} />
                 <Route path="/mapa" element={<SkillTreeMap />} />
 
-                {ADVENTURE_ROUTES.map(({ path, premium, Component }) => {
-                  const level = <LevelRoute path={path}><Component /></LevelRoute>;
-                  return <Route key={path} path={path} element={premium ? <PremiumRoute>{level}</PremiumRoute> : level} />;
+                {ADVENTURE_ROUTES.map(({ level, Page }) => {
+                  const page = <LevelRoute path={level.path}><Page /></LevelRoute>;
+                  return <Route key={level.path} path={level.path} element={level.world.premium ? <PremiumRoute>{page}</PremiumRoute> : page} />;
                 })}
 
                 <Route path="/sabores" element={<FlavorsModule />} />

@@ -39,12 +39,6 @@ Reglas de comunicación (modo texto):
 8. No abras con elogios ('¡Perfecto!', '¡Excelente pregunta!') ni cierres ofreciendo más ayuda. Ve directo al paso.
 9. Habla como un amigo cocinero al lado del usuario: cálido y concreto, sin emojis.`;
 
-/** Prompt base del chat de texto genérico. */
-export const CHEF_SYSTEM_PROMPT = `${BASE_SAFETY}
-
-Eres Sous, un sous chef personal, paciente y directo, como un cocinero que te acompaña en la cocina. Siempre hablas en español.
-${TEXT_COMMUNICATION_RULES}`;
-
 /**
  * - `'discover-known'`: sabe qué quiere cocinar.
  * - `'discover-together'`: no sabe qué cocinar; la IA ayuda a decidir.
@@ -211,14 +205,6 @@ Modo "cocinar con lo que tengo". La regla de ingredientes aplica con más rigor:
    tradicional lo lleva pero el usuario no lo dijo, adáptalo o sustitúyelo
    con lo que sí tiene más los básicos. Nunca con un "ah, también necesitas X".`;
 }
-
-/** Prompt de sistema del módulo de meal prep semanal. */
-export const MILPREP_SYSTEM_PROMPT = `${BASE_SAFETY}
-
-Eres Sous, un sous chef que sabe de meal prep semanal. Siempre hablas en español.
-${TEXT_COMMUNICATION_RULES}
-
-Contexto: el usuario está preparando sus comidas para la semana. Guíalo en orden eficiente (batch cooking), da tips de conservación. No hagas porras.`;
 
 export interface EvaluationResult {
   /** 0 a 3. */

@@ -1,8 +1,7 @@
 /** Jefe del nivel 8 (Valle del Fuego): sofrito, Maillard y emulsión en un mismo plato. */
-import { BossPage } from './BossPage';
-import type { BossRecipe } from './BossPage';
+import type { BossChallenge, BossContent, BossRecipe } from './types';
 
-const CHALLENGES = [
+const CHALLENGES: BossChallenge[] = [
   {
     id: 1, emoji: '🧄', name: 'El Sofrito del Chef',
     desc: 'Prepara un sofrito base: cebolla pochada, ajo y pimientos. Cocina a fuego lento hasta que el aceite se separe en los bordes.',
@@ -25,7 +24,7 @@ const CHALLENGES = [
   },
 ];
 
-const TIPS = [
+const TIPS: string[] = [
   'El Flambeador juzga sabor y técnica: un plato bonito no basta.',
   'El orden importa: sofrito primero, Maillard en proteína aparte, emulsión al final.',
   'Mantén la temperatura estable y ajusta el fuego cuando el sofrito o la costra lo pidan.',
@@ -62,15 +61,13 @@ const RECIPE: BossRecipe = {
   plating: 'Pasa de la sartén a un plato precalentado. El filete en diagonal, la salsa en trazo limpio (no lago). Sofrito en quenelle lateral. Flor de sal encima del filete justo al servir.',
 };
 
-export const FlambeadorBoss = () => (
-  <BossPage
-    bossSubtitle="Señor del Valle del Fuego"
-    quote="Sofrito de base, costra caoba en la carne y una salsa montada con mantequilla fría. Si la mantequilla entra con el fuego alto, la salsa se corta y empiezas de nuevo."
-    requirement="Requisito: sofrito, Maillard y emulsión"
-    nextWorld="Mar de Sabores desbloqueado"
-    victoryDesc="Costra caoba en el entrecot y una bordelesa brillante que napa la cuchara. El Flambeador te deja pasar."
-    challenges={CHALLENGES}
-    tips={TIPS}
-    mainRecipe={RECIPE}
-  />
-);
+export const content: BossContent = {
+  bossSubtitle: 'Señor del Valle del Fuego',
+  quote: 'Sofrito de base, costra caoba en la carne y una salsa montada con mantequilla fría. Si la mantequilla entra con el fuego alto, la salsa se corta y empiezas de nuevo.',
+  requirement: 'Requisito: sofrito, Maillard y emulsión',
+  nextWorld: 'Mar de Sabores desbloqueado',
+  victoryDesc: 'Costra caoba en el entrecot y una bordelesa brillante que napa la cuchara. El Flambeador te deja pasar.',
+  challenges: CHALLENGES,
+  tips: TIPS,
+  mainRecipe: RECIPE,
+};

@@ -1,8 +1,7 @@
 /** Jefe final, nivel 20 (Castillo del Chef, Premium): menú de varios tiempos con técnicas de todo el mapa. */
-import { BossPage } from './BossPage';
-import type { BossRecipe } from './BossPage';
+import type { BossChallenge, BossContent, BossRecipe } from './types';
 
-const CHALLENGES = [
+const CHALLENGES: BossChallenge[] = [
   {
     id: 1, emoji: '🍽️', name: 'Tu Menú Degustación',
     desc: 'Presenta un menú de 3 tiempos con coherencia temática, progresión de sabores y emplatado profesional.',
@@ -25,7 +24,7 @@ const CHALLENGES = [
   },
 ];
 
-const TIPS = [
+const TIPS: string[] = [
   'El Gran Chef juzga el conjunto de todo lo aprendido. Cada plato debe mostrar una técnica diferente.',
   'La narrativa importa: escribe qué técnica usaste en cada elemento del reto final.',
   'Cuida cada tiempo antes de sumar platos: 4 tiempos bien resueltos valen más que 8 a medias.',
@@ -68,17 +67,15 @@ const RECIPE: BossRecipe = {
   plating: 'Cada tiempo en vajilla diferente. Aperitivo: cuchara japonesa. Entrante: plato hondo negro. Pescado: plato plano ovalado blanco. Principal: plato de piedra rectangular. Postre: cazuelita de barro individual. En cada plato: máximo 5 elementos, un punto focal claro, sin saturación.',
 };
 
-export const GranChefBoss = () => (
-  <BossPage
-    bossSubtitle="Guardián del Castillo del Chef"
-    quote="Cinco tiempos: esferas de dashi, huevo a 63 °C, lubina con la piel dorada, entrecot con jus y crema catalana quemada al momento. En cada plato quiero reconocer qué técnica usaste."
-    requirement="Requisito: al menos 8 técnicas del Modo Aventura"
-    nextWorld="Completaste los 20 niveles del mapa."
-    victoryTitle="¡Recorrido completo!"
-    victoryDesc="Del corte de la Isla del Cuchillo al azúcar quemado del postre, cada técnica se ve en tu menú. El Gran Chef lo sirve en su mesa."
-    returnLabel="Ver el mapa"
-    challenges={CHALLENGES}
-    tips={TIPS}
-    mainRecipe={RECIPE}
-  />
-);
+export const content: BossContent = {
+  bossSubtitle: 'Guardián del Castillo del Chef',
+  quote: 'Cinco tiempos: esferas de dashi, huevo a 63 °C, lubina con la piel dorada, entrecot con jus y crema catalana quemada al momento. En cada plato quiero reconocer qué técnica usaste.',
+  requirement: 'Requisito: al menos 8 técnicas del Modo Aventura',
+  nextWorld: 'Completaste los 20 niveles del mapa.',
+  victoryTitle: '¡Recorrido completo!',
+  victoryDesc: 'Del corte de la Isla del Cuchillo al azúcar quemado del postre, cada técnica se ve en tu menú. El Gran Chef lo sirve en su mesa.',
+  returnLabel: 'Ver el mapa',
+  challenges: CHALLENGES,
+  tips: TIPS,
+  mainRecipe: RECIPE,
+};

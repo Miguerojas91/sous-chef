@@ -1,42 +1,42 @@
 /** Nivel 15, Mundo 4: Pico del Maestro (Premium). Fermentación láctica: chucrut y kimchi. */
-import { LevelPage } from './LevelPage';
+import type { LevelContent, LevelError, LevelRecipe, LevelStep } from './types';
 
-const STEPS = [
+const STEPS: LevelStep[] = [
   {
-    num: 1, title: 'Cómo funciona la fermentación: lactobacilos', emoji: '🦠',
+    title: 'Cómo funciona la fermentación: lactobacilos',
     desc: 'La fermentación es uno de los procesos más antiguos del ser humano. Las bacterias lácticas (lactobacilos) convierten azúcares en ácido láctico, lo que preserva el alimento, desarrolla sabores complejos y aumenta la biodisponibilidad de nutrientes. Pan, queso, yogur, kimchi y miso son alimentos fermentados.',
     tip: 'Fermentar no es dejar que algo se pudra: la sal controla qué bacterias crecen. El kimchi y el chucrut tienen probióticos.',
   },
   {
-    num: 2, title: 'El ambiente: sal, tiempo y temperatura', emoji: '🌡️',
+    title: 'El ambiente: sal, tiempo y temperatura',
     desc: 'La sal es el regulador: demasiado poca = fermentación caótica con bacterias no deseadas. Demasiada = inhibe todo. Para vegetales, usa 2–3% de sal en peso del vegetal (20–30g/kg). La temperatura 18–22°C es ideal. Más frío = más lento. Más caliente = demasiado rápido y ácido.',
     tip: 'Un termómetro de ambiente ayuda mucho. En verano, fermenta en lugar fresco. En invierno, un armario cerrado mantiene temperatura. La oscuridad también ayuda: la luz UV puede afectar las bacterias.',
   },
   {
-    num: 3, title: 'Preparar el chucrut: corte y salado', emoji: '🥬',
+    title: 'Preparar el chucrut: corte y salado',
     desc: 'Corta el repollo en chiffonade fino (2–3mm). Pesa y calcula el 2% de sal (20g por kilo). Mezcla el repollo con la sal en un bowl grande y amasa con fuerza durante 10 minutos hasta que el repollo libere suficiente líquido para cubrirse a sí mismo.',
     tip: 'El amasado es la extracción de jugo por presión osmótica. Ese jugo es la salmuera natural. Si después de 10 minutos de amasado no hay suficiente líquido para cubrir el repollo, agrega salmuera al 2% (20g sal / litro de agua).',
   },
   {
-    num: 4, title: 'Envasar y pesar: mantener bajo el líquido', emoji: '🫙',
+    title: 'Envasar y pesar: mantener bajo el líquido',
     desc: 'Transfiere el repollo masado a un frasco de vidrio limpio, empacando con fuerza para eliminar el aire. El repollo debe quedar completamente sumergido en su propio líquido. Coloca un peso (bolsa pequeña de agua salada, piedra limpia o frasco más pequeño) para mantenerlo bajo.',
     tip: 'Si el repollo flota y queda expuesto al aire, se enmohece en la superficie. El líquido salino crea el ambiente anaeróbico donde solo prosperan los lactobacilos. Sin oxígeno = sin moho.',
   },
   {
-    num: 5, title: 'Fermentar, descargar gas y probar', emoji: '⏳',
+    title: 'Fermentar, descargar gas y probar',
     desc: 'Tapa ligeramente (no hermético) o usa una tapa con válvula de gas. Fermenta a temperatura ambiente 5–7 días. Cada 24 horas "descarga" el gas presionando el repollo hacia abajo. Prueba desde el día 3. El buen chucrut: ácido, crujiente y fresco; no agrio-amargo ni blando.',
     tip: 'Si ves moho blanco en la superficie, retíralo con cuchara limpia. El moho blanco en la superficie es normal si el repollo quedó expuesto. El chucrut de abajo sigue siendo seguro. Si el moho es negro o verde, tira todo.',
   },
 ];
 
-const ERRORS = [
+const ERRORS: LevelError[] = [
   { icon: '🤢', error: 'Olor podrido o amoniaca', fix: 'Demasiado poca sal o temperatura demasiado alta. Bacterias no deseadas tomaron el control. Comienza de nuevo con más sal.' },
   { icon: '🫧', error: 'Repollo blando y no crujiente', fix: 'Fermentación a temperatura muy alta o tiempo excesivo. Prueba desde el día 3 para encontrar tu punto ideal.' },
   { icon: '❌', error: 'No hay actividad (sin burbujear)', fix: 'Temperatura demasiado baja (menos de 16°C) o demasiada sal que inhibió las bacterias. Lleva a lugar más cálido.' },
   { icon: '🟢', error: 'Moho negro o verde', fix: 'El repollo estaba expuesto al aire. No es recuperable. Para la próxima: asegúrate de que el repollo esté completamente sumergido.' },
 ];
 
-const RECIPE = {
+const RECIPE: LevelRecipe = {
   name: 'Chucrut Clásico Casero + Kimchi de Repollo',
   description: 'El chucrut es el punto de partida de la fermentación. Con la misma técnica haces kimchi, kvass y otros vegetales fermentados.',
   servings: '1 frasco 1L',
@@ -62,21 +62,16 @@ const RECIPE = {
   ],
 };
 
-export const FermentacionLevel = () => (
-  <LevelPage
-    missionText="Preparar un <strong>chucrut casero fermentado</strong>: repollo completamente sumergido, sin moho (o solo moho blanco superficial retirado), con sabor ácido y textura crujiente. Fotografía el frasco y una pequeña muestra del día 5."
-    missionTags={[
-      { icon: '📅', label: '5–7 días' },
-      { icon: '🦠', label: '2% sal en peso' },
-    ]}
-    steps={STEPS}
-    errors={ERRORS}
-    recipe={RECIPE}
-    challengeHint="Fotografía el frasco con el chucrut visible y una pequeña cantidad en un plato mostrando el color y textura después de la fermentación."
-    evaluationCriteria={[
-      { stars: '⭐⭐⭐', label: 'Ácido, crujiente, buen color, sin moho' },
-      { stars: '⭐⭐', label: 'Fermentó correctamente, algo blando' },
-      { stars: '⭐', label: 'Proceso iniciado, visible actividad' },
-    ]}
-  />
-);
+export const content: LevelContent = {
+  missionText: 'Preparar un <strong>chucrut casero fermentado</strong>: repollo completamente sumergido, sin moho (o solo moho blanco superficial retirado), con sabor ácido y textura crujiente. Fotografía el frasco y una pequeña muestra del día 5.',
+  missionTags: ['5–7 días', '2% sal en peso'],
+  steps: STEPS,
+  errors: ERRORS,
+  recipe: RECIPE,
+  challengeHint: 'Fotografía el frasco con el chucrut visible y una pequeña cantidad en un plato mostrando el color y textura después de la fermentación.',
+  evaluationCriteria: [
+    { stars: '⭐⭐⭐', label: 'Ácido, crujiente, buen color, sin moho' },
+    { stars: '⭐⭐', label: 'Fermentó correctamente, algo blando' },
+    { stars: '⭐', label: 'Proceso iniciado, visible actividad' },
+  ],
+};

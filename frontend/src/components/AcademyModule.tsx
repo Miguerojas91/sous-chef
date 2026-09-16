@@ -11,11 +11,13 @@ import { showToast } from '../utils/events';
 import { BookOpen, Clock, ChevronDown, ChevronUp, Lock, CheckCircle, PlayCircle, Crown } from 'lucide-react';
 import { EditableText } from './cms/EditableText';
 import { LessonViewer } from './LessonViewer';
+import { ACADEMY_LEVELS } from '../data/lessons';
+import type { AcademyLevel, Lesson } from '../data/lessons';
 import {
-    ACADEMY_LEVELS, LEVEL_CLASSES, TOTAL_LESSONS,
-    canOpenLesson, cmsKeyFor, loadCompletedLessons, saveCompletedLessons,
+    TOTAL_LESSONS, canOpenLesson, cmsKeyFor, loadCompletedLessons, saveCompletedLessons,
 } from '../data/academy';
-import type { AcademyLevel, Lesson, LessonAccess } from '../data/academy';
+import type { LessonAccess } from '../data/academy';
+import { WORLD_CLASSES } from '../data/worlds';
 
 const LessonCard = ({ lesson, level, access, isCompleted, onOpen }: {
     lesson: Lesson;
@@ -26,7 +28,7 @@ const LessonCard = ({ lesson, level, access, isCompleted, onOpen }: {
 }) => {
     const [open, setOpen] = useState(false);
     const key = cmsKeyFor(lesson);
-    const cls = LEVEL_CLASSES[level.world];
+    const cls = WORLD_CLASSES[level.world];
     const locked = access === 'locked';
     const panelId = `acad-lesson-${lesson.id}`;
 
@@ -76,7 +78,7 @@ const LessonCard = ({ lesson, level, access, isCompleted, onOpen }: {
                         <ul className="space-y-1">
                             {lesson.topics.map((t, i) => (
                                 <li key={i} className="flex items-start gap-2 text-sm text-neutral-800">
-                                    <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${cls.dot}`} aria-hidden />
+                                    <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${cls.bg}`} aria-hidden />
                                     <EditableText elementKey={`acad_lesson_${key}_top_${i}`} defaultText={t} as="span" />
                                 </li>
                             ))}
@@ -165,7 +167,7 @@ export const AcademyModule = () => {
 
             <div className="space-y-4">
                 {ACADEMY_LEVELS.map((level, li) => {
-                    const cls = LEVEL_CLASSES[level.world];
+                    const cls = WORLD_CLASSES[level.world];
                     const levelCompleted = level.lessons.filter(l => completedSet.has(l.id)).length;
                     const expanded = activeLevel === li || activeLevel === null;
 
@@ -192,7 +194,7 @@ export const AcademyModule = () => {
                                         {levelCompleted}/{level.lessons.length}
                                     </span>
                                     <div className="w-20 h-1.5 bg-white rounded-full overflow-hidden hidden sm:block" aria-hidden>
-                                        <div className={`h-full rounded-full ${cls.dot}`}
+                                        <div className={`h-full rounded-full ${cls.bg}`}
                                             style={{ width: `${(levelCompleted / level.lessons.length) * 100}%` }} />
                                     </div>
                                     {expanded

@@ -1,3 +1,5 @@
+import type { WorldId } from '../worlds';
+
 export interface TableRow {
   col1: string;
   col2: string;
@@ -29,6 +31,12 @@ export interface LessonContent {
 export interface Lesson {
   /** Identidad estable: progreso guardado, DOM y búsqueda. No cambia al renombrar. */
   id: string;
+  /**
+   * Prefijo de las claves de EditableText, guardadas en el servidor. Solo para
+   * clases renombradas: por defecto es el título sin espacios, así que al
+   * cambiar el título aquí se fija el anterior para no perder lo editado.
+   */
+  cmsKey?: string;
   emoji: string;
   title: string;
   duration: string;
@@ -39,14 +47,12 @@ export interface Lesson {
   content?: LessonContent;
 }
 
-export type WorldNumber = 1 | 2 | 3 | 4 | 5;
-
 export interface AcademyLevel {
   id: string;
   name: string;
   tag: string;
   /** Color del mundo del Modo Aventura que usa el nivel. */
-  world: WorldNumber;
+  world: WorldId;
   /** Nivel cerrado para todos, con o sin Premium. */
   locked?: boolean;
   lessons: Lesson[];

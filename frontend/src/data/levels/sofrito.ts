@@ -3,26 +3,31 @@ import type { LevelContent, LevelError, LevelRecipe, LevelStep } from './types';
 
 const STEPS: LevelStep[] = [
   {
+    emoji: '🧄',
     title: 'La base aromática: mise en place',
     desc: 'Corta en brunoise: ½ cebolla, 3 dientes de ajo, ½ pimiento verde y ½ pimiento rojo. Pela y trocea 2 tomates maduros. Todo debe estar listo antes de encender el fuego. En sofrito, el tiempo es crítico y el orden de adición lo es todo.',
     tip: 'La cebolla siempre primero. Es el vegetal que más tiempo necesita para perder su astringencia y desarrollar sabor dulce. El ajo va siempre después: si va primero, se quema.',
   },
   {
+    emoji: '🫒',
     title: 'El aceite y la temperatura correcta',
     desc: 'Usa aceite de oliva extra virgen. Calienta la sartén amplia a fuego medio-bajo. Agrega el aceite y espera a que brille levemente pero no humee. Si humea, bajaste demasiado tarde. El sofrito se cocina lento, nunca a fuego alto.',
     tip: 'Una sartén amplia con fondo grueso distribuye el calor uniformemente. Evita las de fondo delgado que crean puntos calientes y queman el ajo.',
   },
   {
+    emoji: '🧅',
     title: 'Pochar la cebolla (el paso más importante)',
     desc: 'Agrega la cebolla con una pizca de sal. Cocina a fuego medio-bajo durante 10–15 minutos, removiendo ocasionalmente. La cebolla primero se vuelve translúcida, luego libera agua, luego se ablanda y finalmente empieza a caramelizarse. Este es el punto exacto.',
     tip: 'La sal aplicada a la cebolla desde el inicio extrae su agua por ósmosis, acelerando el pochado. La cebolla bien pochada tiene sabor dulce y concentrado, nada que ver con la cruda.',
   },
   {
+    emoji: '🌶️',
     title: 'Añadir ajo y pimientos',
     desc: 'Cuando la cebolla esté translúcida y suave, agrega el ajo. Cocina 1 minuto removiendo. Luego añade los pimientos con una pizca más de sal. Cocina 8–10 minutos hasta que los pimientos estén suaves y el ajo integrado.',
     tip: 'El ajo en brunoise se integra más rápido. Si lo ves empezar a dorar en bordes, baja el fuego inmediatamente. El ajo quemado amarga todo el sofrito y no tiene solución.',
   },
   {
+    emoji: '🍅',
     title: 'El tomate: reducción y concentración',
     desc: 'Agrega el tomate triturado o en concassé. Mezcla todo. Sube ligeramente el fuego y deja reducir el agua del tomate durante 15–20 minutos, removiendo cada 2–3 minutos. El sofrito está listo cuando el aceite se separa levemente en los bordes y el conjunto brilla.',
     tip: 'La separación del aceite es la señal clave de un sofrito bien reducido. En catalán se llama "a punt": cuando ves el brillo aceitoso en bordes, tu sofrito está listo.',
@@ -67,7 +72,10 @@ const RECIPE: LevelRecipe = {
 
 export const content: LevelContent = {
   missionText: 'Preparar un <strong>sofrito base</strong>: cebolla bien pochada, ajo integrado sin quemar, pimiento suave y tomate reducido a punto brillante. Fotografía el sofrito en la sartén al final.',
-  missionTags: ['~30 min', 'Fuego lento'],
+  missionTags: [
+    { icon: '⏱️', label: '~30 min' },
+    { icon: '🔥', label: 'Fuego lento' },
+  ],
   steps: STEPS,
   errors: ERRORS,
   recipe: RECIPE,

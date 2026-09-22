@@ -22,7 +22,7 @@ function buildMessage(): string {
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 100) : '';
   const lines = [
-    'Hola, soy beta tester de Sous Chef y quiero reportar algo.',
+    '👋 Hola, soy beta tester de Sous Chef y quiero reportar algo.',
     '',
     '(Escribe aquí qué pasó)',
     '',
@@ -55,11 +55,11 @@ export const FeedbackButton = () => {
   return (
     <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-4 right-4 z-40 pointer-events-none">
       {expanded ? (
-        <div className="bg-white rounded-card shadow-overlay border border-neutral-200 p-1.5 pointer-events-auto flex items-center gap-1 max-w-[calc(100vw-2rem)]">
+        <div className="bg-white rounded-2xl shadow-2xl border border-emerald-100 p-1.5 pl-2 pointer-events-auto flex items-center gap-1 max-w-[calc(100vw-2rem)] animate-fade-in motion-reduce:animate-none">
           <button
             type="button"
             onClick={handleOpen}
-            className="flex items-center gap-2 min-h-11 px-4 rounded-control bg-world-1 hover:bg-emerald-800 text-white text-sm font-semibold transition-colors"
+            className="flex items-center gap-2 min-h-11 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold transition-colors"
           >
             <MessageCircle size={16} aria-hidden /> Reportar por WhatsApp
           </button>
@@ -67,9 +67,9 @@ export const FeedbackButton = () => {
             type="button"
             onClick={() => setExpanded(false)}
             aria-label="Cerrar"
-            className="w-11 h-11 flex items-center justify-center rounded-control text-neutral-600 hover:bg-neutral-100"
+            className="w-11 h-11 flex items-center justify-center rounded-xl text-neutral-400 hover:text-neutral-600"
           >
-            <X size={18} aria-hidden />
+            <X size={16} aria-hidden />
           </button>
         </div>
       ) : (
@@ -77,9 +77,10 @@ export const FeedbackButton = () => {
           type="button"
           onClick={() => setExpanded(true)}
           aria-label="Reportar un problema"
-          className="w-11 h-11 rounded-full bg-white shadow-raised border border-neutral-300 hover:border-world-1 flex items-center justify-center pointer-events-auto"
+          title="Reportar un problema o sugerencia"
+          className="w-11 h-11 rounded-full bg-white shadow-lg border border-emerald-200 hover:border-emerald-400 hover:scale-105 transition-all flex items-center justify-center pointer-events-auto opacity-60 hover:opacity-100 focus-visible:opacity-100"
         >
-          <MessageCircle size={18} className="text-world-1" aria-hidden />
+          <MessageCircle size={18} className="text-emerald-600" aria-hidden />
         </button>
       )}
     </div>

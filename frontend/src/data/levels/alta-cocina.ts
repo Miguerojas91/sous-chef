@@ -3,26 +3,31 @@ import type { LevelContent, LevelError, LevelRecipe, LevelStep } from './types';
 
 const STEPS: LevelStep[] = [
   {
+    emoji: '🌟',
     title: 'Qué define la alta cocina',
     desc: 'La alta cocina (haute cuisine) combina técnica precisa con una idea propia. En un plato de alta cocina cada elemento está ahí por una razón y está bien ejecutado.',
     tip: 'Ferran Adrià dijo: "La creatividad es no copiar." Un plato de alta cocina parte de una idea propia y usa la técnica para expresarla.',
   },
   {
+    emoji: '🌱',
     title: 'Ingredientes: temporalidad y proveniencia',
     desc: 'La alta cocina trabaja con ingredientes en su punto de madurez y de proveedores conocidos. Un ingrediente en su temporada tiene mucho más aroma que fuera de ella.',
     tip: 'Antes de cocinar en alta cocina, investiga qué ingredientes están en temporada en tu región ahora mismo. Construye el plato a partir del mejor ingrediente que consigas y después elige la receta.',
   },
   {
+    emoji: '✨',
     title: 'Técnicas de acabado: quenelles, xantana y gel',
     desc: 'La alta cocina tiene un vocabulario técnico propio. Una quenelle es una porción oval elegante hecha con dos cucharas. Los geles de xantana o agar dan texturas que no logras con harina o maicena. La emulsión con lecitina de soja crea espumas. Los aceites perfumados añaden color y aroma sin peso en boca.',
     tip: 'La quenelle requiere práctica. Usa dos cucharas del mismo tamaño, mojadas en agua caliente. El movimiento es de "pasar" la cucharada de una cuchara a la otra dando forma ovalada. Practica con helado antes de hacerlo con una merluza.',
   },
   {
+    emoji: '🎨',
     title: 'El emplatado de alta cocina: reglas y libertad',
     desc: 'Las reglas del emplatado de alta cocina: el fondo del plato siempre limpio en los bordes, máximo 5 elementos por plato, un punto focal claro, uso de salsa como pincelada o punto (no lago), garnish con función gustativa. Dentro de estas reglas, la libertad artística es total.',
     tip: 'Usa un bote de ketchup o squeeze bottle para la salsa. El control del trazo de salsa es uno de los gestos más identificables de la alta cocina y se aprende en minutos.',
   },
   {
+    emoji: '🏆',
     title: 'El plato final: concepto → técnica → ejecución',
     desc: 'Para crear tu plato de alta cocina: 1) Define el concepto en una frase ("el mar en primavera"). 2) Identifica las técnicas que lo expresan (fumet de crustáceos + vieiras sous-vide + gel de pepino + espuma de algas). 3) Ejecuta cada elemento por separado y ensambla en el momento del servicio.',
     tip: 'El último paso es el más difícil: cada elemento puede estar bien por separado y el plato fallar si no encajan. Prueba el plato ensamblado antes del servicio y ajusta.',
@@ -62,7 +67,10 @@ const RECIPE: LevelRecipe = {
 
 export const content: LevelContent = {
   missionText: 'Crear un <strong>plato de alta cocina completo</strong>: máximo 5 elementos, punto focal claro, salsa en trazo o punto, garnish funcional. Fotografía el plato emplatado sobre fondo negro o blanco.',
-  missionTags: ['Emplatado', '90 min'],
+  missionTags: [
+    { icon: '🎨', label: 'Emplatado' },
+    { icon: '⏱️', label: '90 min' },
+  ],
   steps: STEPS,
   errors: ERRORS,
   recipe: RECIPE,

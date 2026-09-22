@@ -29,6 +29,10 @@ export default {
                     Object.entries(WORLD_TOKENS).map(([id, t]) => [id, { DEFAULT: t.main, soft: t.soft, line: t.line }]),
                 ),
                 danger: '#b91c1c',
+                primary: "#10B981",
+                secondary: "#3B82F6",
+                accent: "#F59E0B",
+                dark: "#1F2937",
             },
             fontFamily: {
                 sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
@@ -43,14 +47,24 @@ export default {
                 overlay: '0 12px 32px rgb(0 0 0 / 0.18)',
             },
             animation: {
-                'fade-in': 'fadeIn 0.2s ease-out',
+                'fade-in': 'fadeIn 0.35s ease-out',
+                'slide-up': 'slideUp 0.4s ease-out',
+                'float': 'float 3s ease-in-out infinite',
                 'sheet-up': 'sheetUp 0.25s ease-out',
                 'pop': 'pop 0.4s ease-out',
             },
             keyframes: {
                 fadeIn: {
-                    '0%': { opacity: '0' },
-                    '100%': { opacity: '1' },
+                    '0%': { opacity: '0', transform: 'translateY(8px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+                slideUp: {
+                    '0%': { opacity: '0', transform: 'translateY(16px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+                float: {
+                    '0%, 100%': { transform: 'translateY(0px)' },
+                    '50%': { transform: 'translateY(-6px)' },
                 },
                 sheetUp: {
                     '0%': { transform: 'translateY(16px)', opacity: '0' },

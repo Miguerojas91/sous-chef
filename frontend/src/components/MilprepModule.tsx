@@ -15,7 +15,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, BookOpen, MessageSquare, CheckCircle2, Clock, ChevronRight } from 'lucide-react';
+import { ShoppingCart, BookOpen, MessageSquare, CheckCircle2, Clock, CalendarDays } from 'lucide-react';
 import { EditableText } from './cms/EditableText';
 import { MILPREP_RECIPES, type Recipe } from '../data/milprepRecipes';
 import { ChatSessionScreen } from './ChatSessionScreen';
@@ -177,6 +177,22 @@ export const MilprepModule: React.FC = () => {
     setActiveTab('chat');
   };
 
+  // Franja naranja con las recetas de la semana: en el chat y antes de empezarlo.
+  const weekStrip = selectedRecipes.length > 0 && (
+    <div className="flex-shrink-0 px-3 py-2 bg-orange-50 border-b border-orange-100 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-2 items-center">
+        <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wide whitespace-nowrap" aria-hidden>Esta semana:</span>
+        <ul aria-label="Recetas de esta semana" className="flex gap-2 items-center">
+          {selectedRecipes.map(r => (
+            <li key={r.id} className="whitespace-nowrap text-[11px] font-semibold bg-white border border-orange-200 text-orange-700 px-2.5 py-1 rounded-full shadow-sm flex-shrink-0">
+              {r.title}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+
   if ((activeTab === 'chat' && session.started) || session.voiceMode) {
     return (
       <ChatSessionScreen
@@ -187,17 +203,7 @@ export const MilprepModule: React.FC = () => {
         backLabel="Volver a la lista de compras (se guarda la conversación)"
         endDescription="Se borran el chat, las recetas elegidas y la lista de esta semana."
         onEnd={handleEndSession}
-        extraTop={selectedRecipes.length > 0 && (
-          <div className="flex-shrink-0 px-3 py-2 bg-white border-b border-neutral-200 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <ul aria-label="Recetas de esta semana" className="flex gap-2 items-center">
-              {selectedRecipes.map(r => (
-                <li key={r.id} className="whitespace-nowrap text-xs font-medium bg-neutral-100 text-neutral-800 px-2.5 py-1 rounded-full flex-shrink-0">
-                  {r.title}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        extraTop={weekStrip}
       />
     );
   }
@@ -215,199 +221,226 @@ export const MilprepModule: React.FC = () => {
   };
 
   const floatingClass = 'fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-6 z-40';
+  const count = selectedRecipeIds.length;
 
   return (
-    <div className="flex flex-col h-full bg-neutral-50 text-neutral-900">
-      <div className="bg-white px-4 pt-4 pb-3 md:px-6">
-        <h1 className="text-xl md:text-2xl font-extrabold text-neutral-900">
-          <EditableText elementKey="milprep_header_title" defaultText="Mealprep" />
-        </h1>
-        <p className="text-sm text-neutral-600 mt-0.5">
-          <EditableText elementKey="milprep_header_subtitle" defaultText="Eliges las recetas, Sous arma la lista de compras y te guía." as="span" />
-        </p>
+    <div className="flex flex-col h-full bg-gray-50 text-gray-900 font-sans">
+      <div className="bg-white p-6 border-b border-gray-200 shadow-sm flex items-center justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold flex items-center gap-3 text-orange-600">
+            <CalendarDays className="w-8 h-8 flex-shrink-0" aria-hidden />
+            <EditableText elementKey="milprep_header_title" defaultText="Mealprep" />
+          </h1>
+          <p className="text-gray-500 mt-1">
+            <EditableText elementKey="milprep_header_subtitle" defaultText="Eliges las recetas, Sous arma la lista de compras y te guía." as="span" />
+          </p>
+        </div>
       </div>
 
-      <div role="tablist" aria-label="Pasos del mealprep" className="bg-white border-b border-neutral-200 flex flex-shrink-0">
-        {TABS.map(({ id, icon: Icon, elementKey, label }) => {
-          const selected = activeTab === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              id={`milprep-tab-${id}`}
-              aria-selected={selected}
-              aria-controls="milprep-panel"
-              onClick={() => setActiveTab(id)}
-              className={`flex-1 min-w-0 min-h-12 flex items-center justify-center gap-2 px-2 text-sm font-semibold border-b-2 transition-colors ${
-                selected ? 'text-brand-700 border-brand-700' : 'text-neutral-600 border-transparent hover:text-neutral-900 hover:bg-neutral-50'
-              }`}
-            >
-              <Icon size={18} aria-hidden className="flex-shrink-0" />
-              <span className="truncate">
-                <EditableText elementKey={elementKey} defaultText={label} />
-              </span>
-            </button>
-          );
-        })}
+      <div className="bg-white border-b border-gray-200 flex-shrink-0">
+        <div role="tablist" aria-label="Pasos del mealprep" className="max-w-4xl mx-auto flex">
+          {TABS.map(({ id, icon: Icon, elementKey, label }) => {
+            const selected = activeTab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                id={`milprep-tab-${id}`}
+                aria-selected={selected}
+                aria-controls="milprep-panel"
+                onClick={() => setActiveTab(id)}
+                className={`flex-1 min-w-0 min-h-12 flex items-center justify-center gap-2 px-2 py-4 font-medium border-b-2 transition-colors ${
+                  selected ? 'text-orange-600 border-orange-600' : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" aria-hidden />
+                <span className="truncate">
+                  <EditableText elementKey={elementKey} defaultText={label} />
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div
         id="milprep-panel"
         role="tabpanel"
         aria-labelledby={`milprep-tab-${activeTab}`}
-        className="flex-1 min-h-0 overflow-y-auto"
+        className="flex-1 min-h-0 overflow-y-auto p-6"
       >
-        {activeTab === 'recetas' && (
-          <div className="max-w-2xl mx-auto p-4 md:p-6 pb-28 md:pb-24">
-            <div className="flex items-baseline justify-between gap-3 mb-3">
-              <h2 className="text-lg font-bold text-neutral-900">Catálogo de recetas</h2>
-              <p className="text-sm text-neutral-600">Elige hasta {MAX_RECIPES}</p>
+        <div className="max-w-4xl mx-auto">
+          {activeTab === 'recetas' && (
+            <div className="pb-28 md:pb-24">
+              <div className="flex items-center justify-between gap-3 mb-6">
+                <h2 className="text-xl font-bold text-gray-800">Catálogo de recetas</h2>
+                <p className="text-sm text-neutral-400">Elige hasta {MAX_RECIPES}</p>
+              </div>
+              <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {MILPREP_RECIPES.map((recipe) => {
+                  const isSelected = selectedRecipeIds.includes(recipe.id);
+                  return (
+                    <li key={recipe.id}>
+                      <button
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => toggleRecipe(recipe.id)}
+                        className={`w-full text-left bg-white rounded-2xl shadow-sm border ${
+                          isSelected ? 'border-orange-500 ring-2 ring-orange-200' : 'border-gray-100'
+                        } overflow-hidden hover:shadow-md transition-all cursor-pointer group relative`}
+                      >
+                        <span className="block h-40 overflow-hidden relative">
+                          <img
+                            src={recipe.img}
+                            alt=""
+                            loading="lazy"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <span
+                            aria-hidden
+                            className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm ${
+                              isSelected ? 'bg-orange-500 text-white' : 'bg-white text-gray-300'
+                            }`}
+                          >
+                            <CheckCircle2 className="w-5 h-5" />
+                          </span>
+                        </span>
+                        <span className="block p-4">
+                          <span className="block font-bold text-gray-800 line-clamp-2 min-h-[3rem]">
+                            <EditableText elementKey={`milprep_rec_${recipe.id}_title`} defaultText={recipe.title} as="span" />
+                          </span>
+                          <span className="flex items-center gap-2 text-gray-500 text-sm mt-3">
+                            <Clock className="w-4 h-4" aria-hidden />
+                            <span>{recipe.time}</span>
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
-            <ul className="bg-white rounded-card border border-neutral-200 divide-y divide-neutral-100 overflow-hidden">
-              {MILPREP_RECIPES.map((recipe) => {
-                const isSelected = selectedRecipeIds.includes(recipe.id);
-                return (
-                  <li key={recipe.id}>
+          )}
+
+          {activeTab === 'mercado' && (
+            <div className="mb-24 bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <ShoppingCart className="text-orange-500 w-6 h-6 flex-shrink-0" aria-hidden />
+                    Tu lista de compras
+                  </h2>
+                  {selectedRecipes.length > 0 && (
                     <button
                       type="button"
-                      aria-pressed={isSelected}
-                      onClick={() => toggleRecipe(recipe.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                        isSelected ? 'bg-brand-50' : 'hover:bg-neutral-50'
-                      }`}
+                      onClick={market.toggleAllChecked}
+                      className="group min-h-11 -my-2 flex items-center outline-none"
                     >
-                      <img
-                        src={recipe.img}
-                        alt=""
-                        loading="lazy"
-                        className="w-16 h-16 rounded-control object-cover flex-shrink-0 bg-neutral-100"
-                      />
-                      <span className="flex-1 min-w-0">
-                        <span className="block font-semibold text-neutral-900 leading-snug line-clamp-2">
-                          <EditableText elementKey={`milprep_rec_${recipe.id}_title`} defaultText={recipe.title} as="span" />
-                        </span>
-                        <span className="flex items-center gap-1.5 text-sm text-neutral-600 mt-1">
-                          <Clock size={14} aria-hidden />
-                          {recipe.time}
-                        </span>
-                      </span>
-                      <span
-                        aria-hidden
-                        className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          isSelected ? 'bg-brand-700 text-white' : 'border-2 border-neutral-300'
-                        }`}
-                      >
-                        {isSelected && <CheckCircle2 size={18} />}
+                      <span className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-all group-focus-visible:ring-2 group-focus-visible:ring-orange-400 ${
+                        market.allChecked
+                          ? 'bg-green-100 text-green-700 border-green-300 group-hover:bg-green-200'
+                          : 'bg-orange-50 text-orange-600 border-orange-200 group-hover:bg-orange-100'
+                      }`}>
+                        {market.allChecked ? <><span aria-hidden>✓ </span>Desmarcar todo</> : 'Ya tengo todo'}
                       </span>
                     </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
+                  )}
+                </div>
+                <div className="flex items-center justify-between sm:justify-end gap-4 bg-gray-50 px-4 py-2 rounded-xl border border-gray-200">
+                  <span className="text-sm font-semibold text-gray-600">Personas:</span>
+                  <ServingsStepper variant="square" value={peopleCount} onChange={setPeopleCount} />
+                </div>
+              </div>
 
-        {activeTab === 'mercado' && (
-          <div className="max-w-2xl mx-auto p-4 md:p-6 pb-28 md:pb-24 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-bold text-neutral-900">Tu lista de compras</h2>
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-semibold text-neutral-700">Personas</span>
-                <ServingsStepper value={peopleCount} onChange={setPeopleCount} />
+              {selectedRecipes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-neutral-400">
+                  <ShoppingCart className="w-12 h-12 mb-3 text-neutral-200" aria-hidden />
+                  <p className="font-bold text-neutral-600 mb-1">La lista está vacía</p>
+                  <p className="text-sm">Elige tus recetas y aquí aparecen los ingredientes sumados.</p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('recetas')}
+                    className="mt-4 min-h-11 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-sm font-bold shadow-sm transition-all"
+                  >
+                    Elegir recetas
+                  </button>
+                </div>
+              ) : (
+                <MarketList variant="milprep" items={groceryItems} market={market} onAskChef={askChef} />
+              )}
+            </div>
+          )}
+
+          {activeTab === 'chat' && (
+            <div className="flex flex-col bg-neutral-50 rounded-2xl border border-neutral-100 shadow-sm overflow-hidden">
+              {weekStrip}
+              <div className="flex flex-col items-center justify-center px-8 py-12">
+                <div className="text-6xl mb-5" aria-hidden>🍳</div>
+                <h2 className="text-xl font-black text-neutral-800 text-center mb-2">¿Listo para cocinar?</h2>
+                {selectedRecipes.length > 0 ? (
+                  <>
+                    <p className="text-sm text-neutral-500 text-center mb-8">
+                      <span className="font-bold text-orange-500">{plural(selectedRecipes.length, 'receta', 'recetas')}</span> para {plural(peopleCount, 'persona', 'personas')}. Sous te guía paso a paso y te dice qué adelantar mientras algo se cocina.
+                    </p>
+                    <ul className="w-full max-w-xs space-y-1.5 mb-8">
+                      {selectedRecipes.map(r => (
+                        <li key={r.id} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-neutral-100 shadow-sm">
+                          <CheckCircle2 size={14} className="text-orange-400 flex-shrink-0" aria-hidden />
+                          <span className="text-sm text-neutral-700 font-medium truncate">{r.title}</span>
+                          <span className="text-xs text-neutral-400 ml-auto flex-shrink-0">{r.time}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => startChat()}
+                      className="min-h-12 px-8 py-4 rounded-2xl font-black text-white text-base transition-all bg-gradient-to-r from-orange-500 to-rose-500 shadow-xl shadow-orange-400/30 active:scale-95"
+                    >
+                      Empezar a cocinar <span aria-hidden>🚀</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-neutral-400 text-center mb-8">Todavía no hay recetas para esta semana.</p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('recetas')}
+                      className="min-h-12 px-8 py-4 rounded-2xl font-black text-white text-base transition-all bg-neutral-300 hover:bg-neutral-400 active:scale-95"
+                    >
+                      Elige al menos una receta <span aria-hidden>→</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
-
-            {selectedRecipes.length === 0 ? (
-              <div className="bg-white rounded-card border border-neutral-200 p-4 text-center">
-                <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-neutral-500" aria-hidden />
-                <p className="font-semibold text-neutral-900">La lista está vacía</p>
-                <p className="text-sm text-neutral-600 mt-1">Elige tus recetas y aquí aparecen los ingredientes sumados.</p>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('recetas')}
-                  className="mt-3 min-h-11 px-4 rounded-control bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold"
-                >
-                  Elegir recetas
-                </button>
-              </div>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={market.toggleAllChecked}
-                  className={`min-h-11 px-4 rounded-full border text-sm font-semibold transition-colors ${
-                    market.allChecked
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                      : 'bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-50'
-                  }`}
-                >
-                  {market.allChecked ? 'Desmarcar todo' : 'Ya tengo todo'}
-                </button>
-
-                <MarketList items={groceryItems} market={market} onAskChef={askChef} />
-              </>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'chat' && (
-          <div className="max-w-md mx-auto p-4 md:p-6">
-            <h2 className="text-xl font-extrabold text-neutral-900">¿Listo para cocinar?</h2>
-            {selectedRecipes.length > 0 ? (
-              <>
-                <p className="text-sm text-neutral-600 mt-1">
-                  {plural(selectedRecipes.length, 'receta', 'recetas')} para {plural(peopleCount, 'persona', 'personas')}. Sous te guía paso a paso y te dice qué adelantar mientras algo se cocina.
-                </p>
-                <ul className="mt-4 bg-white rounded-card border border-neutral-200 divide-y divide-neutral-100">
-                  {selectedRecipes.map(r => (
-                    <li key={r.id} className="flex items-center gap-3 min-h-12 px-4 py-2">
-                      <span className="flex-1 min-w-0 text-sm font-medium text-neutral-900 truncate">{r.title}</span>
-                      <span className="text-sm text-neutral-600 flex-shrink-0">{r.time}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => startChat()}
-                  className="mt-4 w-full min-h-12 rounded-control bg-brand-700 hover:bg-brand-800 text-white font-semibold transition-colors"
-                >
-                  Empezar a cocinar
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-neutral-600 mt-1">Todavía no hay recetas para esta semana.</p>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('recetas')}
-                  className="mt-4 w-full min-h-12 rounded-control border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-900 font-semibold transition-colors"
-                >
-                  Elige al menos una receta
-                </button>
-              </>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {activeTab === 'recetas' && (
-        <div className={`${floatingClass} flex items-center gap-2`}>
+        <div className={`${floatingClass} flex flex-col items-end gap-2`}>
           <p
             role="status"
-            className="min-h-11 px-4 flex items-center gap-2 rounded-full bg-white border border-neutral-200 shadow-overlay text-sm font-semibold text-neutral-800"
+            className={`min-h-11 flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-xl font-bold text-sm transition-all duration-300 ${
+              count === MAX_RECIPES
+                ? 'bg-green-500 text-white shadow-green-400/40'
+                : count > 0
+                ? 'bg-orange-500 text-white shadow-orange-400/40'
+                : 'bg-white text-neutral-500 border border-neutral-200 shadow-neutral-200/60'
+            }`}
           >
-            <ShoppingCart size={16} aria-hidden />
-            {selectedRecipeIds.length} de {MAX_RECIPES}
+            <ShoppingCart size={15} aria-hidden />
+            <span>{count} / {MAX_RECIPES}<span className="sr-only"> recetas elegidas</span></span>
+            {count === MAX_RECIPES && <span aria-hidden>✓</span>}
           </p>
-          {selectedRecipeIds.length > 0 && (
+          {count > 0 && (
             <button
               type="button"
               onClick={() => setActiveTab('mercado')}
-              className="min-h-11 pl-4 pr-3 flex items-center gap-1 rounded-full bg-brand-700 hover:bg-brand-800 text-white shadow-overlay text-sm font-semibold transition-colors"
+              className="min-h-11 flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-xl font-bold text-sm bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50 active:scale-95 transition-all shadow-neutral-200/60"
             >
-              Siguiente
-              <ChevronRight size={18} aria-hidden />
+              Siguiente <span aria-hidden>→</span>
             </button>
           )}
         </div>
@@ -418,10 +451,9 @@ export const MilprepModule: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('chat')}
-            className="min-h-11 pl-4 pr-3 flex items-center gap-1 rounded-full bg-brand-700 hover:bg-brand-800 text-white shadow-overlay text-sm font-semibold transition-colors"
+            className="min-h-11 flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-xl font-bold text-sm bg-orange-500 text-white hover:bg-orange-600 active:scale-95 transition-all shadow-orange-400/40"
           >
-            Ir a cocinar
-            <ChevronRight size={18} aria-hidden />
+            Ir a cocinar <span aria-hidden>→</span>
           </button>
         </div>
       )}
@@ -429,33 +461,41 @@ export const MilprepModule: React.FC = () => {
       {showReadyBanner && (
         <Dialog
           title="Ya tienes tus 7 recetas"
-          description={`Sous suma los ingredientes para ${plural(peopleCount, 'persona', 'personas')} en la lista de compras.`}
+          hideTitle
           onClose={() => setShowReadyBanner(false)}
           size="sm"
           footer={
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               <button
                 type="button"
                 onClick={() => { setShowReadyBanner(false); setActiveTab('mercado'); }}
-                className="w-full min-h-11 rounded-control bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors"
+                className="w-full min-h-11 py-3 rounded-xl font-black text-white bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg shadow-green-500/30 active:scale-95 transition-all"
               >
-                Ver lista de compras
+                Ver lista de compras <span aria-hidden>→</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowReadyBanner(false)}
-                className="w-full min-h-11 rounded-control border border-neutral-300 text-neutral-800 hover:bg-neutral-50 font-semibold text-sm transition-colors"
+                className="w-full min-h-11 py-2 text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
               >
                 Seguir en recetas
               </button>
             </div>
           }
         >
-          <ul className="mt-3 space-y-1.5">
+          {/* Cabecera verde a sangre: compensa el padding del diálogo. */}
+          <div className="-mx-5 -mt-5 mb-4 rounded-t-sheet bg-gradient-to-br from-green-400 to-emerald-600 p-6 text-center text-white">
+            <div className="text-5xl mb-2" aria-hidden>🛒</div>
+            <p className="text-2xl font-black" aria-hidden>Ya tienes tus 7 recetas</p>
+            <p className="text-white/85 text-sm mt-1">
+              Sous suma los ingredientes para {plural(peopleCount, 'persona', 'personas')} en la lista de compras.
+            </p>
+          </div>
+          <ul className="grid grid-cols-2 gap-2 text-xs text-neutral-500">
             {selectedRecipes.map(r => (
-              <li key={r.id} className="flex items-center gap-2 text-sm text-neutral-800">
-                <CheckCircle2 size={16} className="text-emerald-700 flex-shrink-0" aria-hidden />
-                <span className="min-w-0 truncate">{r.title}</span>
+              <li key={r.id} className="flex items-center gap-1.5 bg-green-50 rounded-lg px-2.5 py-1.5 min-w-0">
+                <CheckCircle2 size={12} className="text-green-500 flex-shrink-0" aria-hidden />
+                <span className="font-medium text-neutral-700 truncate">{r.title}</span>
               </li>
             ))}
           </ul>

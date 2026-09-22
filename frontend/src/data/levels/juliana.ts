@@ -3,26 +3,31 @@ import type { LevelContent, LevelError, LevelStep } from './types';
 
 const STEPS: LevelStep[] = [
   {
+    emoji: '🧑‍🍳',
     title: 'Prepara tu mise en place',
     desc: 'Antes de cortar cualquier cosa, organiza tu estación. Necesitas: tabla de cortar limpia y antideslizante, cuchillo de chef afilado (o un santoku), y tu vegetal elegido. Para empezar, usa zanahoria o calabacín.',
     tip: 'Coloca un paño húmedo debajo de la tabla para que no se mueva mientras cortas.',
   },
   {
+    emoji: '🔪',
     title: 'Estabiliza el vegetal: el corte base',
     desc: 'Corta una rodaja fina del lado más largo del vegetal para crear una superficie plana. Esto es el "corte base" y evita que la zanahoria ruede mientras trabajas. Colócala con el lado plano hacia abajo: ahora es segura.',
     tip: 'Si el vegetal se mueve, tus dedos corren peligro. Por eso el corte base va antes de cualquier otro corte.',
   },
   {
+    emoji: '📏',
     title: 'Corta láminas (planches)',
     desc: 'Con el vegetal estabilizado, córtalo en láminas de 3 mm de grosor a lo largo. Usa la técnica de "garra de gato": los nudillos hacia afuera y la yema de los dedos doblada hacia adentro para protegerlos. El cuchillo guía contra los nudillos.',
     tip: 'La medida estándar de la juliana es 3 mm × 3 mm × 6 cm. En la cocina profesional se mide con calibrador. Entrena el ojo con una regla la primera vez.',
   },
   {
+    emoji: '🥕',
     title: 'Apila las láminas y corta los bastones',
     desc: 'Apila 3–4 láminas una sobre otra (no más, o resbalan). Ahora corta a lo largo del eje del vegetal en bastones de 3 mm de ancho. El resultado: tiras uniformes de 3mm × 3mm × 6cm. ¡Eso es Juliana!',
     tip: 'Mantén una velocidad constante y deja que el peso del cuchillo haga el trabajo. No presiones hacia abajo con fuerza. El filo corta, la fuerza no.',
   },
   {
+    emoji: '✅',
     title: 'Consistencia y uniformidad',
     desc: 'Revisa tus bastones: ¿tienen el mismo grosor? ¿La misma longitud? En un restaurante, si los bastones no son uniformes no salen al plato. Si los bastones miden lo mismo, se cocinan al mismo tiempo.',
     tip: 'Los primeros cortes salen irregulares y es normal. Con práctica ganas precisión, y la velocidad llega después.',
@@ -38,7 +43,10 @@ const ERRORS: LevelError[] = [
 
 export const content: LevelContent = {
   missionText: 'Cortar <strong>una zanahoria o calabacín entero</strong> en bastones <strong>Juliana uniformes</strong>: 3 mm × 3 mm × 6 cm. Fotografía tu resultado en la tabla y súbelo para completar el nivel.',
-  missionTags: ['~20 min', '3mm × 3mm × 6cm'],
+  missionTags: [
+    { icon: '⏱️', label: '~20 min' },
+    { icon: '📏', label: '3mm × 3mm × 6cm' },
+  ],
   steps: STEPS,
   errors: ERRORS,
   challengeHint: 'Fotografía tu corte juliana en la tabla, de frente, con buena luz. Debe verse la uniformidad de los bastones.',

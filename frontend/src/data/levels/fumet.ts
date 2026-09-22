@@ -3,26 +3,31 @@ import type { LevelContent, LevelError, LevelRecipe, LevelStep } from './types';
 
 const STEPS: LevelStep[] = [
   {
+    emoji: '🐟',
     title: 'Qué es el fumet y por qué es diferente',
     desc: 'El fumet de pescado (fumet de poisson) es el fondo base del mar. A diferencia del fondo de carne, el fumet se cocina solo 20–25 minutos. Las espinas de pescado, si se cocinan más, liberan un sabor amargo y gelatinoso desagradable. Rapidez es la clave.',
     tip: 'El fumet usa espinas de pescados blancos: lenguado, lubina, rodaballo, merluza. Evita los pescados azules como sardina o salmón: sus aceites enturbian y amargan el fondo en minutos.',
   },
   {
+    emoji: '🔪',
     title: 'Preparar las espinas: limpiar y desangrar',
     desc: 'Lava las espinas bajo agua fría corriente durante 10 minutos para eliminar la sangre que generaría turbidez y amargor. Retira las agallas (si hay) porque amargan mucho. Trocea las espinas y las cabezas para que quepan en la olla y liberen mejor su sabor.',
     tip: 'El agua del lavado debe salir clara antes de pasar al siguiente paso. Si el agua sigue roja, lava más tiempo. La sangre enturbia y amarga el fumet.',
   },
   {
+    emoji: '🥂',
     title: 'Sudar la mirepoix de mariscos',
     desc: 'En la olla, derrite mantequilla a fuego suave. Suda (cocina sin color) la mirepoix blanca: cebolla, apio y puerro, sin zanahoria porque añade color y dulzor. 5 minutos hasta translúcida. Agrega las espinas y suda 5 minutos más.',
     tip: 'La mirepoix blanca (sin zanahoria ni tomate) es la base del fumet clásico, que debe quedar claro y de color paja. Con zanahoria se oscurece y cambia el perfil de sabor.',
   },
   {
+    emoji: '🍾',
     title: 'Vino blanco y agua: la cocción de 20 min',
     desc: 'Agrega vino blanco seco (150 ml), lleva a hervor y reduce 2 minutos para evaporar el alcohol. Agrega agua fría y el bouquet garni (laurel, perejil, eneldo). Sube a hervor suave, desespuma y cocina exactamente 20 minutos. No más.',
     tip: 'El eneldo es el compañero clásico del pescado. Si no tienes, usa solo perejil y laurel. Respeta los 20 minutos: si te pasas, el caldo se vuelve amargo.',
   },
   {
+    emoji: '✨',
     title: 'Colar fino y usar inmediatamente',
     desc: 'Cuela a través de colador fino o manta de cielo sin presionar. El fumet debe quedar color paja claro y translúcido. Úsalo inmediatamente o enfría rápidamente. El fumet de pescado se conserva 2 días en frío y 1 mes congelado.',
     tip: 'El fumet fresco huele a mar, limpio y fresco. Si huele fuerte a "pescado viejo" es que las espinas no estaban frescas. Siempre pide las espinas del día en la pescadería.',
@@ -66,7 +71,10 @@ const RECIPE: LevelRecipe = {
 
 export const content: LevelContent = {
   missionText: 'Preparar un <strong>fumet de pescado blanco</strong> limpio y translúcido: color paja, aroma marino limpio, sin amargores. Fotografía el fumet colado en un vaso o tazón claro.',
-  missionTags: ['20 minutos exactos', 'Espinas de pescado blanco'],
+  missionTags: [
+    { icon: '⏱️', label: '20 minutos exactos' },
+    { icon: '🐟', label: 'Espinas de pescado blanco' },
+  ],
   steps: STEPS,
   errors: ERRORS,
   recipe: RECIPE,

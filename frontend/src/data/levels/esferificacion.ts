@@ -3,26 +3,31 @@ import type { LevelContent, LevelError, LevelRecipe, LevelStep } from './types';
 
 const STEPS: LevelStep[] = [
   {
+    emoji: '🔬',
     title: 'La ciencia: alginato de sodio y calcio',
     desc: 'La esferificación es una técnica de cocina molecular popularizada por Ferran Adrià. Mezclas un líquido con alginato de sodio y lo introduces en un baño de cloruro de calcio. La reacción química crea una membrana gelificada que encierra el líquido en una esfera que "explota" en la boca.',
     tip: 'Hay dos tipos: esferificación directa (alginato en el líquido) y esferificación inversa (calcio en el líquido). La inversa es más estable y funciona mejor con productos lácteos y alcoholes.',
   },
   {
+    emoji: '⚗️',
     title: 'Preparar el baño de alginato',
     desc: 'Para la esferificación directa: disuelve 2g de alginato de sodio en 500ml de líquido (jugo, caldos, purés) con batidora de mano. Deja reposar 30 minutos en nevera para que desaparezcan las burbujas. El líquido sin burbujas da esferas lisas.',
     tip: 'El alginato no se disuelve bien en frío: bate con batidora de inmersión durante 3 minutos mínimo. Si quedan burbujas, las esferas salen irregulares y con agujeros. El reposo en nevera es obligatorio.',
   },
   {
+    emoji: '🛁',
     title: 'Preparar el baño de calcio',
     desc: 'Disuelve 5g de cloruro de calcio en 500ml de agua limpia. Mezcla bien hasta disolver completamente. Este es el baño donde sumergirás las esferas. Usa agua helada para que la membrana se forme más lentamente y resulte más uniforme.',
     tip: 'El baño de calcio no cambia de temperatura durante el proceso. Puedes reutilizarlo para varias tandas de esferas. Cámbialo cuando se vuelva viscoso.',
   },
   {
+    emoji: '💧',
     title: 'Formar las esferas: la técnica de gota',
     desc: 'Con una jeringa o cuchara medidora, deja caer gotas del líquido de alginato directamente al baño de calcio desde una altura de 3–5 cm. La gota forma la esfera al contacto. Déjalas en el baño 60–90 segundos sin moverlas demasiado. Más tiempo = membrana más gruesa.',
     tip: 'La altura de la gota determina la forma de la esfera: muy alta = esfera aplanada. Muy baja = esfera irregular. 3–5 cm sobre la superficie es el rango ideal. Practica con agua primero.',
   },
   {
+    emoji: '✨',
     title: 'Enjuagar y servir inmediatamente',
     desc: 'Rescata las esferas con una cuchara perforada y enjuágalas suavemente en un baño de agua limpia para retirar el exceso de calcio (que da sabor amargo). Sirve de inmediato. Las esferas de esferificación directa siguen gelificando con el tiempo y en pocas horas son sólidas.',
     tip: 'Las esferas de esferificación inversa (con yogur, nata o productos grasos) son más estables y pueden prepararse con más anticipación. Para el servicio en restaurante, la inversa es más práctica.',
@@ -62,7 +67,10 @@ const RECIPE: LevelRecipe = {
 
 export const content: LevelContent = {
   missionText: 'Crear <strong>esferas redondas</strong> mediante esferificación directa: membrana fina, interior líquido que explote en boca, sin huecos ni forma irregular. Fotografía las esferas en una cuchara o plato.',
-  missionTags: ['Cocina molecular', '~45 min'],
+  missionTags: [
+    { icon: '⚗️', label: 'Cocina molecular' },
+    { icon: '⏱️', label: '~45 min' },
+  ],
   steps: STEPS,
   errors: ERRORS,
   recipe: RECIPE,

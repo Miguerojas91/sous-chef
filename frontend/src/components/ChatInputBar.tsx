@@ -4,6 +4,9 @@
  * El campo NO se deshabilita mientras Sous responde. Deshabilitarlo cierra el
  * teclado en móvil y obliga a tocar el campo otra vez entre paso y paso de la
  * receta; solo se bloquea el envío.
+ *
+ * Los botones redondos se ven de 28px pero el área táctil es de 44px: el
+ * margen negativo evita que la barra crezca.
  */
 import { useState } from 'react';
 import { Mic, Send } from 'lucide-react';
@@ -15,6 +18,9 @@ interface ChatInputBarProps {
   onStartVoice?: () => void;
   placeholder?: string;
 }
+
+const hitArea = 'group w-11 h-11 -my-2 flex-shrink-0 flex items-center justify-center rounded-full outline-none';
+const circle = 'w-7 h-7 rounded-full flex items-center justify-center text-white transition-colors group-focus-visible:ring-2 group-focus-visible:ring-offset-2';
 
 export const ChatInputBar = ({
   onSend, isLoading, onStartVoice, placeholder = 'Escribe tu pregunta',
@@ -29,16 +35,19 @@ export const ChatInputBar = ({
   };
 
   return (
-    <div className="flex-shrink-0 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] bg-white border-t border-neutral-200">
-      <div className="flex items-center gap-1 bg-neutral-50 border border-neutral-300 rounded-card pl-1 pr-1 focus-within:ring-2 focus-within:ring-brand-700 focus-within:border-transparent">
+    <div className="flex-shrink-0 px-3 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] bg-white border-t border-neutral-100">
+      <div className="flex items-center gap-1 bg-neutral-50 border border-neutral-200 rounded-2xl px-1 py-1.5 focus-within:border-orange-300">
         {onStartVoice && (
           <button
             type="button"
             onClick={onStartVoice}
             aria-label="Hablar con Sous (manos libres)"
-            className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-control text-neutral-800 hover:bg-neutral-200 transition-colors"
+            title="Hablar con Sous (manos libres)"
+            className={hitArea}
           >
-            <Mic size={20} aria-hidden />
+            <span className={`${circle} bg-violet-600 group-hover:bg-violet-700 group-focus-visible:ring-violet-400`}>
+              <Mic className="w-4 h-4" aria-hidden />
+            </span>
           </button>
         )}
         <input
@@ -54,16 +63,18 @@ export const ChatInputBar = ({
           enterKeyHint="send"
           aria-label="Escribe tu pregunta a Sous"
           placeholder={isLoading ? 'Sous está respondiendo…' : placeholder}
-          className={`flex-1 min-w-0 min-h-11 bg-transparent border-none outline-none text-base md:text-sm text-neutral-900 placeholder:text-neutral-500 ${onStartVoice ? '' : 'pl-3'}`}
+          className={`flex-1 min-w-0 min-h-7 bg-transparent border-none outline-none text-base md:text-sm text-neutral-700 placeholder:text-neutral-400 ${onStartVoice ? '' : 'pl-2'}`}
         />
         <button
           type="button"
           onClick={send}
           disabled={!canSend}
           aria-label="Enviar"
-          className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-control bg-brand-700 hover:bg-brand-800 text-white transition-colors disabled:bg-neutral-300 disabled:text-neutral-600"
+          className={`${hitArea} disabled:cursor-not-allowed`}
         >
-          <Send size={18} aria-hidden />
+          <span className={`${circle} bg-orange-500 group-hover:bg-orange-600 group-disabled:opacity-40group-focus-visible:ring-orange-400`}>
+            <Send className="w-4 h-4" aria-hidden />
+          </span>
         </button>
       </div>
     </div>

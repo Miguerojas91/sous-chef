@@ -11,27 +11,33 @@
 
 import { useState, useId, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { ChevronDown, ChevronRight, ShoppingCart, Clock, ChefHat, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, ShoppingCart, Clock, ChefHat, Globe, MessageSquare, Users } from 'lucide-react';
 import { ChatSessionScreen } from './ChatSessionScreen';
 import { MarketList } from './MarketItemRow';
 import { ServingsStepper } from './ServingsStepper';
-import { ScreenHeader } from './ui/ScreenHeader';
 import { ConfirmDialog } from './ui/Dialog';
 import { useCookingChatSession } from '../hooks/useCookingChatSession';
 import {
   describeMarketChanges, marketChanges, useMarketList, type MarketItem, type MarketSummary,
 } from '../hooks/useMarketList';
-import { REGIONS, type Country, type Difficulty, type Recipe, type Region } from '../data/flavorsRecipes';
+import { REGIONS, type Country, type Difficulty, type Recipe, type Region, type RegionName } from '../data/flavorsRecipes';
 import { categorizeIngredient } from '../data/groceryCategories';
 import { showToast } from '../utils/events';
 
 const DIFFICULTY_CLASS: Record<Difficulty, string> = {
-  Básico: 'bg-emerald-50 border-emerald-200 text-emerald-800',
-  Intermedio: 'bg-amber-50 border-amber-200 text-amber-800',
-  Difícil: 'bg-red-50 border-red-200 text-red-800',
+  Básico: 'bg-emerald-100 text-emerald-700',
+  Intermedio: 'bg-blue-100 text-blue-700',
+  Difícil: 'bg-red-100 text-red-700',
+};
+
+const REGION_CLASS: Record<RegionName, string> = {
+  América: 'border-orange-200 bg-orange-50 text-orange-600',
+  Europa: 'border-blue-200 bg-blue-50 text-blue-600',
+  Asia: 'border-red-200 bg-red-50 text-red-600',
 };
 
 type FlowStep = 'intro' | 'mercado' | 'chat';
+const STEPS: FlowStep[] = ['intro', 'mercado', 'chat'];
 
 const STEP_LABEL: Record<FlowStep, string> = {
   intro: 'Paso 1 de 3: receta',
@@ -59,12 +65,13 @@ Adapta la receta a los ingredientes disponibles y sus sustitutos. Guía paso a p
 No uses el carácter —. No abras con elogios ni cierres ofreciendo más ayuda.`;
 }
 
-const PrimaryFooterButton = ({ onClick, children }: { onClick: () => void; children: ReactNode }) => (
-  <div className="flex-shrink-0 px-4 py-3 bg-white border-t border-neutral-200">
+/** Botón naranja que flota sobre el final del contenido, con un degradado blanco detrás. */
+const FloatingCta = ({ onClick, children }: { onClick: () => void; children: ReactNode }) => (
+  <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 pt-10 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none">
     <button
       type="button"
       onClick={onClick}
-      className="w-full max-w-2xl mx-auto min-h-12 flex items-center justify-center gap-2 px-4 bg-brand-700 hover:bg-brand-800 text-white font-bold text-base rounded-control transition-colors"
+      className="w-full max-w-2xl mx-auto flex items-center justify-center gap-2 py-4 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold text-base rounded-2xl transition-all shadow-xl shadow-orange-300/50 pointer-events-auto"
     >
       {children}
     </button>
@@ -75,9 +82,9 @@ const SummaryChips = ({ title, titleClass, chipClass, items }: {
   title: string; titleClass: string; chipClass: string; items: { key: string; text: string }[];
 }) => items.length === 0 ? null : (
   <div>
-    <p className={`text-sm font-semibold mb-1 ${titleClass}`}>{title}</p>
+    <p className={`text-[11px] font-bold uppercase mb-1 ${titleClass}`}>{title}</p>
     <ul className="flex flex-wrap gap-1.5">
-      {items.map(i => <li key={i.key} className={`text-sm border px-2.5 py-1 rounded-full ${chipClass}`}>{i.text}</li>)}
+      {items.map(i => <li key={i.key} className={`text-xs px-2.5 py-1 rounded-full ${chipClass}`}>{i.text}</li>)}
     </ul>
   </div>
 );
@@ -165,37 +172,59 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
     );
   }
 
+  const stepIndex = STEPS.indexOf(step);
   const header = (
-    <ScreenHeader
-      title={recipe.name}
-      subtitle={`${countryFlag} ${countryName} · ${STEP_LABEL[step]}`}
-      onBack={handleBack}
-      backLabel={step === 'intro' ? 'Volver a Sabores del Mundo' : 'Volver al paso anterior'}
-    />
+    <header className="flex items-center gap-2 pl-1 pr-4 min-h-12 border-b border-neutral-100 bg-neutral-50 flex-shrink-0">
+      <button
+        type="button"
+        onClick={handleBack}
+        aria-label={step === 'intro' ? 'Atrás: volver a Sabores del Mundo' : 'Atrás: volver al paso anterior'}
+        className="min-h-11 px-2 flex items-center gap-1 text-sm font-bold text-neutral-500 hover:text-orange-600 transition-colors flex-shrink-0"
+      >
+        <ArrowLeft size={15} aria-hidden />
+        Atrás
+      </button>
+      <span className="text-neutral-300 mx-1" aria-hidden>|</span>
+      <span className="text-sm" aria-hidden>{countryFlag}</span>
+      <h1 className="text-sm font-semibold text-neutral-600 truncate min-w-0">
+        {recipe.name}
+        <span className="sr-only"> ({countryName}), {STEP_LABEL[step]}</span>
+      </h1>
+      <div className="ml-auto flex items-center gap-1.5 flex-shrink-0" aria-hidden>
+        {STEPS.map((s, i) => (
+          <div
+            key={s}
+            className={`w-2 h-2 rounded-full transition-colors ${
+              step === s ? 'bg-orange-500' : i < stepIndex ? 'bg-orange-200' : 'bg-neutral-200'
+            }`}
+          />
+        ))}
+      </div>
+    </header>
   );
 
   if (step === 'intro') return (
-    <div className="flex flex-col h-full bg-neutral-50">
+    <div className="flex flex-col h-full relative">
       {header}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="p-4 md:p-6 space-y-4 max-w-2xl w-full mx-auto">
+        <div className="p-5 space-y-4 pb-28 max-w-2xl w-full mx-auto">
           <div className="flex flex-wrap gap-2">
-            <span className="text-xs font-semibold bg-white border border-neutral-200 text-neutral-700 px-3 py-1 rounded-full">{recipe.technique}</span>
-            <span className={`text-xs font-semibold border px-3 py-1 rounded-full ${DIFFICULTY_CLASS[recipe.difficulty]}`}>{recipe.difficulty}</span>
-            <span className="flex items-center gap-1 text-xs font-semibold text-neutral-700 bg-white px-3 py-1 rounded-full border border-neutral-200">
-              <Clock size={12} aria-hidden />{recipe.time}
+            <span className="text-xs font-bold bg-neutral-100 text-neutral-600 px-3 py-1 rounded-full">{recipe.technique}</span>
+            <span className={`text-xs font-bold px-3 py-1 rounded-full ${DIFFICULTY_CLASS[recipe.difficulty]}`}>{recipe.difficulty}</span>
+            <span className="flex items-center gap-1 text-xs font-medium text-neutral-500 bg-neutral-50 px-3 py-1 rounded-full border border-neutral-200">
+              <Clock size={11} aria-hidden />{recipe.time}
             </span>
           </div>
 
-          <p className="text-base text-neutral-800 leading-relaxed">{recipe.description}</p>
+          <p className="text-sm text-neutral-700 leading-relaxed">{recipe.description}</p>
 
           {session.started && (
-            <div className="bg-white border border-neutral-200 rounded-card p-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="min-w-0 text-sm text-neutral-800">Tienes una conversación guardada de esta receta.</p>
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="min-w-0 text-sm font-medium text-neutral-700">Tienes una conversación guardada de esta receta.</p>
               <button
                 type="button"
                 onClick={continueChat}
-                className="min-h-11 px-4 flex items-center gap-1.5 rounded-control border border-neutral-300 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 flex-shrink-0 transition-colors"
+                className="min-h-11 px-4 flex items-center gap-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-sm font-bold flex-shrink-0 transition-all shadow-sm"
               >
                 <MessageSquare size={16} aria-hidden />
                 Continuar la conversación
@@ -203,121 +232,121 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
             </div>
           )}
 
-          <div className="bg-white border border-neutral-200 rounded-card pl-4 pr-2 py-2 flex items-center justify-between gap-3">
-            <span className="text-sm font-semibold text-neutral-900">¿Para cuántas personas?</span>
-            <ServingsStepper value={servings} onChange={setServings} />
+          <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Users size={16} className="text-orange-500 flex-shrink-0" aria-hidden />
+                <span className="text-sm font-bold text-neutral-700">¿Para cuántas personas?</span>
+              </div>
+              <ServingsStepper value={servings} onChange={setServings} />
+            </div>
           </div>
 
-          <section className="bg-white border border-neutral-200 rounded-card p-4">
-            <h2 className="text-sm font-semibold text-neutral-600 mb-2">Ingredientes</h2>
+          <section className="bg-orange-50 rounded-xl p-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-orange-600 mb-2">Ingredientes</h2>
             <ul className="flex flex-wrap gap-1.5">
               {recipe.ingredients.map(ing => (
-                <li key={ing} className="text-sm bg-neutral-50 border border-neutral-200 text-neutral-800 px-2.5 py-1 rounded-full">{ing}</li>
+                <li key={ing} className="text-xs bg-white border border-orange-100 text-neutral-600 px-2.5 py-1 rounded-full">{ing}</li>
               ))}
             </ul>
           </section>
         </div>
       </div>
 
-      <PrimaryFooterButton onClick={() => setStep('mercado')}>
+      <FloatingCta onClick={() => setStep('mercado')}>
         <ShoppingCart size={18} aria-hidden />
-        Ir al mercado
-      </PrimaryFooterButton>
+        Ir al mercado <span aria-hidden>→</span>
+      </FloatingCta>
     </div>
   );
 
   if (step === 'mercado') {
     const unchecked = summary.notMarked.length + summary.missing.length;
     return (
-      <div className="flex flex-col h-full bg-neutral-50">
+      <div className="flex flex-col h-full relative">
         {header}
 
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="p-4 md:p-6 max-w-2xl w-full mx-auto space-y-4">
+          <div className="p-5 pb-28 max-w-2xl w-full mx-auto space-y-4">
             <div className="flex items-center justify-between gap-3">
-              <p role="status" className="min-w-0 text-sm font-semibold text-neutral-900">
-                {unchecked > 0
-                  ? `${unchecked} ingrediente${unchecked !== 1 ? 's' : ''} pendiente${unchecked !== 1 ? 's' : ''}`
-                  : '¡Todo listo!'}
-              </p>
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-neutral-600">Personas</span>
-                <ServingsStepper value={servings} onChange={setServings} />
+              <div className="flex items-center gap-2 min-w-0">
+                <ShoppingCart size={16} className="text-orange-500 flex-shrink-0" aria-hidden />
+                <p role="status" className="min-w-0 text-sm font-bold text-neutral-700">
+                  {unchecked > 0
+                    ? `${unchecked} ingrediente${unchecked !== 1 ? 's' : ''} pendiente${unchecked !== 1 ? 's' : ''}`
+                    : '¡Todo listo!'}
+                </p>
               </div>
+              <ServingsStepper variant="compact" value={servings} onChange={setServings} />
             </div>
 
             <MarketList items={items} market={market} onAskChef={askChef} />
           </div>
         </div>
 
-        <PrimaryFooterButton onClick={() => setStep('chat')}>Manos a la obra</PrimaryFooterButton>
+        <FloatingCta onClick={() => setStep('chat')}>
+          Manos a la obra <span aria-hidden>→</span>
+        </FloatingCta>
       </div>
     );
   }
 
   const noneMarked = summary.obtained.length === 0 && summary.swapped.length === 0 && summary.missing.length === 0;
+  const primaryCta = 'w-full max-w-md flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 active:scale-95 text-white font-black text-lg rounded-2xl transition-all shadow-2xl shadow-orange-300/50';
 
   return (
-    <div className="flex flex-col h-full bg-neutral-50">
+    <div className="flex flex-col h-full">
       {header}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="p-4 md:p-6 max-w-md w-full mx-auto space-y-5">
-          <div className="text-center">
-            <div className="text-4xl mb-2" aria-hidden>{countryFlag}</div>
-            <h2 className="text-xl md:text-2xl font-extrabold text-neutral-900 [overflow-wrap:anywhere]">{recipe.name}</h2>
-            <p className="text-sm text-neutral-600 mt-1">{countryName} · {personas} · {recipe.time}</p>
+        <div className="min-h-full flex flex-col items-center justify-center p-6 gap-6">
+          <div className="text-center space-y-2">
+            <div className="text-5xl mb-2" aria-hidden>{countryFlag}</div>
+            <h2 className="text-2xl font-black text-neutral-800 [overflow-wrap:anywhere]">{recipe.name}</h2>
+            <p className="text-sm text-neutral-500 font-medium">{countryName} · {personas} · {recipe.time}</p>
           </div>
 
-          <section className="bg-white border border-neutral-200 rounded-card p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-neutral-600">Tu lista de mercado</h3>
+          <section className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl p-5 space-y-3 max-w-md">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500">Tu lista de mercado</h3>
             <SummaryChips
               title="Conseguidos"
-              titleClass="text-emerald-800"
-              chipClass="bg-emerald-50 border-emerald-200 text-emerald-800"
+              titleClass="text-green-600"
+              chipClass="bg-green-100 text-green-700"
               items={summary.obtained.map(i => ({ key: i.id, text: i.name }))}
             />
             <SummaryChips
               title="Reemplazados"
-              titleClass="text-neutral-800"
-              chipClass="bg-neutral-50 border-neutral-200 text-neutral-800"
-              items={summary.swapped.map(({ item, substitute }) => ({ key: item.id, text: `${item.name} por ${substitute}` }))}
+              titleClass="text-blue-600"
+              chipClass="bg-blue-100 text-blue-700"
+              items={summary.swapped.map(({ item, substitute }) => ({ key: item.id, text: `${item.name} → ${substitute}` }))}
             />
             <SummaryChips
               title="No conseguidos"
-              titleClass="text-red-800"
-              chipClass="bg-red-50 border-red-200 text-red-800"
+              titleClass="text-red-500"
+              chipClass="bg-red-100 text-red-600"
               items={summary.missing.map(i => ({ key: i.id, text: i.name }))}
             />
             {noneMarked && (
-              <p className="text-sm text-neutral-600">No marcaste ingredientes. Sous asume que tienes todos.</p>
+              <p className="text-sm text-neutral-400 italic">No marcaste ingredientes. Sous asume que tienes todos.</p>
             )}
           </section>
 
           {session.started ? (
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={continueChat}
-                className="w-full min-h-12 flex items-center justify-center gap-2 px-4 bg-brand-700 hover:bg-brand-800 text-white font-bold text-base rounded-control transition-colors"
-              >
-                <MessageSquare size={20} aria-hidden />
+            <div className="w-full max-w-md space-y-3">
+              <button type="button" onClick={continueChat} className={primaryCta}>
+                <MessageSquare size={24} aria-hidden />
                 Continuar la conversación
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmRestart(true)}
-                className="w-full min-h-12 flex items-center justify-center gap-2 px-4 border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-900 font-semibold text-base rounded-control transition-colors"
+                className="w-full min-h-12 flex items-center justify-center gap-2 px-4 border border-neutral-200 bg-white hover:bg-neutral-50 active:scale-95 text-neutral-700 font-bold text-base rounded-2xl transition-all shadow-sm"
               >
                 Empezar de nuevo
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => startChat()}
-              className="w-full min-h-12 flex items-center justify-center gap-2 px-4 bg-brand-700 hover:bg-brand-800 text-white font-bold text-base rounded-control transition-colors"
-            >
-              <ChefHat size={20} aria-hidden />
+            <button type="button" onClick={() => startChat()} className={primaryCta}>
+              <ChefHat size={24} aria-hidden />
               Empezar a cocinar con Sous
             </button>
           )}
@@ -349,61 +378,64 @@ interface CountryRowProps {
 const CountryRow = ({ country, onSelectRecipe }: CountryRowProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const panelId = useId();
+  const Chevron = isOpen ? ChevronUp : ChevronDown;
 
   return (
-    <div className="bg-white rounded-card border border-neutral-200 overflow-hidden">
+    <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
       <button
         type="button"
         onClick={() => setIsOpen(o => !o)}
         aria-expanded={isOpen}
         aria-controls={panelId}
-        className="w-full min-h-14 flex items-center gap-3 px-4 text-left hover:bg-neutral-50 transition-colors"
+        className="w-full min-h-14 flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-50 transition-colors"
       >
         <span className="text-2xl" aria-hidden>{country.flag}</span>
-        <span className="flex-1 min-w-0 font-bold text-neutral-900 truncate">{country.name}</span>
-        <span className="text-sm text-neutral-600">{country.recipes.length} recetas</span>
-        <ChevronDown
-          size={20}
-          aria-hidden
-          className={`text-neutral-500 flex-shrink-0 transition-transform motion-reduce:transition-none ${isOpen ? 'rotate-180' : ''}`}
-        />
+        <span className="flex-1 min-w-0 text-left font-bold text-neutral-800 truncate">{country.name}</span>
+        <span className="text-xs text-neutral-400 font-medium mr-2">{country.recipes.length} recetas</span>
+        <Chevron size={18} aria-hidden className="text-neutral-400 flex-shrink-0" />
       </button>
 
       {isOpen && (
-        <ul id={panelId} className="border-t border-neutral-200 divide-y divide-neutral-100">
-          {country.recipes.map(recipe => (
-            <li key={recipe.name}>
-              <button
-                type="button"
-                onClick={() => onSelectRecipe(recipe, country)}
-                className="w-full min-h-14 flex items-center gap-3 px-4 py-2.5 text-left hover:bg-neutral-50 transition-colors"
-              >
-                <span className="flex-1 min-w-0">
-                  <span className="block font-semibold text-sm text-neutral-900 [overflow-wrap:anywhere]">{recipe.name}</span>
-                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-neutral-600">
-                    <span className={`font-semibold px-2 py-0.5 rounded-full border ${DIFFICULTY_CLASS[recipe.difficulty]}`}>
-                      {recipe.difficulty}
+        <div id={panelId} className="border-t border-neutral-100 px-3 py-3">
+          <ul className="space-y-1.5">
+            {country.recipes.map(recipe => (
+              <li key={recipe.name}>
+                <button
+                  type="button"
+                  onClick={() => onSelectRecipe(recipe, country)}
+                  className="w-full min-h-11 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-neutral-50 hover:bg-orange-50 hover:border-orange-200 border border-transparent transition-all text-left group"
+                >
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-semibold text-sm text-neutral-800 group-hover:text-orange-700 transition-colors truncate">
+                      {recipe.name}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={12} aria-hidden />
-                      {recipe.time}
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${DIFFICULTY_CLASS[recipe.difficulty]}`}>
+                        {recipe.difficulty}
+                      </span>
+                      <span className="flex items-center gap-1 text-[10px] text-neutral-400">
+                        <Clock size={10} aria-hidden />
+                        {recipe.time}
+                      </span>
+                      <span className="text-[10px] text-neutral-400 font-medium">{recipe.technique}</span>
                     </span>
-                    <span>{recipe.technique}</span>
                   </span>
-                </span>
-                <ChevronRight size={20} aria-hidden className="text-neutral-500 flex-shrink-0" />
-              </button>
-            </li>
-          ))}
-        </ul>
+                  <ChevronDown size={14} aria-hidden className="text-neutral-300 group-hover:text-orange-400 flex-shrink-0 -rotate-90 transition-colors" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
 };
 
 const RegionSection = ({ region, onSelectRecipe }: { region: Region } & Pick<CountryRowProps, 'onSelectRecipe'>) => (
-  <section>
-    <h2 className="text-sm font-semibold text-neutral-600 mb-2">{region.name}</h2>
+  <section className="mb-8">
+    <h2 className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-black mb-4 ${REGION_CLASS[region.name]}`}>
+      {region.name}
+    </h2>
     <div className="space-y-3">
       {region.countries.map(country => (
         <CountryRow key={country.name} country={country} onSelectRecipe={onSelectRecipe} />
@@ -420,7 +452,7 @@ export const FlavorsModule = () => {
 
   if (activeRecipe) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full relative overflow-hidden">
         <RecipeFlow
           recipe={activeRecipe.recipe}
           countryName={activeRecipe.country.name}
@@ -432,25 +464,26 @@ export const FlavorsModule = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-neutral-50">
+    <div className="flex flex-col h-full">
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="p-4 md:p-6 w-full max-w-3xl mx-auto">
-          <header className="mb-5">
-            <h1 className="text-xl md:text-2xl font-extrabold text-neutral-900">Sabores del Mundo</h1>
-            <p className="text-sm text-neutral-600 mt-1">
+        <div className="p-5 md:p-8 w-full max-w-3xl mx-auto">
+          <header className="mb-8 pb-5 border-b border-neutral-200">
+            <h1 className="text-3xl font-black text-neutral-800 flex items-center gap-3">
+              <Globe className="text-orange-500 flex-shrink-0" size={30} aria-hidden />
+              Sabores del Mundo
+            </h1>
+            <p className="text-neutral-500 mt-1 text-sm font-medium">
               {RECIPE_COUNT} recetas de {COUNTRY_COUNT} países, agrupadas por región.
             </p>
           </header>
 
-          <div className="space-y-6">
-            {REGIONS.map(region => (
-              <RegionSection
-                key={region.name}
-                region={region}
-                onSelectRecipe={(recipe, country) => setActiveRecipe({ recipe, country })}
-              />
-            ))}
-          </div>
+          {REGIONS.map(region => (
+            <RegionSection
+              key={region.name}
+              region={region}
+              onSelectRecipe={(recipe, country) => setActiveRecipe({ recipe, country })}
+            />
+          ))}
         </div>
       </div>
     </div>

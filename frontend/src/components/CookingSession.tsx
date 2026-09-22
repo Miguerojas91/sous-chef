@@ -10,13 +10,13 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, Clock, Settings2, Sparkles, Utensils } from 'lucide-react';
 import { useCookingChatSession } from '../hooks/useCookingChatSession';
 import { buildCookingSystemPrompt } from '../services/gemini';
 import type { CookingIntent } from '../services/gemini';
 import { ChatSessionScreen } from './ChatSessionScreen';
-import { ScreenHeader } from './ui/ScreenHeader';
 import {
   getUserCountry,
   getUserPreferences,
@@ -36,11 +36,11 @@ import { track, Events } from '../utils/analytics';
 type Phase = 'landing' | 'discover-sub' | 'time-picker' | 'chatting';
 
 const TIME_OPTIONS = [
-  { label: '15 minutos', value: '15 minutos' },
-  { label: '30 minutos', value: '30 minutos' },
-  { label: '45 minutos', value: '45 minutos' },
-  { label: '1 hora', value: '1 hora' },
-  { label: 'Sin prisa', value: 'más de 1 hora (sin prisa)' },
+  { label: '15 minutos', value: '15 minutos', emoji: '⚡' },
+  { label: '30 minutos', value: '30 minutos', emoji: '🕐' },
+  { label: '45 minutos', value: '45 minutos', emoji: '🕑' },
+  { label: '1 hora', value: '1 hora', emoji: '🕒' },
+  { label: 'Sin prisa', value: 'más de 1 hora (sin prisa)', emoji: '☕' },
 ];
 
 const INTENT_LABEL: Record<CookingIntent, string> = {
@@ -49,25 +49,48 @@ const INTENT_LABEL: Record<CookingIntent, string> = {
   'cook-ingredients': 'Con lo que tengo',
 };
 
-/** Fila de opción a pantalla completa: la acción principal de cada paso. */
-const OptionRow = ({ title, desc, onClick, primary = false }: {
-  title: string; desc?: string; onClick: () => void; primary?: boolean;
+/** Encabezado de los pasos previos al chat: volver + título. */
+const StepHeader = ({ title, onBack }: { title: string; onBack: () => void }) => (
+  <header className="flex items-center pl-1 pr-4 min-h-12 border-b border-orange-100 bg-white/60 flex-shrink-0">
+    <button
+      type="button"
+      onClick={onBack}
+      aria-label="Volver"
+      className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-orange-100 transition-colors mr-1"
+    >
+      <ArrowLeft className="w-4 h-4 text-orange-600" aria-hidden />
+    </button>
+    <h1 className="text-sm font-bold text-neutral-700">{title}</h1>
+  </header>
+);
+
+/** Tarjeta con degradado de las opciones de inicio. */
+const GradientOption = ({ gradient, icon, title, desc, onClick, hoverGrow = false }: {
+  gradient: string; icon: ReactNode; title: string; desc: string; onClick: () => void; hoverGrow?: boolean;
 }) => (
   <button
     type="button"
     onClick={onClick}
-    className={`w-full min-h-14 flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-      primary ? 'bg-brand-700 hover:bg-brand-800 text-white rounded-card' : 'bg-white hover:bg-neutral-50 text-neutral-900'
+    className={`w-full max-w-sm bg-gradient-to-br ${gradient} rounded-2xl p-4 text-left active:scale-[0.98] ${
+      hoverGrow ? 'shadow-md hover:shadow-xl hover:scale-[1.02] transition-all' : 'shadow-lg transition-transform'
     }`}
   >
-    <span className="flex-1 min-w-0">
-      <span className="block text-base font-bold leading-snug">{title}</span>
-      {desc && (
-        <span className={`block text-sm mt-0.5 ${primary ? 'text-white' : 'text-neutral-600'}`}>{desc}</span>
-      )}
+    <span className="flex items-center gap-3">
+      {icon}
+      <span className="min-w-0">
+        <span className="block text-sm font-extrabold text-white leading-tight">{title}</span>
+        <span className="block text-xs text-white/75 mt-0.5">{desc}</span>
+      </span>
     </span>
-    <ChevronRight size={20} aria-hidden className={primary ? 'text-white' : 'text-neutral-500'} />
   </button>
+);
+
+const IconSquare = ({ children }: { children: ReactNode }) => (
+  <span className="bg-white/20 rounded-xl p-2 flex-shrink-0" aria-hidden>{children}</span>
+);
+
+const EmojiIcon = ({ children }: { children: string }) => (
+  <span className="text-2xl flex-shrink-0" aria-hidden>{children}</span>
 );
 
 const CookingChat: React.FC<{
@@ -168,37 +191,50 @@ export const CookingSession: React.FC = () => {
 
   if (phase === 'time-picker') {
     return (
-      <div className="flex flex-col h-full bg-neutral-50">
-        <ScreenHeader
+      <div className="flex flex-col h-full bg-gradient-to-br from-orange-50 to-amber-50">
+        <StepHeader
           title="¿Cuánto tiempo tienes?"
           onBack={() => setPhase(pendingIntentRef.current === 'cook-ingredients' ? 'landing' : 'discover-sub')}
         />
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-5 max-w-md w-full mx-auto">
-          <p className="text-sm text-neutral-600">Sous arma la receta según el tiempo que tengas.</p>
-
-          <ul className="bg-white rounded-card border border-neutral-200 divide-y divide-neutral-100 overflow-hidden">
-            {TIME_OPTIONS.map(opt => (
-              <li key={opt.value}>
-                <OptionRow title={opt.label} onClick={() => selectTime(opt.value)} />
-              </li>
-            ))}
-          </ul>
-
-          <button
-            type="button"
-            onClick={() => setShowPrefEditor(true)}
-            className="w-full min-h-14 flex items-center gap-3 px-4 py-3 rounded-card border border-neutral-200 bg-white hover:bg-neutral-50 text-left"
-          >
-            <SlidersHorizontal className="w-5 h-5 text-neutral-600 flex-shrink-0" aria-hidden />
-            <span className="flex-1 min-w-0">
-              <span className="block text-sm font-semibold text-neutral-900">Tus preferencias</span>
-              <span className="block text-sm text-neutral-600 truncate">
-                {prefsSummary.length === 0 ? 'Sin configurar. Toca para elegir.' : prefsSummary.join(' · ')}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="min-h-full flex flex-col items-center justify-center px-5 py-5 gap-4">
+            <button
+              type="button"
+              onClick={() => setShowPrefEditor(true)}
+              className="w-full max-w-sm flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-orange-200 bg-white/80 hover:bg-white hover:border-orange-300 transition-all text-left"
+            >
+              <span className="flex-1 min-w-0">
+                <span className={`block text-xs font-bold ${prefsSummary.length === 0 ? 'text-neutral-400' : 'text-orange-500'}`}>
+                  Tus preferencias
+                </span>
+                <span className="block text-sm text-neutral-700 truncate">
+                  {prefsSummary.length === 0 ? 'Sin configurar. Toca para elegir.' : prefsSummary.join(' · ')}
+                </span>
               </span>
-            </span>
-            <ChevronRight size={20} className="text-neutral-500" aria-hidden />
-          </button>
+              <Settings2 className="w-4 h-4 text-orange-500 flex-shrink-0" aria-hidden />
+            </button>
+
+            <div className="text-center mb-1">
+              <Clock className="w-7 h-7 text-orange-400 mx-auto mb-2" aria-hidden />
+              <p className="text-xs text-neutral-500">Sous arma la receta según el tiempo que tengas.</p>
+            </div>
+
+            <ul className="flex flex-col gap-2 w-full max-w-sm">
+              {TIME_OPTIONS.map(opt => (
+                <li key={opt.value}>
+                  <button
+                    type="button"
+                    onClick={() => selectTime(opt.value)}
+                    className="w-full min-h-12 flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-orange-100 hover:border-orange-300 hover:shadow-md transition-all text-left active:scale-[0.98]"
+                  >
+                    <span className="text-xl" aria-hidden>{opt.emoji}</span>
+                    <span className="text-sm font-semibold text-neutral-800">{opt.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         {showPrefEditor && (
@@ -223,50 +259,59 @@ export const CookingSession: React.FC = () => {
 
   if (phase === 'discover-sub') {
     return (
-      <div className="flex flex-col h-full bg-neutral-50">
-        <ScreenHeader title="¿Qué quieres comer?" onBack={() => setPhase('landing')} />
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5 max-w-md w-full mx-auto">
-          <ul className="bg-white rounded-card border border-neutral-200 divide-y divide-neutral-100 overflow-hidden">
-            <li>
-              <OptionRow
-                title="Ya sé qué quiero"
-                desc="Tengo algo en mente, ayúdame a prepararlo."
-                onClick={() => selectIntent('discover-known')}
-              />
-            </li>
-            <li>
-              <OptionRow
-                title="Decidamos juntos"
-                desc="No sé qué cocinar."
-                onClick={() => selectIntent('discover-together')}
-              />
-            </li>
-          </ul>
+      <div className="flex flex-col h-full bg-gradient-to-br from-orange-50 to-rose-50">
+        <StepHeader title="¿Qué quieres comer?" onBack={() => setPhase('landing')} />
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="min-h-full flex flex-col items-center justify-center px-5 py-5 gap-3">
+            <div className="text-center mb-1">
+              <span className="text-3xl" aria-hidden>🍽️</span>
+            </div>
+            <GradientOption
+              hoverGrow
+              gradient="from-orange-400 to-red-500"
+              icon={<EmojiIcon>💡</EmojiIcon>}
+              title="Ya sé qué quiero"
+              desc="Tengo algo en mente, ayúdame a prepararlo."
+              onClick={() => selectIntent('discover-known')}
+            />
+            <GradientOption
+              hoverGrow
+              gradient="from-amber-400 to-orange-500"
+              icon={<EmojiIcon>✨</EmojiIcon>}
+              title="Decidamos juntos"
+              desc="No sé qué cocinar."
+              onClick={() => selectIntent('discover-together')}
+            />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-neutral-50 overflow-y-auto">
-      <div className="px-4 pt-8 pb-6 max-w-md w-full mx-auto">
-        <h1 className="text-2xl font-extrabold text-neutral-900">¿Qué cocinamos hoy?</h1>
-        <p className="text-sm text-neutral-600 mt-1">Elige cómo quieres empezar.</p>
+    <div className="flex flex-col h-full bg-gradient-to-br from-orange-50 via-amber-50 to-rose-50 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-evenly gap-6 px-5 py-4 min-h-full">
+        <div className="text-center">
+          <span className="text-3xl" aria-hidden>👨‍🍳</span>
+          <h1 className="text-lg font-extrabold text-neutral-800 mt-1 tracking-tight">¿Qué cocinamos hoy?</h1>
+          <p className="text-xs text-neutral-500 mt-0.5">Elige cómo quieres empezar.</p>
+        </div>
 
-        <div className="mt-6 space-y-3">
-          <OptionRow
-            primary
+        <div className="flex flex-col items-center gap-3 w-full max-w-sm">
+          <GradientOption
+            gradient="from-orange-400 to-rose-500"
+            icon={<IconSquare><Sparkles className="w-5 h-5 text-white" /></IconSquare>}
             title="Quiero descubrir qué comer"
             desc="No sé bien qué me provoca."
             onClick={() => setPhase('discover-sub')}
           />
-          <div className="rounded-card border border-neutral-200 overflow-hidden">
-            <OptionRow
-              title="Voy a cocinar con lo que tengo"
-              desc="Tengo cosas en casa y no quiero salir a comprar."
-              onClick={() => selectIntent('cook-ingredients')}
-            />
-          </div>
+          <GradientOption
+            gradient="from-emerald-400 to-teal-500"
+            icon={<IconSquare><Utensils className="w-5 h-5 text-white" /></IconSquare>}
+            title="Voy a cocinar con lo que tengo"
+            desc="Tengo cosas en casa y no quiero salir a comprar."
+            onClick={() => selectIntent('cook-ingredients')}
+          />
         </div>
       </div>
     </div>

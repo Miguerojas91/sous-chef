@@ -3,26 +3,31 @@ import type { LevelContent, LevelError, LevelRecipe, LevelStep } from './types';
 
 const STEPS: LevelStep[] = [
   {
+    emoji: '🔪',
     title: 'Prepara el vegetal: corte base',
     desc: 'Pela la cebolla o el pimiento. Córtale los extremos para crear superficies planas. El corte base es fundamental: el vegetal debe quedar estable sobre la tabla antes de cualquier otro corte.',
     tip: 'Deja la raíz de la cebolla intacta mientras cortas. Hace de ancla y evita que los anillos se separen. Solo la retiras al final.',
   },
   {
+    emoji: '📏',
     title: 'Corta en planchas uniformes',
     desc: 'Coloca el vegetal con la cara plana hacia abajo. Córtalo en láminas verticales de 2–3 mm de grosor, sin llegar hasta la raíz. Las láminas deben quedar unidas por la base (en el caso de la cebolla, por la raíz).',
     tip: 'Usa la técnica de "acordeón": cortes paralelos sin separar. Así el vegetal se mantiene unido y facilita el siguiente paso.',
   },
   {
+    emoji: '↔️',
     title: 'Cortes horizontales (clave en la cebolla)',
     desc: 'Con el vegetal aún unido, haz 2–3 cortes horizontales paralelos a la tabla. Esto crea la tercera dimensión del cubo. Este paso es opcional en vegetales pequeños como el pimiento, pero esencial en la cebolla para lograr el cubo exacto.',
     tip: 'Mantén los dedos bien protegidos con la garra de gato. El cuchillo va hacia adentro y siempre paralelo a la tabla. Nunca hacia arriba.',
   },
   {
+    emoji: '🧅',
     title: 'Corte final: los cubos',
     desc: 'Gira el vegetal 90° y realiza cortes perpendiculares a los anteriores, a 2–3 mm de distancia. Cada corte suelta cubos de 2–3 mm. Avanza de forma consistente y controla el grosor con los nudillos.',
     tip: 'El brunoise clásico mide 2–3 mm × 2–3 mm × 2–3 mm. El brunoise fino (brunoise fine) mide 1–1.5 mm. Se usa en guarniciones, salsas y quenelles.',
   },
   {
+    emoji: '✅',
     title: 'Verificación y uniformidad',
     desc: 'Extiende los cubos sobre la tabla. ¿Son todos del mismo tamaño? ¿Cubos, no triángulos? Los bordes irregulares de los extremos del vegetal los puedes picar aparte. En cocina profesional solo se usan los cubos parejos.',
     tip: 'El brunoise se usa como base de sofrito, en salsas madre, como guarnición decorativa y como relleno. La uniformidad garantiza cocción igual en todos los trozos.',
@@ -64,7 +69,10 @@ const RECIPE: LevelRecipe = {
 
 export const content: LevelContent = {
   missionText: 'Cortar <strong>una cebolla o pimiento entero</strong> en <strong>cubos brunoise parejos</strong>: 2–3 mm × 2–3 mm × 2–3 mm. Fotografía el resultado disperso en la tabla para que se vea la uniformidad.',
-  missionTags: ['~20 min', '2–3mm × 2–3mm'],
+  missionTags: [
+    { icon: '⏱️', label: '~20 min' },
+    { icon: '📏', label: '2–3mm × 2–3mm' },
+  ],
   steps: STEPS,
   errors: ERRORS,
   recipe: RECIPE,

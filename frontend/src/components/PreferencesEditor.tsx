@@ -7,7 +7,7 @@
  */
 import React, { useId, useState } from 'react';
 import { RECIPE_FILTERS } from '../data/recipeFilters';
-import { X } from 'lucide-react';
+import { AlertTriangle, Ban, ChevronRight, X } from 'lucide-react';
 import { Dialog } from './ui/Dialog';
 
 type Prefs = { filterIds: string[]; allergies: string[]; dislikes: string[] };
@@ -76,10 +76,10 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
   };
 
   const body = (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <section>
-        <h3 className="text-base font-bold text-neutral-900">Tipo de recetas</h3>
-        <p className="text-sm text-neutral-600 mt-0.5 mb-3 leading-snug">
+        <h3 className="text-sm font-bold text-neutral-800 mb-2">Tipo de recetas</h3>
+        <p className="text-xs text-neutral-500 mb-3 leading-snug">
           Sous las tiene en cuenta en cada sesión. No tienes que repetirlas.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -92,14 +92,15 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
                 type="button"
                 onClick={() => toggleFilter(f.id)}
                 aria-pressed={active}
-                className={`min-h-11 px-4 rounded-full text-sm font-semibold transition-colors border ${
+                className={`min-h-11 flex items-center gap-1.5 px-3 rounded-full text-xs font-bold transition-all border ${
                   active
                     ? isDiet
-                      ? 'bg-world-1 text-white border-world-1'
-                      : 'bg-brand-700 text-white border-brand-700'
-                    : 'bg-white text-neutral-800 border-neutral-300 hover:border-neutral-500'
+                      ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-200'
+                      : 'bg-orange-500 text-white border-orange-500 shadow-sm shadow-orange-200'
+                    : 'bg-white text-neutral-700 border-neutral-200 hover:border-orange-300'
                 }`}
               >
+                <span aria-hidden>{f.emoji}</span>
                 {f.label}
               </button>
             );
@@ -110,8 +111,9 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
       <TagInput
         label="Alergias"
         sublabel="Sous nunca las usará."
+        icon={<AlertTriangle className="w-4 h-4 text-red-500" aria-hidden />}
         emptyMsg="No has agregado alergias."
-        chipClass="bg-red-50 text-red-800 border-red-200"
+        chipClass="bg-red-100 text-red-700"
         tags={allergies}
         onAdd={(t) => addTag('allergies', t)}
         onRemove={(t) => removeTag('allergies', t)}
@@ -120,8 +122,9 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
       <TagInput
         label="No me gusta"
         sublabel="Sous lo evita, salvo que lo pidas."
+        icon={<Ban className="w-4 h-4 text-orange-500" aria-hidden />}
         emptyMsg="No has agregado nada."
-        chipClass="bg-neutral-100 text-neutral-800 border-neutral-300"
+        chipClass="bg-orange-100 text-orange-700"
         tags={dislikes}
         onAdd={(t) => addTag('dislikes', t)}
         onRemove={(t) => removeTag('dislikes', t)}
@@ -135,26 +138,27 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
         title="Mis preferencias"
         description="Se aplican a todas tus sesiones de cocina."
         onClose={onClose ?? (() => {})}
+        showClose
         footer={
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 min-h-11 rounded-control text-sm font-semibold text-neutral-800 border border-neutral-300 hover:bg-neutral-50 transition-colors"
+              className="flex-1 min-h-11 py-2.5 px-4 rounded-xl text-sm font-bold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 transition-colors"
             >
               Cancelar
             </button>
             <button
               type="button"
               onClick={() => onSave?.({ filterIds, allergies, dislikes })}
-              className="flex-1 min-h-11 rounded-control text-sm font-semibold text-white bg-brand-700 hover:bg-brand-800 transition-colors"
+              className="flex-1 min-h-11 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors"
             >
-              Guardar
+              Guardar <ChevronRight size={16} aria-hidden />
             </button>
           </div>
         }
       >
-        <div className="mt-5">{body}</div>
+        {body}
       </Dialog>
     );
   }
@@ -165,12 +169,13 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
 const TagInput: React.FC<{
   label: string;
   sublabel: string;
+  icon: React.ReactNode;
   emptyMsg: string;
   chipClass: string;
   tags: string[];
   onAdd: (tag: string) => void;
   onRemove: (tag: string) => void;
-}> = ({ label, sublabel, emptyMsg, chipClass, tags, onAdd, onRemove }) => {
+}> = ({ label, sublabel, icon, emptyMsg, chipClass, tags, onAdd, onRemove }) => {
   const [draft, setDraft] = useState('');
   const inputId = useId();
   const hintId = useId();
@@ -184,8 +189,10 @@ const TagInput: React.FC<{
 
   return (
     <section>
-      <label htmlFor={inputId} className="block text-base font-bold text-neutral-900">{label}</label>
-      <p id={hintId} className="text-sm text-neutral-600 mt-0.5 mb-2">{sublabel}</p>
+      <p className="mb-2 flex flex-wrap items-center gap-x-2">
+        <label htmlFor={inputId} className="flex items-center gap-2 text-sm font-bold text-neutral-800">{icon}{label}</label>
+        <span id={hintId} className="font-normal text-xs text-neutral-500">— {sublabel}</span>
+      </p>
       <div className="flex gap-2 mb-3">
         <input
           id={inputId}
@@ -202,33 +209,33 @@ const TagInput: React.FC<{
           aria-describedby={hintId}
           enterKeyHint="done"
           placeholder="Escribe y toca Agregar"
-          className="flex-1 min-w-0 min-h-11 px-3 text-base sm:text-sm border border-neutral-300 rounded-control focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700"
+          className="flex-1 min-w-0 min-h-11 px-3 py-2 text-base sm:text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400"
         />
         <button
           type="button"
           onClick={commit}
-          className="min-h-11 px-4 text-sm font-semibold text-brand-800 bg-brand-50 hover:bg-brand-100 rounded-control transition-colors"
+          className="min-h-11 px-3 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
         >
           Agregar
         </button>
       </div>
       {tags.length === 0 ? (
-        <p className="text-sm text-neutral-600">{emptyMsg}</p>
+        <p className="text-xs text-neutral-400 italic">{emptyMsg}</p>
       ) : (
-        <ul className="flex flex-wrap gap-2">
+        <ul className="flex flex-wrap gap-1.5">
           {tags.map(t => (
             <li
               key={t}
-              className={`inline-flex items-center pl-3 rounded-full border text-sm font-semibold ${chipClass}`}
+              className={`inline-flex items-center pl-2.5 rounded-full text-xs font-bold ${chipClass}`}
             >
               {t}
               <button
                 type="button"
                 onClick={() => onRemove(t)}
                 aria-label={`Quitar ${t}`}
-                className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-black/5"
+                className="w-11 h-11 -my-2 flex items-center justify-center rounded-full hover:opacity-70"
               >
-                <X size={16} aria-hidden />
+                <X size={14} aria-hidden />
               </button>
             </li>
           ))}

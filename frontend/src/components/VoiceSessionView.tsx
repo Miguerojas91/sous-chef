@@ -7,7 +7,7 @@
  */
 import { useId, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Crown, MessageSquare } from 'lucide-react';
+import { Crown, X } from 'lucide-react';
 import type { VoiceState, VoiceTranscriptEntry } from '../hooks/useGeminiLive';
 import { SILENCE_TIMEOUT_MS } from '../hooks/useGeminiLive';
 import { useModal } from '../hooks/useModal';
@@ -18,6 +18,8 @@ import { capReachedMessage } from '../utils/voiceUsage';
 const SILENCE_LIMIT_S = SILENCE_TIMEOUT_MS / 1000;
 // La cuenta atrás solo aparece en los últimos segundos; antes sería ruido.
 const COUNTDOWN_FROM_S = 10;
+// Alturas de las barras decorativas del indicador de audio.
+const BAR_HEIGHTS = [2, 4, 7, 5, 8, 4, 3, 6, 4, 2];
 
 interface VoiceSessionViewProps {
   title: string;
@@ -52,8 +54,8 @@ export const VoiceSessionView = (props: VoiceSessionViewProps) => {
       tabIndex={-1}
       className={`fixed inset-0 z-[80] h-dvh outline-none ${
         capReached
-          ? 'bg-neutral-50 flex items-center justify-center p-6 overflow-y-auto'
-          : 'flex flex-col bg-neutral-950 text-white'
+          ? 'bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-6 overflow-y-auto'
+          : 'flex flex-col bg-neutral-950 text-white overflow-hidden'
       }`}
     >
       {capReached
@@ -67,15 +69,17 @@ const CapReachedCard = ({ titleId, onExitVoice }: { titleId: string; onExitVoice
   const premium = isPremiumUser();
   const copy = capReachedMessage(premium);
   return (
-    <div className="bg-white rounded-card border border-neutral-200 max-w-sm w-full p-6 text-center">
-      <Crown className="w-10 h-10 text-brand-700 mx-auto mb-3" aria-hidden />
-      <h2 id={titleId} className="text-xl font-extrabold text-neutral-900 mb-2">{copy.title}</h2>
-      <p className="text-sm text-neutral-600 mb-5 leading-relaxed">{copy.detail}</p>
+    <div className="bg-white rounded-3xl shadow-xl border border-orange-100 max-w-sm w-full p-6 text-center">
+      <div className="bg-gradient-to-br from-amber-400 to-orange-500 w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+        <Crown className="w-8 h-8 text-white" aria-hidden />
+      </div>
+      <h2 id={titleId} className="text-xl font-black text-neutral-900 mb-2">{copy.title}</h2>
+      <p className="text-sm text-neutral-600 mb-5 leading-snug">{copy.detail}</p>
       <div className="flex flex-col gap-2">
         <button
           type="button"
           onClick={onExitVoice}
-          className="w-full min-h-11 px-4 rounded-control bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors"
+          className="w-full min-h-11 py-3 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm transition-colors"
         >
           Seguir por texto
         </button>
@@ -83,9 +87,9 @@ const CapReachedCard = ({ titleId, onExitVoice }: { titleId: string; onExitVoice
           <Link
             to="/membresia"
             onClick={onExitVoice}
-            className="w-full min-h-11 px-4 rounded-control border border-neutral-300 text-neutral-900 hover:bg-neutral-50 font-semibold text-sm flex items-center justify-center"
+            className="w-full min-h-11 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2"
           >
-            Ver Premium · $9.99 al mes
+            <Crown size={16} aria-hidden /> Ver Premium · $9.99 al mes
           </Link>
         )}
       </div>
@@ -105,6 +109,7 @@ const VoiceSession = ({
   const isSleeping = voiceState === 'sleeping';
   const silenceLeft = Math.max(0, Math.ceil(SILENCE_LIMIT_S - silenceSeconds));
   const showCountdown = isListening && silenceLeft <= COUNTDOWN_FROM_S && silenceLeft > 0;
+  const barsActive = isSpeaking || isListening || isReconnecting;
 
   const lastChefLine = transcript.length > 0 && transcript[transcript.length - 1].agent === 'chef'
     ? transcript[transcript.length - 1].text
@@ -119,44 +124,71 @@ const VoiceSession = ({
   else if (needsTap) status = 'El micrófono se detuvo';
   else if (isSleeping) status = 'Sous está en reposo';
 
-  const ringClass =
-    isSpeaking ? 'ring-brand-400' :
-    isListening ? 'ring-emerald-400' :
-    isReconnecting || isConnecting ? 'ring-amber-400' :
-    'ring-neutral-700';
+  const statusClass =
+    isSpeaking ? 'text-orange-400' :
+    isListening ? (showCountdown ? 'text-neutral-500' : 'text-green-400') :
+    isReconnecting ? 'text-yellow-400 motion-safe:animate-pulse' :
+    needsTap ? 'text-blue-400 motion-safe:animate-pulse' :
+    isSleeping ? 'text-neutral-600' :
+    isConnecting ? 'text-yellow-400 motion-safe:animate-pulse' : 'text-neutral-500';
+
+  const avatarClass =
+    isSpeaking ? 'bg-orange-500/20 ring-2 ring-orange-500/50' :
+    isListening ? 'bg-green-500/10 ring-2 ring-green-500/30' :
+    isReconnecting ? 'bg-yellow-500/10 ring-2 ring-yellow-500/30' :
+    needsTap ? 'bg-blue-500/10 ring-2 ring-blue-500/30' :
+    isSleeping ? 'bg-neutral-800/50 ring-2 ring-neutral-700/30' :
+    'bg-neutral-800';
+
+  const barClass =
+    isSpeaking ? 'bg-orange-400' :
+    isListening ? 'bg-green-500' :
+    isReconnecting ? 'bg-yellow-500' :
+    isSleeping ? 'bg-neutral-800' : 'bg-neutral-700';
 
   return (
     <>
-      <header className="flex items-center gap-2 min-h-12 px-4 pt-[env(safe-area-inset-top)] border-b border-neutral-800 flex-shrink-0">
-        <h1 id={titleId} className="flex-1 min-w-0 truncate text-base font-extrabold">{title}</h1>
-        {onRequestEnd && (
-          <button
-            type="button"
-            onClick={onRequestEnd}
-            className="min-h-11 px-3 -mr-2 rounded-control text-sm font-semibold text-neutral-300 hover:bg-neutral-800"
-          >
-            Terminar sesión
-          </button>
-        )}
-      </header>
+      <h1 id={titleId} className="sr-only">{title}: conversación por voz</h1>
 
-      <main className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center px-6 py-6">
-        <div
-          aria-hidden
-          className={`w-24 h-24 rounded-full bg-neutral-900 flex items-center justify-center text-5xl ring-4 transition-colors duration-500 ${ringClass} ${
-            isSpeaking || isListening ? 'motion-safe:animate-pulse' : ''
-          }`}
+      {onRequestEnd && (
+        <button
+          type="button"
+          onClick={onRequestEnd}
+          className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-4 z-20 min-h-11 px-3 flex items-center bg-red-500/90 hover:bg-red-500 text-white text-xs font-bold rounded-full shadow-lg backdrop-blur-sm transition-all active:scale-95"
         >
-          {isSleeping ? '😴' : '👨‍🍳'}
+          Terminar sesión
+        </button>
+      )}
+
+      <main className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center px-6 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-6">
+        <div className="relative mb-6" aria-hidden>
+          {isSpeaking && (
+            <>
+              <span className="absolute inset-[-16px] rounded-full border-2 border-orange-500/30 motion-safe:animate-ping" />
+              <span className="absolute inset-[-8px] rounded-full border-2 border-orange-500/50 motion-safe:animate-pulse" />
+            </>
+          )}
+          {isListening && (
+            <span className="absolute inset-[-8px] rounded-full border-2 border-green-500/40 motion-safe:animate-pulse" />
+          )}
+          {isReconnecting && (
+            <span className="absolute inset-[-8px] rounded-full border-2 border-yellow-500/40 motion-safe:animate-ping" />
+          )}
+          {showCountdown && (
+            <span className="absolute inset-[-12px] rounded-full border-2 border-neutral-600/60 motion-safe:animate-pulse" />
+          )}
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center text-4xl shadow-2xl transition-colors duration-500 ${avatarClass}`}>
+            {isSleeping ? '😴' : '👨‍🍳'}
+          </div>
         </div>
 
         {voiceError ? (
-          <div role="alert" className="mt-6 px-4 py-3 bg-red-950 border border-red-800 rounded-card max-w-xs text-center">
-            <p className="text-red-200 text-sm font-medium">{friendlyVoiceError(voiceError)}</p>
+          <div role="alert" className="mb-3 px-4 py-2.5 bg-red-500/20 border border-red-500/40 rounded-2xl max-w-xs text-center">
+            <p className="text-red-300 text-sm font-medium">{friendlyVoiceError(voiceError)}</p>
             <button
               type="button"
               onClick={onRetry}
-              className="mt-2 min-h-11 px-4 rounded-control bg-red-800 hover:bg-red-700 text-white text-sm font-semibold"
+              className="mt-1 min-h-11 px-3 text-xs text-red-400 underline hover:text-red-300"
             >
               Intentar de nuevo
             </button>
@@ -165,20 +197,20 @@ const VoiceSession = ({
           <p
             role="status"
             aria-live="polite"
-            className={`mt-6 text-base font-semibold ${showCountdown ? 'text-amber-300' : 'text-neutral-200'}`}
+            className={`text-xs font-bold uppercase tracking-widest mb-1 text-center transition-colors duration-300 ${statusClass}`}
           >
             {status}
           </p>
         )}
 
-        <div className="w-full max-w-sm min-h-[6rem] mt-4 flex flex-col items-center justify-start">
+        <div className="w-full max-w-sm min-h-[80px] flex flex-col items-center justify-center">
           {caption && (
-            <p className={`text-center text-lg leading-relaxed ${isSpeaking ? 'text-white' : 'text-neutral-300'}`}>
+            <p className={`text-center text-base leading-relaxed transition-all duration-300 ${isSpeaking ? 'text-white' : 'text-neutral-400'}`}>
               {caption}
             </p>
           )}
           {!caption && isListening && !showCountdown && (
-            <p className="text-neutral-400 text-sm text-center">
+            <p className="text-neutral-600 text-sm text-center">
               Habla cuando necesites algo. Si te quedas en silencio, Sous espera.
             </p>
           )}
@@ -186,43 +218,61 @@ const VoiceSession = ({
             <button
               type="button"
               onClick={onRetry}
-              className="mt-2 flex flex-col items-center gap-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-card px-8 py-4 transition-colors"
+              className="mt-2 flex flex-col items-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 rounded-2xl px-8 py-4 transition-colors"
             >
-              <span className="text-base font-semibold text-white">Continuar la conversación</span>
-              <span className="text-sm text-neutral-300">La pantalla se bloqueó y el micrófono se detuvo.</span>
+              <span className="text-3xl" aria-hidden>🎙️</span>
+              <span className="text-blue-300 text-sm font-semibold">Continuar la conversación</span>
+              <span className="text-blue-400/70 text-xs">La pantalla se bloqueó y el micrófono se detuvo.</span>
             </button>
           )}
           {isSleeping && (
             <button
               type="button"
               onClick={onWakeUp}
-              className="mt-2 flex flex-col items-center gap-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-card px-8 py-4 transition-colors"
+              className="mt-2 flex flex-col items-center gap-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-2xl px-8 py-4 transition-colors"
             >
-              <span className="text-base font-semibold text-white">Despertar a Sous</span>
-              <span className="text-sm text-neutral-300">O habla y se despierta solo.</span>
+              <span className="text-3xl" aria-hidden>👆</span>
+              <span className="text-neutral-300 text-sm font-semibold">Despertar a Sous</span>
+              <span className="text-neutral-500 text-xs">O habla y se despierta solo.</span>
             </button>
           )}
         </div>
       </main>
 
-      <footer className="flex-shrink-0 flex items-center justify-end gap-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-neutral-900 border-t border-neutral-800">
-        {isListening && (
+      <footer className="flex-shrink-0 bg-neutral-900 border-t border-neutral-800 px-6 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        {/* Indicador de audio: decorativo, no refleja el volumen real. */}
+        <div aria-hidden className="flex items-end justify-center gap-1 h-6 mb-4">
+          {BAR_HEIGHTS.map((h, i) => (
+            <div
+              key={i}
+              className={`w-1 rounded-full ${barClass}`}
+              style={{
+                height: barsActive ? `${h * 2}px` : '3px',
+                transition: `height ${150 + i * 20}ms ease-in-out`,
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="flex items-center justify-end gap-2">
+          {isListening && (
+            <button
+              type="button"
+              onClick={onTest}
+              className="min-h-11 px-3 text-xs text-yellow-400 border border-yellow-400/30 rounded-full hover:bg-yellow-400/10 transition-colors"
+            >
+              Probar si me escucha
+            </button>
+          )}
           <button
             type="button"
-            onClick={onTest}
-            className="min-h-11 px-4 rounded-full border border-neutral-600 text-sm font-semibold text-neutral-200 hover:bg-neutral-800"
+            onClick={onExitVoice}
+            className="min-h-11 flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-sm font-semibold px-4 rounded-full transition-colors"
           >
-            Probar si me escucha
+            <X className="w-4 h-4" aria-hidden />
+            Volver al texto
           </button>
-        )}
-        <button
-          type="button"
-          onClick={onExitVoice}
-          className="min-h-11 px-4 flex items-center gap-2 rounded-full bg-neutral-800 hover:bg-neutral-700 text-sm font-semibold text-white"
-        >
-          <MessageSquare size={16} aria-hidden />
-          Volver al texto
-        </button>
+        </div>
       </footer>
     </>
   );

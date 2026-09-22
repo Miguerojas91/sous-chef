@@ -14,7 +14,7 @@
 
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, Eye, EyeOff } from 'lucide-react';
+import { ChefHat, Eye, EyeOff, AlertTriangle, ArrowRight, UserPlus, LogIn, Check } from 'lucide-react';
 import { LOCAL_USERS, getSeedAdmin, type LocalUser } from '../data/localUsers';
 import { checkMembership } from '../utils/membership';
 import {
@@ -52,12 +52,15 @@ function usernameExists(username: string): boolean {
 }
 
 const inputClass =
-  'block w-full min-h-12 px-3 border border-neutral-300 rounded-control placeholder:text-neutral-500 text-base sm:text-sm text-neutral-900 ' +
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:border-transparent aria-[invalid=true]:border-red-700';
+  'appearance-none block w-full min-h-12 px-3 py-3 border border-neutral-300 rounded-xl shadow-sm placeholder-neutral-400 text-base sm:text-sm text-neutral-900 ' +
+  'focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 aria-[invalid=true]:border-red-500';
 
 const Spinner = () => (
   <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full motion-safe:animate-spin" aria-hidden />
 );
+
+const AUTH_BG =
+  "bg-[url('https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80&w=2000')] bg-cover bg-center";
 
 export const AuthScreen = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -200,30 +203,34 @@ export const AuthScreen = () => {
   const country = formData.country ? getCountry(formData.country) : undefined;
 
   return (
-    <div className="min-h-dvh bg-white flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-      <div className="w-full max-w-md mx-auto px-6 pt-10 pb-8 flex-1 flex flex-col">
-        <div className="flex items-center gap-2">
-          <span className="bg-brand-700 p-2 rounded-control">
-            <ChefHat className="text-white w-6 h-6" aria-hidden />
-          </span>
-          <span className="text-xl font-extrabold text-neutral-900">Sous Chef</span>
-        </div>
+    <div className={`relative min-h-dvh bg-neutral-50 flex flex-col justify-center sm:px-6 lg:px-8 pt-[max(3rem,env(safe-area-inset-top))] pb-[max(3rem,env(safe-area-inset-bottom))] ${AUTH_BG}`}>
+      <div className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" aria-hidden />
 
-        <h1 className="mt-8 text-3xl font-extrabold text-neutral-900 tracking-tight">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="flex justify-center mb-6">
+          <div className="bg-white p-3 rounded-2xl shadow-xl">
+            <ChefHat className="text-orange-500 w-12 h-12" aria-hidden />
+          </div>
+        </div>
+        <h1 className="text-center text-3xl font-black text-white drop-shadow-md px-4">
           {isLogin ? 'Entra a tu cocina' : step === 1 ? 'Crea tu cuenta' : 'Casi listo'}
         </h1>
+      </div>
 
-        <form className="mt-6 flex-1 flex flex-col" onSubmit={handleSubmit}>
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="bg-white py-8 px-4 shadow-2xl sm:rounded-3xl sm:px-10 border border-neutral-100">
+
+        <form className="space-y-6" onSubmit={handleSubmit}>
           {hasError && (
-            <p id={ids.err} role="alert" className="mb-4 bg-red-50 border border-red-200 text-red-800 text-sm font-medium px-4 py-3 rounded-control">
+            <p id={ids.err} role="alert" className="bg-red-50 border border-red-200 text-red-700 text-sm font-medium px-4 py-3 rounded-xl">
               {error}
             </p>
           )}
 
           {step === 1 && (
-            <div className="space-y-4">
+            <div className="space-y-4 animate-fade-in">
               <div>
-                <label htmlFor={ids.user} className="block text-sm font-semibold text-neutral-800">Usuario</label>
+                <label htmlFor={ids.user} className="block text-sm font-bold text-neutral-700">Usuario</label>
                 <input
                   id={ids.user}
                   required
@@ -242,7 +249,7 @@ export const AuthScreen = () => {
 
               {!isLogin && (
                 <div>
-                  <label htmlFor={ids.email} className="block text-sm font-semibold text-neutral-800">Correo</label>
+                  <label htmlFor={ids.email} className="block text-sm font-bold text-neutral-700">Correo</label>
                   <input
                     id={ids.email}
                     type="email"
@@ -254,12 +261,12 @@ export const AuthScreen = () => {
                     value={formData.email}
                     onChange={e => setFormData({ ...formData, email: e.target.value })}
                   />
-                  <p className="mt-1 text-sm text-neutral-600">Es el que usarás si te suscribes a Premium en Hotmart.</p>
+                  <p className="mt-1 text-xs text-neutral-500">Es el que usarás si te suscribes a Premium en Hotmart.</p>
                 </div>
               )}
 
               <div>
-                <label htmlFor={ids.pass} className="block text-sm font-semibold text-neutral-800">Contraseña</label>
+                <label htmlFor={ids.pass} className="block text-sm font-bold text-neutral-700">Contraseña</label>
                 <div className="mt-1 relative">
                   <input
                     id={ids.pass}
@@ -271,6 +278,7 @@ export const AuthScreen = () => {
                     aria-invalid={hasError}
                     aria-describedby={hasError ? ids.err : undefined}
                     className={`${inputClass} pr-12`}
+                    placeholder="••••••••"
                     value={formData.password}
                     onChange={e => setFormData({ ...formData, password: e.target.value })}
                   />
@@ -279,9 +287,9 @@ export const AuthScreen = () => {
                     onClick={() => setShowPassword(p => !p)}
                     aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                     aria-pressed={showPassword}
-                    className="absolute right-0.5 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-control text-neutral-600 hover:text-neutral-900"
+                    className="absolute right-0.5 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-xl text-neutral-400 hover:text-neutral-600 transition-colors"
                   >
-                    {showPassword ? <EyeOff size={20} aria-hidden /> : <Eye size={20} aria-hidden />}
+                    {showPassword ? <EyeOff size={18} aria-hidden /> : <Eye size={18} aria-hidden />}
                   </button>
                 </div>
               </div>
@@ -289,47 +297,50 @@ export const AuthScreen = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full min-h-12 mt-2 flex justify-center items-center gap-2 px-4 rounded-control text-base font-semibold text-white bg-brand-700 hover:bg-brand-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-700 transition-colors disabled:opacity-60"
+                className="w-full min-h-12 !mt-8 flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isLoading
                   ? <><Spinner /> {isLogin ? 'Entrando…' : 'Continuando…'}</>
-                  : isLogin ? 'Entrar' : 'Continuar'}
+                  : isLogin ? <><LogIn size={18} aria-hidden /> Entrar</> : <><ArrowRight size={18} aria-hidden /> Continuar</>}
               </button>
             </div>
           )}
 
           {step === 2 && !isLogin && (
-            <div className="flex-1 flex flex-col">
+            <div className="animate-fade-in">
               {!country ? (
                 <CountryPicker
                   mode="inline"
                   onSelect={(code) => setFormData(prev => ({ ...prev, country: code }))}
                 />
               ) : (
-                <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-card border border-neutral-200 bg-neutral-50">
-                  <span className="flex items-center gap-3 min-w-0">
+                <div className="w-full mb-5 flex items-center justify-between gap-3 pl-4 pr-1 py-1 rounded-xl border border-emerald-200 bg-emerald-50">
+                  <span className="flex items-center gap-3 min-w-0 py-2">
                     <span className="text-2xl" aria-hidden>{country.flag}</span>
                     <span className="min-w-0">
-                      <span className="block text-sm text-neutral-600">Cocinas desde</span>
-                      <span className="block text-base font-semibold text-neutral-900 truncate">{country.name}</span>
+                      <span className="block text-xs text-emerald-600 font-bold">Cocinas desde</span>
+                      <span className="block text-sm font-semibold text-emerald-900 truncate">{country.name}</span>
                     </span>
                   </span>
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, country: '' }))}
-                    className="min-h-11 px-3 rounded-control text-sm font-semibold text-brand-800 hover:bg-brand-50"
+                    className="min-h-11 px-3 rounded-xl text-xs font-semibold text-emerald-600 hover:bg-emerald-100 transition-colors"
                   >
                     Cambiar
                   </button>
                 </div>
               )}
 
-              <h2 ref={step2HeadingRef} tabIndex={-1} className="mt-8 text-xl font-extrabold text-neutral-900 outline-none">
-                Tus preferencias
-              </h2>
-              <p className="text-sm text-neutral-600 mt-1 mb-5">
-                Sous las tiene en cuenta en cada sesión. Puedes cambiarlas después en tu perfil.
-              </p>
+              <div className="text-center mb-5">
+                <AlertTriangle className="mx-auto h-10 w-10 text-orange-500 mb-1.5" aria-hidden />
+                <h2 ref={step2HeadingRef} tabIndex={-1} className="text-lg font-black text-neutral-900 outline-none">
+                  Tus preferencias
+                </h2>
+                <p className="text-sm text-neutral-500 mt-1">
+                  Sous las tiene en cuenta en cada sesión. Puedes cambiarlas después en tu perfil.
+                </p>
+              </div>
 
               <PreferencesEditor
                 mode="inline"
@@ -345,42 +356,52 @@ export const AuthScreen = () => {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="flex-1 min-h-12 px-4 border border-neutral-300 rounded-control text-sm font-semibold text-neutral-800 bg-white hover:bg-neutral-50 transition-colors"
+                  className="flex-1 min-h-12 py-3 px-4 border border-neutral-200 rounded-xl shadow-sm text-sm font-bold text-neutral-700 bg-white hover:bg-neutral-50 transition-colors"
                 >
                   Atrás
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex-1 min-h-12 flex justify-center items-center gap-2 px-4 rounded-control text-sm font-semibold text-white bg-brand-700 hover:bg-brand-800 transition-colors disabled:opacity-60"
+                  className="flex-1 min-h-12 flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-neutral-900 hover:bg-black transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {isLoading ? <><Spinner /> Creando…</> : 'Crear cuenta'}
+                  {isLoading ? <><Spinner /> Creando…</> : <><Check size={18} aria-hidden /> Crear cuenta</>}
                 </button>
               </div>
               <button
                 type="button"
                 onClick={() => finishRegister(buildNewUser())}
                 disabled={isLoading}
-                className="w-full min-h-11 mt-2 text-sm font-semibold text-neutral-700 hover:text-neutral-900 transition-colors disabled:opacity-50"
+                className="w-full min-h-11 mt-2 text-xs text-neutral-400 hover:text-neutral-600 transition-colors disabled:opacity-40"
               >
-                Saltar por ahora
+                Saltar por ahora →
               </button>
             </div>
           )}
         </form>
 
         {step === 1 && (
-          <div className="mt-8 pt-6 border-t border-neutral-200 text-center">
-            <p className="text-sm text-neutral-600">{isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}</p>
+          <div className="mt-6 space-y-3">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center" aria-hidden>
+                <div className="w-full border-t border-neutral-200" />
+              </div>
+              <p className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-neutral-500">
+                  {isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
+                </span>
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => { setIsLogin(!isLogin); setError(''); setStep(1); }}
-              className="mt-2 w-full min-h-12 px-4 border border-neutral-300 rounded-control text-sm font-semibold text-neutral-900 bg-white hover:bg-neutral-50 transition-colors"
+              className="w-full min-h-12 flex justify-center items-center gap-2 py-3 px-4 border shadow-sm rounded-xl text-sm font-bold text-neutral-700 bg-white hover:bg-neutral-50 transition-colors border-neutral-200"
             >
-              {isLogin ? 'Crear una cuenta' : 'Iniciar sesión'}
+              {isLogin ? <><UserPlus size={18} aria-hidden /> Crear una cuenta</> : <><LogIn size={18} aria-hidden /> Iniciar sesión</>}
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

@@ -6,6 +6,8 @@
 import type { EvaluationCriterion } from '../../hooks/usePhotoEvaluation';
 
 export interface LevelStep {
+  /** Se muestra en el círculo del paso mientras no está completado. */
+  emoji: string;
   title: string;
   desc: string;
   tip: string;
@@ -27,10 +29,15 @@ export interface LevelRecipe {
   method: string[];
 }
 
+export interface MissionTag {
+  icon: string;
+  label: string;
+}
+
 export interface LevelContent {
   /** Admite **negrita** y <strong> (se pinta con SafeText). */
   missionText: string;
-  missionTags: string[];
+  missionTags: MissionTag[];
   steps: LevelStep[];
   errors: LevelError[];
   recipe?: LevelRecipe;

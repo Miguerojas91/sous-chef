@@ -3,26 +3,31 @@ import type { LevelContent, LevelError, LevelRecipe, LevelStep } from './types';
 
 const STEPS: LevelStep[] = [
   {
+    emoji: '🔬',
     title: 'Entiende la emulsión: aceite + agua',
     desc: 'Una emulsión es mezclar dos líquidos que normalmente no se mezclan: aceite y agua. Para que sea estable, se necesita un emulsionante (lecitina del huevo, mostaza) que rodea las gotas de aceite y las suspende en el agua. Sin emulsionante, la salsa se separa.',
     tip: 'La mayonesa es aceite en agua (emulsión directa). La mantequilla es agua en aceite (emulsión inversa). El huevo (lecitina) es el emulsionante más poderoso en cocina.',
   },
   {
+    emoji: '🌡️',
     title: 'Ingredientes a temperatura ambiente',
     desc: 'Para hacer mayonesa casera: saca el huevo y el aceite del refrigerador 30 minutos antes. Los ingredientes fríos dificultan la emulsión. La yema fría es más viscosa y no captura el aceite de forma eficiente. Temperatura ambiente = emulsión más fácil.',
     tip: 'Si usas huevo de la nevera en emergencia, tempéralo 5 minutos en agua tibia (no caliente). La temperatura del aceite también importa: nunca aceite caliente con yema.',
   },
   {
+    emoji: '💧',
     title: 'La técnica: agregar el aceite lentamente',
     desc: 'Bate la yema con mostaza y limón. Luego agrega el aceite gota a gota al inicio, sin parar de batir. Cada gota debe integrarse antes de agregar la siguiente. Una vez que la emulsión esté establecida (mezcla espesa), puedes añadir el aceite en hilo fino.',
     tip: 'El error más común: agregar aceite demasiado rápido al inicio. La lecitina de la yema necesita tiempo para rodear cada gotita. Si vas muy rápido, la emulsión se corta.',
   },
   {
+    emoji: '⚗️',
     title: 'Ajuste de textura y sabor',
     desc: 'Si la mayonesa está muy espesa, agrega unas gotas de agua o limón y bate. Si está muy líquida, sigue batiendo mientras añades más aceite. Ajusta sal, limón y mostaza. Una mayonesa bien hecha mantiene su forma al cucharear: ni fluye ni es sólida.',
     tip: 'Para hacer alioli tradicional, sustituye el limón por ajo machacado finísimo. Para hacer salsa tártara, mezcla la mayonesa con pepinillos, alcaparras y cebolleta en brunoise.',
   },
   {
+    emoji: '🔧',
     title: 'Recuperar una emulsión cortada',
     desc: 'Si la emulsión se corta (mezcla líquida y separada), no la tires. En un bowl limpio, pon una cucharadita de mostaza. Agrega la mezcla cortada gota a gota mientras bates. La mostaza actúa como segundo emulsionante y recupera la salsa casi siempre.',
     tip: 'Que se corte una emulsión le pasa a cualquiera. Con este rescate no tienes que tirar la yema ni el aceite.',
@@ -62,7 +67,10 @@ const RECIPE: LevelRecipe = {
 
 export const content: LevelContent = {
   missionText: 'Preparar una <strong>mayonesa o alioli casero</strong> con emulsión estable: textura firme, cremosa, sin cortar. Fotografía el resultado en un cuenco con una cuchara que muestre la consistencia.',
-  missionTags: ['~15 min', 'Lecitina de huevo'],
+  missionTags: [
+    { icon: '⏱️', label: '~15 min' },
+    { icon: '⚗️', label: 'Lecitina de huevo' },
+  ],
   steps: STEPS,
   errors: ERRORS,
   recipe: RECIPE,

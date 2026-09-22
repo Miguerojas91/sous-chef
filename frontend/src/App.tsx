@@ -69,8 +69,8 @@ const ADVENTURE_ROUTES = LEVELS.map(level => ({ level, Page: lazyAdventurePage(l
 const RouteFallback = () => (
   <div role="status" aria-live="polite" className="flex items-center justify-center h-full min-h-[60vh]">
     <div className="flex flex-col items-center gap-3">
-      <div className="w-10 h-10 rounded-full border-4 border-brand-100 border-t-brand-700 motion-safe:animate-spin" aria-hidden />
-      <span className="text-sm font-semibold text-neutral-600">Cargando…</span>
+      <div className="w-10 h-10 rounded-full border-4 border-orange-200 border-t-orange-500 motion-safe:animate-spin" aria-hidden />
+      <span className="text-sm font-semibold text-neutral-500">Cargando…</span>
     </div>
   </div>
 );
@@ -96,10 +96,10 @@ const Toast = memo(({ data, onClose, onPause, onResume }: {
   data: ToastData; onClose: () => void; onPause: () => void; onResume: () => void;
 }) => {
   const colors: Record<ToastData['type'], string> = {
-    info:    'bg-neutral-900 text-white',
-    warning: 'bg-amber-800 text-white',
-    success: 'bg-emerald-700 text-white',
-    error:   'bg-red-700 text-white',
+    info:    'bg-blue-600 text-white',
+    warning: 'bg-amber-500 text-white',
+    success: 'bg-emerald-600 text-white',
+    error:   'bg-red-600 text-white',
   };
   const urgent = data.type === 'warning' || data.type === 'error';
   return (
@@ -110,14 +110,14 @@ const Toast = memo(({ data, onClose, onPause, onResume }: {
       onMouseLeave={onResume}
       onFocus={onPause}
       onBlur={onResume}
-      className={`fixed top-[calc(4.5rem+env(safe-area-inset-top))] md:top-20 left-1/2 -translate-x-1/2 z-[250] flex items-center gap-2 pl-4 pr-1 py-1 rounded-card shadow-overlay max-w-sm w-[calc(100vw-2rem)] animate-sheet-up motion-reduce:animate-none ${colors[data.type]}`}
+      className={`fixed top-[calc(4.5rem+env(safe-area-inset-top))] md:top-20 left-1/2 -translate-x-1/2 z-[250] flex items-center gap-2 pl-4 pr-1 py-1 rounded-2xl shadow-2xl max-w-sm w-[calc(100vw-2rem)] animate-sheet-up motion-reduce:animate-none ${colors[data.type]}`}
     >
       <span className="flex-1 text-sm font-semibold leading-snug py-2">{data.msg}</span>
       <button
         type="button"
         onClick={onClose}
         aria-label="Cerrar aviso"
-        className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-control hover:bg-white/15"
+        className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-xl opacity-70 hover:opacity-100"
       >
         <X size={18} aria-hidden />
       </button>
@@ -222,7 +222,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const handleCountrySelect = (code: string) => {
     setUserCountry(code);
     setShowCountryPicker(false);
-    showToast('Listo. Sous te va a sugerir recetas con ingredientes de tu país.', 'success');
+    showToast('Listo. Sous te va a sugerir recetas con ingredientes de tu país 🌎', 'success');
   };
 
   const handleCountrySkip = () => {
@@ -254,15 +254,17 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         />
       )}
 
-      <header className="flex-shrink-0 bg-white border-b border-neutral-200 pt-[env(safe-area-inset-top)]">
-        <div className="max-w-6xl mx-auto px-4 h-14 md:h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-brand-700 p-1.5 rounded-control">
+      <header className="relative z-50 flex-shrink-0 bg-white/80 backdrop-blur-md border-b border-neutral-100 shadow-[0_1px_12px_rgba(0,0,0,0.06)] pt-[env(safe-area-inset-top)]">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-gradient-to-br from-orange-400 to-rose-500 p-1.5 rounded-xl shadow-sm shadow-orange-200">
               <ChefHat className="text-white w-5 h-5" aria-hidden />
             </div>
-            <span className="font-extrabold text-xl tracking-tight text-neutral-900">Sous</span>
+            <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-orange-500 to-rose-500 bg-clip-text text-transparent">
+              Sous
+            </span>
             {userData.is_admin && (
-              <span className="ml-1 text-xs font-bold bg-neutral-900 text-white px-2 py-0.5 rounded-md">Admin</span>
+              <span className="ml-1 text-xs font-bold bg-neutral-900 text-white px-2 py-0.5 rounded-md tracking-wide uppercase">Admin</span>
             )}
           </div>
 
@@ -272,32 +274,32 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               aria-label="Mi perfil"
               className="sm:hidden w-11 h-11 flex items-center justify-center"
             >
-              <span className="w-9 h-9 rounded-full bg-brand-700 flex items-center justify-center text-white font-extrabold text-sm">
+              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-white font-extrabold text-sm shadow-sm shadow-orange-200">
                 {userInitial}
               </span>
             </Link>
             <Link
               to="/perfil"
-              className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-card border border-neutral-200 hover:bg-neutral-50 transition-colors"
+              className="hidden sm:flex items-center gap-3 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-2 rounded-2xl border border-orange-100 hover:from-orange-100 hover:to-amber-100 transition-colors"
             >
-              <span className="w-8 h-8 rounded-full bg-brand-700 flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0" aria-hidden>
+              <span className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 shadow-sm" aria-hidden>
                 {userInitial}
               </span>
               <span className="flex flex-col leading-tight">
-                <span className="text-sm font-bold text-neutral-900">{userData.username}</span>
-                <span className="text-xs font-semibold text-brand-700">{userData.rank}</span>
+                <span className="text-sm font-bold text-neutral-800">{userData.username}</span>
+                <span className="text-xs font-semibold text-orange-500">{userData.rank}</span>
               </span>
-              <span className="flex flex-col items-end gap-1 pl-3 border-l border-neutral-200">
-                <span className="text-xs text-neutral-600 font-medium">{userData.xp} / {userData.nextRankXp} XP</span>
+              <span className="flex flex-col items-end gap-1 pl-1 border-l border-orange-100">
+                <span className="text-xs text-neutral-400 font-medium">{userData.xp} / {userData.nextRankXp} XP</span>
                 <span
-                  className="w-20 h-1.5 bg-brand-100 rounded-full overflow-hidden"
+                  className="w-20 h-1.5 bg-orange-100 rounded-full overflow-hidden"
                   role="progressbar"
                   aria-label="Progreso al siguiente rango"
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={Math.round(userData.levelProgress)}
                 >
-                  <span className="block h-full bg-brand-700 rounded-full transition-all duration-700" style={{ width: `${userData.levelProgress}%` }} />
+                  <span className="block h-full bg-gradient-to-r from-orange-400 to-rose-500 rounded-full transition-all duration-700" style={{ width: `${userData.levelProgress}%` }} />
                 </span>
               </span>
             </Link>
@@ -305,7 +307,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               type="button"
               onClick={handleLogout}
               aria-label="Cerrar sesión"
-              className="w-11 h-11 flex items-center justify-center text-neutral-600 hover:text-red-700 hover:bg-red-50 rounded-control transition-colors"
+              title="Cerrar sesión"
+              className="w-11 h-11 flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-150"
             >
               <LogOut size={18} aria-hidden />
             </button>
@@ -317,24 +320,24 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <nav aria-label="Secciones" className="w-56 flex-shrink-0 hidden md:flex flex-col gap-1 pt-1">
           {navLinks.map(({ to, icon: Icon, label, exact }, i) => (
             <div key={to}>
-              {i === 1 && <div className="border-t border-neutral-200 my-1" />}
+              {i === 1 && <div className="border-t border-neutral-100 my-1" />}
               <NavLink
                 to={to}
                 end={exact}
-                className={`flex items-center gap-3 px-3 min-h-11 rounded-control text-sm font-semibold transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2.5 min-h-11 rounded-xl text-sm font-semibold transition-all duration-150 ${
                   isActive(to, exact)
-                    ? 'bg-brand-50 text-brand-800'
-                    : 'text-neutral-700 hover:bg-neutral-100'
+                    ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white shadow-md shadow-orange-200/60'
+                    : 'text-neutral-500 hover:bg-orange-50 hover:text-orange-600'
                 }`}
               >
-                <Icon size={18} aria-hidden />
+                <Icon size={18} aria-hidden className={isActive(to, exact) ? 'text-white' : ''} />
                 {label}
               </NavLink>
             </div>
           ))}
         </nav>
 
-        <div className="flex-1 min-h-0 bg-white md:rounded-card md:border md:border-neutral-200 overflow-y-auto relative flex flex-col">
+        <div className="flex-1 min-h-0 bg-white md:rounded-2xl md:shadow-sm md:border md:border-neutral-100 overflow-y-auto relative flex flex-col">
           {children}
 
           {isAdmin && (
@@ -343,8 +346,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 type="button"
                 onClick={toggleEditMode}
                 aria-pressed={isEditMode}
-                className={`flex items-center gap-2 min-h-11 px-4 rounded-full shadow-overlay font-semibold text-sm transition-colors ${
-                  isEditMode ? 'bg-brand-700 text-white' : 'bg-neutral-900 text-white hover:bg-neutral-800'
+                className={`flex items-center gap-2 min-h-11 px-5 py-3 rounded-full shadow-2xl font-bold transition-all border-2 ${
+                  isEditMode
+                    ? 'bg-orange-500 text-white border-orange-400 shadow-orange-500/40 motion-safe:animate-pulse'
+                    : 'bg-neutral-900 text-white border-neutral-700 hover:bg-neutral-800'
                 }`}
               >
                 <ShieldAlert className="w-5 h-5" aria-hidden />
@@ -360,7 +365,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
       <nav
         aria-label="Secciones"
-        className="md:hidden flex-shrink-0 bg-white border-t border-neutral-200 pb-[env(safe-area-inset-bottom)]"
+        className="relative z-50 md:hidden flex-shrink-0 bg-white/90 backdrop-blur-md border-t border-neutral-100 shadow-[0_-1px_12px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)]"
       >
         <div className="flex items-stretch justify-around h-16">
           {navLinks.map(({ to, icon: Icon, shortLabel, exact }) => {
@@ -370,12 +375,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 key={to}
                 to={to}
                 end={exact}
-                className={`flex flex-col items-center justify-center gap-1 flex-1 min-w-0 text-center transition-colors ${
-                  active ? 'text-brand-700' : 'text-neutral-600'
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 text-center transition-all duration-150 ${
+                  active ? 'text-orange-500' : 'text-neutral-400 hover:text-orange-400'
                 }`}
               >
-                <Icon size={22} strokeWidth={active ? 2.5 : 1.9} aria-hidden />
-                <span className="text-[11px] font-semibold leading-none truncate max-w-full px-0.5">{shortLabel}</span>
+                <span className={`p-1 rounded-xl transition-all duration-150 ${active ? 'bg-orange-50' : ''}`}>
+                  <Icon size={20} strokeWidth={active ? 2.5 : 1.8} aria-hidden />
+                </span>
+                <span className="text-[10px] font-semibold leading-none truncate max-w-full px-0.5">{shortLabel}</span>
               </NavLink>
             );
           })}
@@ -396,14 +403,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const PremiumRoute = ({ children }: { children: React.ReactNode }) => {
   if (!isPremiumUser()) {
-    return <ToastRedirect to="/membresia" msg="Este nivel es de Premium." type="info" />;
+    return <ToastRedirect to="/membresia" msg="🔒 Este nivel es de Premium." type="info" />;
   }
   return <>{children}</>;
 };
 
 const LevelRoute = ({ children, path }: { children: React.ReactNode; path: string }) => {
   if (!isUnlocked(path, readLevelStars())) {
-    return <ToastRedirect to="/mapa" msg="Completa el nivel anterior para abrir este." type="warning" />;
+    return <ToastRedirect to="/mapa" msg="🔒 Completa el nivel anterior para abrir este." type="warning" />;
   }
   return <>{children}</>;
 };

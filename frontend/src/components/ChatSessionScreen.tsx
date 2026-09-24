@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowLeft, ChefHat } from 'lucide-react';
 import type { CookingChatSession } from '../hooks/useCookingChatSession';
+import { useVisualViewport } from '../hooks/useVisualViewport';
 import { ChatBubble, ChatMessage } from './ChatMessage';
 import { ChatInputBar } from './ChatInputBar';
 import { QuickReplies } from './QuickReplies';
@@ -35,11 +36,23 @@ export const ChatSessionScreen = ({
 }: ChatSessionScreenProps) => {
   const { messages, isLoading, send, voiceView, voiceMode } = session;
   const [confirmEnd, setConfirmEnd] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const logRef = useRef<HTMLDivElement>(null);
+  const { height: viewportHeight, offsetTop, keyboardOpen } = useVisualViewport();
+
+  const scrollToEnd = (smooth: boolean) => {
+    const log = logRef.current;
+    log?.scrollTo({ top: log.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  };
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    scrollToEnd(true);
   }, [messages, voiceMode]);
+
+  // Al abrir o cerrar el teclado cambia el alto del chat: el último mensaje
+  // tiene que seguir a la vista, y sin animación para no pelear con el teclado.
+  useEffect(() => {
+    scrollToEnd(false);
+  }, [viewportHeight, keyboardOpen]);
 
   const confirmDialog = confirmEnd && (
     <ConfirmDialog
@@ -79,34 +92,41 @@ export const ChatSessionScreen = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] h-dvh md:static md:z-auto md:h-full flex flex-col bg-neutral-50">
-      <header className="flex items-center gap-1 pl-1 pr-3 pt-[env(safe-area-inset-top)] min-h-12 bg-white border-b border-neutral-100 flex-shrink-0">
+    <div
+      className="fixed inset-0 z-[60] h-dvh md:static md:z-auto md:h-full flex flex-col bg-neutral-50"
+      // Con el teclado abierto la pantalla ya no mide `100dvh`: el chat se
+      // ajusta a lo que queda visible y se mueve con el viewport (iOS).
+      style={keyboardOpen && viewportHeight
+        ? { height: viewportHeight, transform: `translateY(${offsetTop}px)` }
+        : undefined}
+    >
+      <header className="flex items-center gap-2.5 px-3 pt-[env(safe-area-inset-top)] min-h-[68px] bg-white border-b-2 border-neutral-200 flex-shrink-0">
         <button
           type="button"
           onClick={onBack}
           aria-label={backLabel}
-          className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-full hover:bg-orange-100 transition-colors"
+          className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-[14px] border-2 border-neutral-200 hover:bg-neutral-100 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4 text-orange-600" aria-hidden />
+          <ArrowLeft className="w-5 h-5 text-ink" strokeWidth={2.4} aria-hidden />
         </button>
-        <ChefHat className="text-orange-500 w-4 h-4 mr-1 flex-shrink-0" aria-hidden />
+        <span className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center flex-shrink-0 shadow-[0_3px_0_theme(colors.orange.800)]" aria-hidden><ChefHat className="text-white w-5 h-5" strokeWidth={2.4} /></span>
         <div className="flex-1 min-w-0 py-1.5">
           <div className="flex items-center gap-1.5 min-w-0">
-            <h1 className="text-sm font-bold text-neutral-700 leading-tight truncate">{title}</h1>
+            <h1 className="text-[17px] font-black text-ink leading-tight truncate font-sans tracking-normal">{title}</h1>
             <span
               aria-hidden
-              className={`w-2 h-2 rounded-full flex-shrink-0 ${isLoading ? 'bg-yellow-400 motion-safe:animate-pulse' : 'bg-emerald-500'}`}
+              className={`w-2 h-2 rounded-full flex-shrink-0 ${isLoading ? 'bg-amber-500 motion-safe:animate-pulse' : 'bg-emerald-600'}`}
             />
           </div>
           {subtitle && (
-            <p className="text-[10px] text-neutral-400 leading-tight truncate">{subtitle}</p>
+            <p className="text-[13px] font-bold text-neutral-500 leading-tight truncate">{subtitle}</p>
           )}
         </div>
         {/* Píldora roja de terminar: va en el encabezado para no tapar mensajes ni la barra de entrada. */}
         <button
           type="button"
           onClick={() => setConfirmEnd(true)}
-          className="min-h-11 flex-shrink-0 flex items-center my-1 bg-red-500 hover:bg-red-600 active:scale-95 text-white text-xs font-bold px-3.5 rounded-full shadow-xl ring-2 ring-white transition-all"
+          className="min-h-11 flex-shrink-0 flex items-center bg-white border-2 border-red-200 hover:bg-red-50 text-red-700 text-sm font-black px-3.5 rounded-full transition-colors"
         >
           Terminar sesión
         </button>
@@ -115,11 +135,12 @@ export const ChatSessionScreen = ({
       {extraTop}
 
       <div
+        ref={logRef}
         role="log"
         aria-live="polite"
         aria-relevant="additions"
         aria-label="Conversación con Sous"
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-3 space-y-3"
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3.5"
       >
         {messages.length === 0 && !isLoading && (
           <div className="text-center mt-10 px-4">
@@ -134,10 +155,11 @@ export const ChatSessionScreen = ({
             <ChatMessage text={msg.text} isChef={msg.agent === 'chef'} />
           </ChatBubble>
         ))}
-        <div ref={bottomRef} />
       </div>
 
-      <QuickReplies onSend={send} loading={isLoading} />
+      {/* Con el teclado abierto estorban: se llevan dos filas de la poca
+          conversación que queda visible. Vuelven al cerrarlo. */}
+      {!keyboardOpen && <QuickReplies onSend={send} loading={isLoading} />}
       <ChatInputBar onSend={send} isLoading={isLoading} onStartVoice={session.startVoice} />
 
       {confirmDialog}

@@ -30,7 +30,7 @@ export const QuickReplies = ({ onSend, loading = false, replies = DEFAULT_REPLIE
     <div
       role="group"
       aria-label="Respuestas rápidas"
-      className="flex flex-wrap gap-2 px-3 py-2.5 flex-shrink-0 bg-white border-t border-neutral-100"
+      className="flex flex-wrap gap-2 px-3 py-2.5 flex-shrink-0 bg-neutral-50"
     >
       {replies.map(({ label, emoji, msg }) => (
         <button
@@ -38,10 +38,10 @@ export const QuickReplies = ({ onSend, loading = false, replies = DEFAULT_REPLIE
           type="button"
           disabled={loading}
           onClick={() => onSend(msg)}
-          className={`flex-1 min-w-[calc(50%-4px)] min-h-11 px-3 py-2.5 border text-sm font-bold rounded-2xl transition-all text-center shadow-sm ${
+          className={`flex-1 min-w-[calc(50%-4px)] min-h-11 px-3 py-2 border-2 text-sm font-extrabold rounded-full transition-all text-center ${
             loading
               ? 'bg-neutral-100 border-neutral-200 text-neutral-400 cursor-not-allowed'
-              : 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 active:scale-95'
+              : 'bg-white border-neutral-200 text-ink shadow-[0_3px_0_theme(colors.neutral.200)] hover:bg-neutral-50 active:translate-y-[2px]'
           }`}
         >
           {emoji && <span aria-hidden>{emoji} </span>}

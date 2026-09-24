@@ -23,9 +23,9 @@ export interface WorldTokens {
 }
 
 export const WORLD_TOKENS: Record<WorldId, WorldTokens> = {
-  1: { main: '#059669', soft: '#d1fae5', line: '#6ee7b7', bannerB: '#0d9488', nodeMain: '#10b981', nodeDark: '#047857', label: '#064e3b' },
-  2: { main: '#ea580c', soft: '#fff7ed', line: '#fdba74', bannerB: '#e11d48', nodeMain: '#f97316', nodeDark: '#c2410c', label: '#7c2d12' },
-  3: { main: '#2563eb', soft: '#dbeafe', line: '#93c5fd', bannerB: '#0891b2', nodeMain: '#3b82f6', nodeDark: '#1d4ed8', label: '#1e3a8a' },
-  4: { main: '#7c3aed', soft: '#ede9fe', line: '#c4b5fd', bannerB: '#a21caf', nodeMain: '#8b5cf6', nodeDark: '#6d28d9', label: '#4c1d95' },
-  5: { main: '#d97706', soft: '#fef9c3', line: '#fcd34d', bannerB: '#ea580c', nodeMain: '#f59e0b', nodeDark: '#b45309', label: '#78350f' },
+  1: { main: '#237F47', soft: '#DDF1E3', line: '#86C79C', bannerB: '#1D6A3B', nodeMain: '#237F47', nodeDark: '#185C33', label: '#123F24' },
+  2: { main: '#CC3B21', soft: '#FFF3EF', line: '#F2A08A', bannerB: '#AE3019', nodeMain: '#CC3B21', nodeDark: '#962812', label: '#6E1F10' },
+  3: { main: '#2A6FC4', soft: '#E0ECFA', line: '#98BBE8', bannerB: '#235FAA', nodeMain: '#2A6FC4', nodeDark: '#1C4F8E', label: '#12305A' },
+  4: { main: '#6E4BD1', soft: '#ECE6FB', line: '#B7A5EE', bannerB: '#5E3DBE', nodeMain: '#6E4BD1', nodeDark: '#4E31A0', label: '#2F1E60' },
+  5: { main: '#9C6C00', soft: '#FFF3C4', line: '#FFD54F', bannerB: '#7A5600', nodeMain: '#F5B800', nodeDark: '#C98F00', label: '#5C4100' },
 };

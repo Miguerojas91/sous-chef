@@ -67,7 +67,7 @@ export const Dialog = ({
         {visibleHeader ? (
           <header className={`flex items-start gap-3 flex-shrink-0 ${hasBody ? `p-5 border-b ${divider}` : 'px-6 pt-6 pb-4'}`}>
             {icon && (
-              <span className="bg-gradient-to-br from-orange-400 to-rose-500 p-2 rounded-xl text-white flex-shrink-0" aria-hidden>
+              <span className="bg-orange-400 p-2 rounded-xl text-white flex-shrink-0" aria-hidden>
                 {icon}
               </span>
             )}
@@ -157,7 +157,7 @@ export const ConfirmDialog = ({
             type="button"
             onClick={onConfirm}
             className={`flex-1 min-h-11 py-2.5 px-4 rounded-xl font-bold text-sm text-white transition-colors ${
-              destructive ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-500 hover:bg-orange-600'
+              destructive ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'
             }`}
           >
             {confirmLabel}

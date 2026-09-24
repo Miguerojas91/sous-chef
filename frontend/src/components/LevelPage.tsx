@@ -126,7 +126,7 @@ export const LevelPage = ({ level, content }: { level: PlacedLevel; content: Lev
             caption={`${completedSteps.size} de ${steps.length} pasos`}
             percent={progress}
             heightClassName="h-2.5"
-            fillClassName="bg-gradient-to-r from-yellow-300 to-yellow-400 rounded-full"
+            fillClassName="bg-yellow-300 rounded-full"
           />
         </LevelHeader>
 

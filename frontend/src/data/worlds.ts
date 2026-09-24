@@ -101,14 +101,14 @@ export const WORLD_THEME: Record<WorldId, WorldTheme> = {
       accentBg: 'bg-orange-50', accentBorder: 'border-orange-200',
       accentText: 'text-orange-700', accentDark: 'text-orange-800',
       stepActiveBg: 'bg-orange-100', stepActiveTxt: 'text-orange-700',
-      btn: 'bg-orange-500 hover:bg-orange-600', solid: 'bg-orange-500', shadow: 'shadow-orange-500/30',
+      btn: 'bg-orange-600 hover:bg-orange-700', solid: 'bg-orange-600', shadow: 'shadow-orange-500/30',
     },
     boss: {
       header: 'from-orange-600 via-red-600 to-rose-700',
       card: 'from-orange-900 to-red-900',
       border: 'border-orange-500/50',
       text: 'text-orange-400', textLight: 'text-orange-300', textFaint: 'text-orange-100',
-      doneBg: 'bg-orange-500', doneBorder: 'border-orange-400', doneCardBg: 'bg-orange-50',
+      doneBg: 'bg-orange-600', doneBorder: 'border-orange-400', doneCardBg: 'bg-orange-50',
       upload: 'border-orange-300 bg-orange-50 hover:bg-orange-100',
       reviewOverlay: 'bg-orange-500/25',
       victory: 'from-orange-500 via-red-500 to-rose-600',
@@ -118,7 +118,7 @@ export const WORLD_THEME: Record<WorldId, WorldTheme> = {
     academy: {
       color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200',
       dot: 'bg-orange-400', viewerDot: 'bg-orange-400', quizDot: 'bg-orange-700',
-      btn: 'bg-orange-500 hover:bg-orange-600',
+      btn: 'bg-orange-600 hover:bg-orange-700',
     },
   },
   3: {
@@ -174,30 +174,30 @@ export const WORLD_THEME: Record<WorldId, WorldTheme> = {
     },
   },
   5: {
-    map: { gradient: 'from-yellow-400 to-amber-600' },
+    map: { gradient: 'from-amber-700 to-amber-800' },
     level: {
-      gradient: 'from-yellow-500 to-amber-600',
+      gradient: 'from-amber-700 to-amber-800',
       accentBg: 'bg-amber-50', accentBorder: 'border-amber-200',
       accentText: 'text-amber-700', accentDark: 'text-amber-800',
       stepActiveBg: 'bg-amber-100', stepActiveTxt: 'text-amber-700',
-      btn: 'bg-amber-500 hover:bg-amber-600', solid: 'bg-amber-500', shadow: 'shadow-amber-500/30',
+      btn: 'bg-amber-700 hover:bg-amber-800', solid: 'bg-amber-700', shadow: 'shadow-amber-500/30',
     },
     boss: {
-      header: 'from-yellow-500 via-amber-500 to-orange-500',
+      header: 'from-amber-700 via-amber-700 to-amber-800',
       card: 'from-amber-900 via-yellow-900 to-orange-900',
       border: 'border-yellow-500/50',
       text: 'text-yellow-400', textLight: 'text-yellow-300', textFaint: 'text-yellow-100',
       doneBg: 'bg-amber-500', doneBorder: 'border-amber-400', doneCardBg: 'bg-amber-50',
       upload: 'border-amber-300 bg-amber-50 hover:bg-amber-100',
       reviewOverlay: 'bg-amber-500/25',
-      victory: 'from-yellow-400 via-amber-400 to-orange-500',
-      return: 'from-yellow-500 to-amber-600 shadow-amber-500/30',
+      victory: 'from-amber-600 via-amber-700 to-amber-800',
+      return: 'from-amber-700 to-amber-800 shadow-amber-500/30',
     },
     // Élite: el visor antiguo no tenía punto amarillo y caía en el naranja.
     academy: {
       color: 'text-yellow-700', bg: 'bg-yellow-50', border: 'border-amber-200',
       dot: 'bg-yellow-400', viewerDot: 'bg-orange-400', quizDot: 'bg-yellow-700',
-      btn: 'bg-yellow-500 hover:bg-yellow-600',
+      btn: 'bg-amber-700 hover:bg-amber-800',
     },
   },
 };

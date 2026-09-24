@@ -67,7 +67,7 @@ export const CountryPicker: React.FC<CountryPickerProps> = ({ mode = 'inline', o
     <div>
       <div className="mb-4">
         <div className="flex items-center gap-3 mb-2">
-          <span className="bg-gradient-to-br from-orange-400 to-rose-500 p-2 rounded-xl" aria-hidden>
+          <span className="bg-orange-400 p-2 rounded-xl" aria-hidden>
             <Globe className="text-white w-5 h-5" />
           </span>
           <h2 className="text-lg font-black text-neutral-900">{TITLE}</h2>

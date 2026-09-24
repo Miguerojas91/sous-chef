@@ -35,8 +35,8 @@ export const ChatInputBar = ({
   };
 
   return (
-    <div className="flex-shrink-0 px-3 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] bg-white border-t border-neutral-100">
-      <div className="flex items-center gap-1 bg-neutral-50 border border-neutral-200 rounded-2xl px-1 py-1.5 focus-within:border-orange-300">
+    <div className="flex-shrink-0 px-3 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] bg-white border-t-2 border-neutral-200">
+      <div className="flex items-center gap-1 bg-neutral-50 border-2 border-neutral-200 rounded-full px-1 py-1 focus-within:border-orange-300">
         {onStartVoice && (
           <button
             type="button"
@@ -45,7 +45,7 @@ export const ChatInputBar = ({
             title="Hablar con Sous (manos libres)"
             className={hitArea}
           >
-            <span className={`${circle} bg-violet-600 group-hover:bg-violet-700 group-focus-visible:ring-violet-400`}>
+            <span className={`${circle} bg-blue-500 group-hover:bg-blue-600 group-focus-visible:ring-blue-400`}>
               <Mic className="w-4 h-4" aria-hidden />
             </span>
           </button>
@@ -63,7 +63,7 @@ export const ChatInputBar = ({
           enterKeyHint="send"
           aria-label="Escribe tu pregunta a Sous"
           placeholder={isLoading ? 'Sous está respondiendo…' : placeholder}
-          className={`flex-1 min-w-0 min-h-7 bg-transparent border-none outline-none text-base md:text-sm text-neutral-700 placeholder:text-neutral-400 ${onStartVoice ? '' : 'pl-2'}`}
+          className={`flex-1 min-w-0 min-h-7 bg-transparent border-none outline-none text-base md:text-sm text-ink font-semibold placeholder:text-neutral-500 ${onStartVoice ? '' : 'pl-2'}`}
         />
         <button
           type="button"
@@ -72,7 +72,7 @@ export const ChatInputBar = ({
           aria-label="Enviar"
           className={`${hitArea} disabled:cursor-not-allowed`}
         >
-          <span className={`${circle} bg-orange-500 group-hover:bg-orange-600 group-disabled:opacity-40group-focus-visible:ring-orange-400`}>
+          <span className={`${circle} bg-orange-600 group-hover:bg-orange-700 group-disabled:opacity-40 group-focus-visible:ring-orange-400`}>
             <Send className="w-4 h-4" aria-hidden />
           </span>
         </button>

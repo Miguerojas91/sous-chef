@@ -41,3 +41,9 @@ Thumbs.db
 # Editor
 .idea/
 .vscode/
+
+# Documento confidencial: el repositorio es público
+PITCH_INVERSORES.md
+
+# Respaldos locales del diseño
+respaldo-diseno-original-*/

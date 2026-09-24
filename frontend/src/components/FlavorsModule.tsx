@@ -71,7 +71,7 @@ const FloatingCta = ({ onClick, children }: { onClick: () => void; children: Rea
     <button
       type="button"
       onClick={onClick}
-      className="w-full max-w-2xl mx-auto flex items-center justify-center gap-2 py-4 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold text-base rounded-2xl transition-all shadow-xl shadow-orange-300/50 pointer-events-auto"
+      className="w-full max-w-2xl mx-auto flex items-center justify-center gap-2 py-4 bg-orange-600 hover:bg-orange-700 active:scale-95 text-white font-bold text-base rounded-2xl transition-all shadow-xl shadow-orange-300/50 pointer-events-auto"
     >
       {children}
     </button>
@@ -195,7 +195,7 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
           <div
             key={s}
             className={`w-2 h-2 rounded-full transition-colors ${
-              step === s ? 'bg-orange-500' : i < stepIndex ? 'bg-orange-200' : 'bg-neutral-200'
+              step === s ? 'bg-orange-600' : i < stepIndex ? 'bg-orange-200' : 'bg-neutral-200'
             }`}
           />
         ))}
@@ -224,7 +224,7 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
               <button
                 type="button"
                 onClick={continueChat}
-                className="min-h-11 px-4 flex items-center gap-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-sm font-bold flex-shrink-0 transition-all shadow-sm"
+                className="min-h-11 px-4 flex items-center gap-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 active:scale-95 text-white text-sm font-bold flex-shrink-0 transition-all shadow-sm"
               >
                 <MessageSquare size={16} aria-hidden />
                 Continuar la conversación
@@ -292,7 +292,7 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
   }
 
   const noneMarked = summary.obtained.length === 0 && summary.swapped.length === 0 && summary.missing.length === 0;
-  const primaryCta = 'w-full max-w-md flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 active:scale-95 text-white font-black text-lg rounded-2xl transition-all shadow-2xl shadow-orange-300/50';
+  const primaryCta = 'w-full max-w-md flex items-center justify-center gap-3 py-5 bg-orange-600 hover:from-orange-600 hover:to-rose-600 active:scale-95 text-white font-black text-lg rounded-2xl transition-all shadow-2xl shadow-orange-300/50';
 
   return (
     <div className="flex flex-col h-full">

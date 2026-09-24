@@ -1,18 +1,22 @@
 /**
- * Inicio: acceso a los cinco módulos en una cuadrícula 2 + 2 + 1 (Mealprep
- * centrado). Si hay una receta en curso en Cocinemos, arriba aparece
- * "Continuar tu receta", que es lo que más se busca al volver a la app con la
- * olla en el fuego.
+ * Inicio: saludo, módulos (Explora), "Continuar tu receta" si hay una receta
+ * en curso, el siguiente reto del Modo Aventura, rango y racha.
  *
- * Los textos se editan desde el CMS (`EditableText`); las claves no deben
- * cambiar o se pierden los textos ya guardados.
+ * Los textos de los módulos se editan desde el CMS (`EditableText`); sus claves
+ * no deben cambiar o se pierden los textos ya guardados.
  */
 
 import { Link } from 'react-router-dom';
-import { ChevronRight, Compass, Map as MapIcon, Globe, BookOpen, CalendarDays } from 'lucide-react';
+import { ChevronRight, MessageCircle, ChefHat, Globe, BookOpen, CalendarDays, Clock } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { EditableText } from './cms/EditableText';
 import { hasCookingInProgress } from '../utils/cookingSessionStore';
+import { LEVELS, getLevelStatus } from '../data/adventure';
+import { WORLD_TOKENS } from '../data/worldTokens';
+import { readLevelStars } from '../utils/progress';
+import { RankCard, StreakCard } from './ui/GameStats';
+import { useGameState } from '../hooks/useGameState';
+import { WorldIcon } from './ui/WorldIcon';
 
 interface Module {
   /** Clave de CMS: no cambiar. */
@@ -21,116 +25,119 @@ interface Module {
   icon: LucideIcon;
   title: string;
   subtitle: string;
-  /** Clases Tailwind del gradiente de fondo. */
-  gradient: string;
-  /** Emoji decorativo (oculto a lectores de pantalla). */
-  emoji: string;
+  /** Clases del cuadro del ícono. */
+  tone: string;
 }
 
 const modules: Module[] = [
-  { id: 'descubridor', path: '/cocinar',  icon: Compass,      title: 'Cocinemos',         subtitle: 'Sous te guía paso a paso',            gradient: 'from-orange-400 to-red-500',    emoji: '🍳' },
-  { id: 'tesoro',      path: '/mapa',     icon: MapIcon,      title: 'Modo Aventura',     subtitle: 'Aprende técnicas por niveles',        gradient: 'from-amber-400 to-yellow-500',  emoji: '🗺️' },
-  { id: 'sabores',     path: '/sabores',  icon: Globe,        title: 'Sabores del Mundo', subtitle: 'Recetas de otros países',             gradient: 'from-emerald-400 to-teal-500',  emoji: '🌍' },
-  { id: 'academia',    path: '/academia', icon: BookOpen,     title: 'La Academia',       subtitle: 'Clases cortas con quiz',              gradient: 'from-violet-400 to-purple-600', emoji: '📚' },
-  { id: 'milprep',     path: '/milprep',  icon: CalendarDays, title: 'Mealprep',          subtitle: 'Cocina una vez, come toda la semana', gradient: 'from-blue-400 to-cyan-500',     emoji: '🗓️' },
+  { id: 'descubridor', path: '/cocinar',  icon: ChefHat,      title: 'Cocinemos',         subtitle: 'Sous te guía paso a paso',            tone: 'bg-orange-100 text-orange-600' },
+  { id: 'sabores',     path: '/sabores',  icon: Globe,        title: 'Sabores del Mundo', subtitle: 'Recetas de otros países',             tone: 'bg-blue-100 text-blue-500' },
+  { id: 'academia',    path: '/academia', icon: BookOpen,     title: 'La Academia',       subtitle: 'Clases cortas con quiz',              tone: 'bg-violet-100 text-violet-500' },
+  { id: 'milprep',     path: '/milprep',  icon: CalendarDays, title: 'Mealprep',          subtitle: 'Cocina una vez, come toda la semana', tone: 'bg-emerald-100 text-emerald-600' },
 ];
 
-const CARD_BASE =
-  'group relative text-left rounded-2xl p-4 ' +
-  'bg-gradient-to-br shadow-lg overflow-hidden ' +
-  'transition-all duration-200 ease-out ' +
-  'active:scale-95 hover:scale-[1.02] hover:shadow-xl ' +
-  'focus:outline-none focus-visible:ring-4 focus-visible:ring-white/70 focus-visible:ring-offset-2 ' +
-  'flex flex-col justify-between';
+function nextLevel() {
+  const stars = readLevelStars();
+  return LEVELS.find(l => getLevelStatus(l.path, stars) === 'active') ?? null;
+}
 
 export const HomeMenu = () => {
   const resume = hasCookingInProgress();
+  const { username, rank, streak, week, today } = useGameState();
+  const level = nextLevel();
 
   return (
-    <section
-      aria-labelledby="home-title"
-      className="flex flex-col flex-1 min-h-0 px-4 pt-4 pb-3 overflow-y-auto"
-    >
-      <header className="flex-shrink-0 mb-4 flex items-center justify-between">
-        <div>
-          <p className="text-xs font-bold tracking-widest uppercase text-orange-500 mb-0.5">
-            <EditableText as="span" elementKey="home_welcome_sub" defaultText="Bienvenido a" />
-          </p>
-          <h1 id="home-title" className="text-2xl font-extrabold text-neutral-900 tracking-tight leading-none">
-            <EditableText as="span" elementKey="home_title_main" defaultText="Sous " />
-            <EditableText
-              as="span"
-              elementKey="home_title_accent"
-              defaultText="Chef"
-              className="bg-gradient-to-r from-orange-500 to-rose-500 bg-clip-text text-transparent"
-            />
-          </h1>
-        </div>
-        <span className="text-3xl" aria-hidden="true">👨‍🍳</span>
+    <section aria-labelledby="home-title" className="flex flex-col flex-1 min-h-0 px-4 pt-2 pb-6 md:p-6 overflow-y-auto">
+      <header className="mb-4 flex flex-col gap-1">
+        {username && <p className="text-base font-extrabold text-neutral-500">Hola, {username}</p>}
+        <h1 id="home-title" className="text-[32px] md:text-[40px] font-extrabold text-ink leading-none">
+          <EditableText as="span" elementKey="home_greeting_title" defaultText="¿Qué cocinamos hoy?" />
+        </h1>
       </header>
 
-      {resume && (
-        <Link
-          to="/cocinar"
-          className="group relative flex-shrink-0 mb-3 min-h-16 flex items-center gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 text-white shadow-lg shadow-orange-200 overflow-hidden transition-all duration-200 ease-out active:scale-95 hover:scale-[1.02] hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-300 focus-visible:ring-offset-2"
-        >
-          <span aria-hidden="true" className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10" />
-          <span aria-hidden="true" className="absolute -bottom-6 left-10 w-16 h-16 rounded-full bg-white/10" />
-          <span aria-hidden="true" className="relative z-10 text-3xl drop-shadow-lg group-hover:scale-110 transition-transform duration-200">🔥</span>
-          <span className="relative z-10 flex-1 min-w-0">
-            <span className="block text-base font-extrabold tracking-tight">Continuar tu receta</span>
-            <span className="block text-sm font-medium text-white/95">Sous guardó la conversación donde la dejaste.</span>
-          </span>
-          <ChevronRight size={22} className="relative z-10 flex-shrink-0" aria-hidden />
-        </Link>
-      )}
+      <section aria-labelledby="explore-title" className="mb-5">
+        <h2 id="explore-title" className="text-[22px] font-extrabold text-ink mb-3">Explora</h2>
+        <nav aria-label="Módulos de Sous Chef" className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {modules.map(mod => <ModuleCard key={mod.id} mod={mod} />)}
+        </nav>
+      </section>
 
-      <nav aria-label="Módulos de Sous Chef" className="flex-1 flex flex-col gap-3 min-h-[24rem]">
-        <div className="flex gap-3 flex-1 min-h-[7.5rem]">
-          {modules.slice(0, 2).map(mod => (
-            <ModuleCard key={mod.id} mod={mod} />
-          ))}
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_320px] md:gap-5">
+        <div className="flex flex-col gap-4 md:gap-5 min-w-0">
+          {resume && (
+            <Link to="/cocinar" className="card-tactile px-4 py-3.5 flex items-center gap-3 hover:border-orange-300 transition-colors">
+              <span className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+                <MessageCircle size={26} strokeWidth={2.3} className="text-orange-600" aria-hidden />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[17px] font-black text-ink">Continuar tu receta</span>
+                <span className="block text-sm font-bold text-neutral-500">Sous guardó la conversación donde la dejaste.</span>
+              </span>
+              <ChevronRight size={24} strokeWidth={2.6} className="text-neutral-500 flex-shrink-0" aria-hidden />
+            </Link>
+          )}
+
+          {level && (
+            <section aria-labelledby="next-challenge">
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 id="next-challenge" className="text-[22px] font-extrabold text-ink">Tu siguiente reto</h2>
+                <Link to="/mapa" className="text-[15px] font-extrabold text-orange-600 hover:text-orange-800">Ver mapa</Link>
+              </div>
+              <div
+                className="relative overflow-hidden rounded-3xl p-5 md:p-6 text-white flex flex-col gap-3.5"
+                style={{ background: WORLD_TOKENS[level.world.id].main, boxShadow: `0 5px 0 ${WORLD_TOKENS[level.world.id].nodeDark}` }}
+              >
+                <span className="absolute -right-5 -top-4 opacity-15 pointer-events-none" aria-hidden>
+                  <WorldIcon world={level.world.id} size={150} strokeWidth={1.6} />
+                </span>
+                <span className="text-[13px] font-black uppercase tracking-widest text-white/85">
+                  {level.world.name} · Nivel {level.num}
+                </span>
+                <span className="font-display text-[32px] md:text-[40px] font-extrabold leading-none">{level.title}</span>
+                <span className="flex gap-2 flex-wrap">
+                  <span className="h-8 px-3 rounded-full bg-white/15 border-2 border-white/30 flex items-center text-[13px] font-extrabold">+{level.xp} XP</span>
+                  <span className="h-8 px-3 rounded-full bg-white/15 border-2 border-white/30 flex items-center gap-1.5 text-[13px] font-extrabold">
+                    <Clock size={14} strokeWidth={2.5} aria-hidden />
+                    {level.kind === 'boss' ? 'Jefe final' : 'Reto con foto'}
+                  </span>
+                </span>
+                <Link
+                  to={level.path}
+                  className="btn-3d bg-white md:self-start md:min-w-[200px]"
+                  style={{ color: WORLD_TOKENS[level.world.id].main, ['--btn-shadow' as string]: 'rgb(0 0 0 / 0.22)' }}
+                >
+                  Jugar
+                </Link>
+              </div>
+            </section>
+          )}
+
         </div>
-        <div className="flex gap-3 flex-1 min-h-[7.5rem]">
-          {modules.slice(2, 4).map(mod => (
-            <ModuleCard key={mod.id} mod={mod} />
-          ))}
+
+        <div className="flex flex-col gap-4 md:gap-5">
+          <RankCard rank={rank} />
+          <StreakCard streak={streak} week={week} today={today} />
         </div>
-        <div className="flex justify-center flex-1 min-h-[7.5rem]">
-          <ModuleCard mod={modules[4]} wide />
-        </div>
-      </nav>
+      </div>
     </section>
   );
 };
 
-function ModuleCard({ mod, wide = false }: { mod: Module; wide?: boolean }) {
+function ModuleCard({ mod }: { mod: Module }) {
   const Icon = mod.icon;
-  const widthClass = wide ? 'w-1/2' : 'flex-1 min-w-0';
-
   return (
     <Link
       to={mod.path}
-      className={`${CARD_BASE} ${mod.gradient} ${widthClass}`}
+      className="card-tactile p-4 min-h-[150px] flex flex-col gap-3 hover:border-neutral-300 active:translate-y-[2px] transition-transform"
     >
-      <span aria-hidden="true" className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10" />
-      <span aria-hidden="true" className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
-
-      <span
-        aria-hidden="true"
-        className="text-3xl drop-shadow-lg relative z-10 group-hover:scale-110 transition-transform duration-200"
-      >
-        {mod.emoji}
+      <span className={`w-12 h-12 rounded-2xl flex items-center justify-center ${mod.tone}`}>
+        <Icon size={26} strokeWidth={2.3} aria-hidden />
       </span>
-
-      <span className="relative z-10 block">
-        <span className="flex items-center gap-1.5 mb-1">
-          <Icon size={13} aria-hidden className="text-white/90 flex-shrink-0" />
-          <span className="text-sm font-extrabold text-white tracking-tight leading-tight">
-            <EditableText elementKey={`home_mod_${mod.id}_title`} defaultText={mod.title} as="span" />
-          </span>
+      <span className="flex flex-col gap-1">
+        <span className="font-display text-lg font-extrabold text-ink leading-tight">
+          <EditableText elementKey={`home_mod_${mod.id}_title`} defaultText={mod.title} as="span" />
         </span>
-        <span className="block text-xs font-medium text-white/95 leading-tight">
+        <span className="text-sm font-bold text-neutral-500 leading-snug">
           <EditableText elementKey={`home_mod_${mod.id}_sub`} defaultText={mod.subtitle} as="span" />
         </span>
       </span>

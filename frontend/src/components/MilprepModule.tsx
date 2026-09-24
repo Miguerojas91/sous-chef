@@ -300,7 +300,7 @@ export const MilprepModule: React.FC = () => {
                           <span
                             aria-hidden
                             className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm ${
-                              isSelected ? 'bg-orange-500 text-white' : 'bg-white text-gray-300'
+                              isSelected ? 'bg-orange-600 text-white' : 'bg-white text-gray-300'
                             }`}
                           >
                             <CheckCircle2 className="w-5 h-5" />
@@ -361,7 +361,7 @@ export const MilprepModule: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setActiveTab('recetas')}
-                    className="mt-4 min-h-11 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-sm font-bold shadow-sm transition-all"
+                    className="mt-4 min-h-11 px-4 rounded-xl bg-orange-600 hover:bg-orange-700 active:scale-95 text-white text-sm font-bold shadow-sm transition-all"
                   >
                     Elegir recetas
                   </button>
@@ -395,7 +395,7 @@ export const MilprepModule: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => startChat()}
-                      className="min-h-12 px-8 py-4 rounded-2xl font-black text-white text-base transition-all bg-gradient-to-r from-orange-500 to-rose-500 shadow-xl shadow-orange-400/30 active:scale-95"
+                      className="min-h-12 px-8 py-4 rounded-2xl font-black text-white text-base transition-all bg-orange-600 shadow-xl shadow-orange-400/30 active:scale-95"
                     >
                       Empezar a cocinar <span aria-hidden>🚀</span>
                     </button>
@@ -426,7 +426,7 @@ export const MilprepModule: React.FC = () => {
               count === MAX_RECIPES
                 ? 'bg-green-500 text-white shadow-green-400/40'
                 : count > 0
-                ? 'bg-orange-500 text-white shadow-orange-400/40'
+                ? 'bg-orange-600 text-white shadow-orange-400/40'
                 : 'bg-white text-neutral-500 border border-neutral-200 shadow-neutral-200/60'
             }`}
           >
@@ -451,7 +451,7 @@ export const MilprepModule: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('chat')}
-            className="min-h-11 flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-xl font-bold text-sm bg-orange-500 text-white hover:bg-orange-600 active:scale-95 transition-all shadow-orange-400/40"
+            className="min-h-11 flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-xl font-bold text-sm bg-orange-600 text-white hover:bg-orange-700 active:scale-95 transition-all shadow-orange-400/40"
           >
             Ir a cocinar <span aria-hidden>→</span>
           </button>
@@ -469,7 +469,7 @@ export const MilprepModule: React.FC = () => {
               <button
                 type="button"
                 onClick={() => { setShowReadyBanner(false); setActiveTab('mercado'); }}
-                className="w-full min-h-11 py-3 rounded-xl font-black text-white bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg shadow-green-500/30 active:scale-95 transition-all"
+                className="w-full min-h-11 py-3 rounded-xl font-black text-white bg-green-500 shadow-lg shadow-green-500/30 active:scale-95 transition-all"
               >
                 Ver lista de compras <span aria-hidden>→</span>
               </button>
@@ -484,7 +484,7 @@ export const MilprepModule: React.FC = () => {
           }
         >
           {/* Cabecera verde a sangre: compensa el padding del diálogo. */}
-          <div className="-mx-5 -mt-5 mb-4 rounded-t-sheet bg-gradient-to-br from-green-400 to-emerald-600 p-6 text-center text-white">
+          <div className="-mx-5 -mt-5 mb-4 rounded-t-sheet bg-green-400 p-6 text-center text-white">
             <div className="text-5xl mb-2" aria-hidden>🛒</div>
             <p className="text-2xl font-black" aria-hidden>Ya tienes tus 7 recetas</p>
             <p className="text-white/85 text-sm mt-1">

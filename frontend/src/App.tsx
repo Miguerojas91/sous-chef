@@ -15,7 +15,7 @@
 
 import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { ChefHat, Home, Compass, Map as MapIcon, Globe, BookOpen, LogOut, CalendarDays, ShieldAlert, X } from 'lucide-react';
+import { ChefHat, Home, Map as MapIcon, Globe, BookOpen, LogOut, CalendarDays, ShieldAlert, X, Flame, UserRound } from 'lucide-react';
 import { useState, useEffect, useRef, lazy, Suspense, memo, type ComponentType } from 'react';
 import { EditorProvider, useEditor } from './context/EditorContext';
 
@@ -33,6 +33,8 @@ import { useRoutePageviews } from './hooks/useAnalytics';
 import { FeedbackButton } from './components/FeedbackButton';
 import { showToast, onToast, onUserStateChange } from './utils/events';
 import type { ToastDetail } from './utils/events';
+import { getRankInfo } from './utils/rank';
+import { getStreak } from './utils/streak';
 
 initAnalytics();
 
@@ -69,19 +71,29 @@ const ADVENTURE_ROUTES = LEVELS.map(level => ({ level, Page: lazyAdventurePage(l
 const RouteFallback = () => (
   <div role="status" aria-live="polite" className="flex items-center justify-center h-full min-h-[60vh]">
     <div className="flex flex-col items-center gap-3">
-      <div className="w-10 h-10 rounded-full border-4 border-orange-200 border-t-orange-500 motion-safe:animate-spin" aria-hidden />
+      <div className="w-10 h-10 rounded-full border-4 border-orange-200 border-t-orange-600 motion-safe:animate-spin" aria-hidden />
       <span className="text-sm font-semibold text-neutral-500">Cargando…</span>
     </div>
   </div>
 );
 
+// Escritorio: las seis secciones en el menú lateral.
 const navLinks = [
   { to: '/home',     icon: Home,         label: 'Inicio',            shortLabel: 'Inicio',   exact: true },
-  { to: '/cocinar',  icon: Compass,      label: 'Cocinemos',         shortLabel: 'Cocinar',  exact: false },
+  { to: '/cocinar',  icon: ChefHat,      label: 'Cocinemos',         shortLabel: 'Cocinar',  exact: false },
   { to: '/mapa',     icon: MapIcon,      label: 'Modo Aventura',     shortLabel: 'Aventura', exact: false },
   { to: '/sabores',  icon: Globe,        label: 'Sabores del Mundo', shortLabel: 'Sabores',  exact: false },
   { to: '/academia', icon: BookOpen,     label: 'La Academia',       shortLabel: 'Academia', exact: false },
   { to: '/milprep',  icon: CalendarDays, label: 'Mealprep',          shortLabel: 'Mealprep', exact: false },
+];
+
+// Móvil: cinco pestañas. Sabores del Mundo y Mealprep se abren desde Inicio.
+const mobileTabs = [
+  { to: '/home',     icon: Home,       label: 'Inicio',   exact: true,  also: ['/sabores', '/milprep'] },
+  { to: '/cocinar',  icon: ChefHat,    label: 'Cocinar',  exact: false, also: [] },
+  { to: '/mapa',     icon: MapIcon,    label: 'Aventura', exact: false, also: [] },
+  { to: '/academia', icon: BookOpen,   label: 'Academia', exact: false, also: [] },
+  { to: '/perfil',   icon: UserRound,  label: 'Perfil',   exact: false, also: ['/membresia'] },
 ];
 
 type ToastData = ToastDetail;
@@ -138,30 +150,25 @@ const ToastRedirect = ({ to, msg, type }: { to: string; msg: string; type: Toast
 
 
 interface HeaderUserData {
-  username: string; rank: string; xp: number; nextRankXp: number; levelProgress: number; is_admin: boolean;
+  username: string; rank: string; xp: number; nextRankXp: number; levelProgress: number; is_admin: boolean; streak: number;
 }
 
-// Rango y progreso del encabezado a partir del usuario guardado.
+// Rango, progreso y racha del encabezado a partir del usuario guardado.
 function readUserData(): HeaderUserData {
-  const fallback: HeaderUserData = { username: 'Cargando…', rank: 'Iniciado', xp: 0, nextRankXp: 500, levelProgress: 0, is_admin: false };
+  const streak = getStreak();
+  const fallback: HeaderUserData = { username: 'Cargando…', rank: 'Iniciado', xp: 0, nextRankXp: 500, levelProgress: 0, is_admin: false, streak };
   try {
     const user = JSON.parse(localStorage.getItem('user') ?? 'null');
     if (!user) return fallback;
-    let rank = 'Iniciado';
-    let nextXp = 500;
-    let base = 0;
-    if (user.xp >= 500) { rank = 'Cocinero de Partida'; nextXp = 1500; base = 500; }
-    if (user.xp >= 1500) { rank = 'Sous Chef'; nextXp = 5000; base = 1500; }
-    if (user.xp >= 5000) { rank = 'Chef de Cuisine'; nextXp = 15000; base = 5000; }
-    if (user.xp >= 15000) { rank = 'Maestría Culinaria'; nextXp = 50000; base = 15000; }
-    const progress = ((user.xp - base) / (nextXp - base)) * 100;
+    const info = getRankInfo(user.xp ?? 0);
     return {
       username: user.username,
-      rank,
-      xp: user.xp,
-      nextRankXp: nextXp,
-      levelProgress: Math.min(progress, 100),
+      rank: info.rank,
+      xp: info.xp,
+      nextRankXp: info.nextRankXp,
+      levelProgress: info.progress,
       is_admin: user.is_admin || false,
+      streak,
     };
   } catch (e) {
     console.error(e);
@@ -254,53 +261,48 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         />
       )}
 
-      <header className="relative z-50 flex-shrink-0 bg-white/80 backdrop-blur-md border-b border-neutral-100 shadow-[0_1px_12px_rgba(0,0,0,0.06)] pt-[env(safe-area-inset-top)]">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="bg-gradient-to-br from-orange-400 to-rose-500 p-1.5 rounded-xl shadow-sm shadow-orange-200">
-              <ChefHat className="text-white w-5 h-5" aria-hidden />
-            </div>
-            <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-orange-500 to-rose-500 bg-clip-text text-transparent">
-              Sous
+      <header className="relative z-50 flex-shrink-0 bg-neutral-50 md:bg-white md:border-b-2 md:border-neutral-200 pt-[env(safe-area-inset-top)]">
+        <div className="max-w-6xl mx-auto px-4 h-16 md:h-[72px] flex items-center justify-between gap-2">
+          <Link to="/home" aria-label="Sous, ir al inicio" className="flex items-center gap-2 min-w-0">
+            <span className="w-9 h-9 md:w-10 md:h-10 rounded-[11px] bg-orange-600 flex items-center justify-center flex-shrink-0 shadow-[0_3px_0_theme(colors.orange.800)]">
+              <ChefHat className="text-white w-5 h-5 md:w-6 md:h-6" strokeWidth={2.4} aria-hidden />
             </span>
+            <span className="font-display font-extrabold text-2xl md:text-[28px] tracking-tight text-ink">sous</span>
             {userData.is_admin && (
-              <span className="ml-1 text-xs font-bold bg-neutral-900 text-white px-2 py-0.5 rounded-md tracking-wide uppercase">Admin</span>
+              <span className="ml-1 text-xs font-bold bg-ink text-white px-2 py-0.5 rounded-md tracking-wide uppercase">Admin</span>
             )}
-          </div>
+          </Link>
 
-          <div className="flex items-center gap-1 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="pill-stat" title="Días seguidos cocinando">
+              <Flame size={18} strokeWidth={2.5} className={userData.streak > 0 ? 'text-flame' : 'text-neutral-400'} aria-hidden />
+              <span>{userData.streak}</span>
+              <span className="sr-only">{userData.streak === 1 ? 'día de racha' : 'días de racha'}</span>
+            </span>
+            <span className="pill-stat">
+              <span className="xp-coin" aria-hidden>XP</span>
+              <span>{userData.xp}</span>
+              <span className="sr-only">puntos de experiencia</span>
+            </span>
             <Link
               to="/perfil"
               aria-label="Mi perfil"
-              className="sm:hidden w-11 h-11 flex items-center justify-center"
+              className="md:hidden w-11 h-11 flex items-center justify-center"
             >
-              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-white font-extrabold text-sm shadow-sm shadow-orange-200">
+              <span className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center text-white font-black text-base shadow-[0_3px_0_theme(colors.orange.800)]">
                 {userInitial}
               </span>
             </Link>
             <Link
               to="/perfil"
-              className="hidden sm:flex items-center gap-3 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-2 rounded-2xl border border-orange-100 hover:from-orange-100 hover:to-amber-100 transition-colors"
+              className="hidden md:flex items-center gap-2.5 h-12 pl-1 pr-3.5 rounded-full border-2 border-neutral-200 hover:bg-neutral-50 transition-colors"
             >
-              <span className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0 shadow-sm" aria-hidden>
+              <span className="w-9 h-9 rounded-full bg-orange-600 flex items-center justify-center text-white font-black text-sm flex-shrink-0" aria-hidden>
                 {userInitial}
               </span>
               <span className="flex flex-col leading-tight">
-                <span className="text-sm font-bold text-neutral-800">{userData.username}</span>
-                <span className="text-xs font-semibold text-orange-500">{userData.rank}</span>
-              </span>
-              <span className="flex flex-col items-end gap-1 pl-1 border-l border-orange-100">
-                <span className="text-xs text-neutral-400 font-medium">{userData.xp} / {userData.nextRankXp} XP</span>
-                <span
-                  className="w-20 h-1.5 bg-orange-100 rounded-full overflow-hidden"
-                  role="progressbar"
-                  aria-label="Progreso al siguiente rango"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={Math.round(userData.levelProgress)}
-                >
-                  <span className="block h-full bg-gradient-to-r from-orange-400 to-rose-500 rounded-full transition-all duration-700" style={{ width: `${userData.levelProgress}%` }} />
-                </span>
+                <span className="text-sm font-extrabold text-ink">{userData.username}</span>
+                <span className="text-xs font-extrabold text-amber-700">{userData.rank}</span>
               </span>
             </Link>
             <button
@@ -308,36 +310,44 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               onClick={handleLogout}
               aria-label="Cerrar sesión"
               title="Cerrar sesión"
-              className="w-11 h-11 flex items-center justify-center text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-150"
+              className="hidden md:flex w-11 h-11 items-center justify-center text-neutral-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-150"
             >
-              <LogOut size={18} aria-hidden />
+              <LogOut size={20} aria-hidden />
             </button>
           </div>
         </div>
       </header>
 
       <main className="flex-1 min-h-0 max-w-6xl mx-auto w-full md:p-4 flex gap-5">
-        <nav aria-label="Secciones" className="w-56 flex-shrink-0 hidden md:flex flex-col gap-1 pt-1">
-          {navLinks.map(({ to, icon: Icon, label, exact }, i) => (
-            <div key={to}>
-              {i === 1 && <div className="border-t border-neutral-100 my-1" />}
+        <nav aria-label="Secciones" className="w-60 flex-shrink-0 hidden md:flex flex-col gap-1.5 pt-1">
+          {navLinks.map(({ to, icon: Icon, label, exact }) => {
+            const active = isActive(to, exact);
+            return (
               <NavLink
+                key={to}
                 to={to}
                 end={exact}
-                className={`flex items-center gap-3 px-3 py-2.5 min-h-11 rounded-xl text-sm font-semibold transition-all duration-150 ${
-                  isActive(to, exact)
-                    ? 'bg-gradient-to-r from-orange-500 to-rose-500 text-white shadow-md shadow-orange-200/60'
-                    : 'text-neutral-500 hover:bg-orange-50 hover:text-orange-600'
+                className={`flex items-center gap-3 px-3.5 min-h-[52px] rounded-2xl text-base font-extrabold border-2 transition-colors duration-150 ${
+                  active
+                    ? 'bg-orange-100 text-orange-600 border-orange-200'
+                    : 'text-ink border-transparent hover:bg-white hover:border-neutral-200'
                 }`}
               >
-                <Icon size={18} aria-hidden className={isActive(to, exact) ? 'text-white' : ''} />
+                <Icon size={22} strokeWidth={2.3} aria-hidden className={active ? 'text-orange-600' : 'text-neutral-500'} />
                 {label}
               </NavLink>
-            </div>
-          ))}
+            );
+          })}
+          <Link
+            to="/membresia"
+            className="mt-auto mb-2 flex flex-col gap-1.5 p-4 rounded-[20px] bg-ink text-white hover:bg-neutral-800 transition-colors"
+          >
+            <span className="font-extrabold">Hazte Premium</span>
+            <span className="text-sm font-semibold text-neutral-200 leading-snug">Mundos 3, 4 y 5 y clases avanzadas.</span>
+          </Link>
         </nav>
 
-        <div className="flex-1 min-h-0 bg-white md:rounded-2xl md:shadow-sm md:border md:border-neutral-100 overflow-y-auto relative flex flex-col">
+        <div className="flex-1 min-h-0 bg-neutral-50 md:bg-white md:rounded-[24px] md:border-2 md:border-neutral-200 overflow-y-auto relative flex flex-col">
           {children}
 
           {isAdmin && (
@@ -348,7 +358,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 aria-pressed={isEditMode}
                 className={`flex items-center gap-2 min-h-11 px-5 py-3 rounded-full shadow-2xl font-bold transition-all border-2 ${
                   isEditMode
-                    ? 'bg-orange-500 text-white border-orange-400 shadow-orange-500/40 motion-safe:animate-pulse'
+                    ? 'bg-orange-600 text-white border-orange-400 shadow-orange-500/40 motion-safe:animate-pulse'
                     : 'bg-neutral-900 text-white border-neutral-700 hover:bg-neutral-800'
                 }`}
               >
@@ -365,24 +375,25 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
       <nav
         aria-label="Secciones"
-        className="relative z-50 md:hidden flex-shrink-0 bg-white/90 backdrop-blur-md border-t border-neutral-100 shadow-[0_-1px_12px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)]"
+        className="relative z-50 md:hidden flex-shrink-0 bg-white border-t-2 border-neutral-200 pb-[env(safe-area-inset-bottom)]"
       >
-        <div className="flex items-stretch justify-around h-16">
-          {navLinks.map(({ to, icon: Icon, shortLabel, exact }) => {
-            const active = isActive(to, exact);
+        <div className="flex items-stretch justify-around h-[68px] px-1">
+          {mobileTabs.map(({ to, icon: Icon, label, exact, also }) => {
+            const active = isActive(to, exact) || also.some(p => location.pathname.startsWith(p));
             return (
               <NavLink
                 key={to}
                 to={to}
                 end={exact}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 text-center transition-all duration-150 ${
-                  active ? 'text-orange-500' : 'text-neutral-400 hover:text-orange-400'
+                aria-current={active ? 'page' : undefined}
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 text-center transition-colors duration-150 ${
+                  active ? 'text-orange-600' : 'text-neutral-500 hover:text-orange-600'
                 }`}
               >
-                <span className={`p-1 rounded-xl transition-all duration-150 ${active ? 'bg-orange-50' : ''}`}>
-                  <Icon size={20} strokeWidth={active ? 2.5 : 1.8} aria-hidden />
+                <span className={`w-14 h-8 flex items-center justify-center rounded-xl transition-colors duration-150 ${active ? 'bg-orange-100' : ''}`}>
+                  <Icon size={23} strokeWidth={2.3} aria-hidden />
                 </span>
-                <span className="text-[10px] font-semibold leading-none truncate max-w-full px-0.5">{shortLabel}</span>
+                <span className="text-xs font-extrabold leading-none truncate max-w-full px-0.5">{label}</span>
               </NavLink>
             );
           })}

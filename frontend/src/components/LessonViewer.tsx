@@ -176,7 +176,7 @@ const LessonPanel = (props: PanelProps) => {
           <button
             type="button"
             onClick={onClose}
-            className={`mt-2 min-h-11 px-6 py-2 bg-orange-500 text-white rounded-full font-bold text-sm ${FOCUS_RING}`}
+            className={`mt-2 min-h-11 px-6 py-2 bg-orange-600 text-white rounded-full font-bold text-sm ${FOCUS_RING}`}
           >
             Volver a la Academia
           </button>

@@ -14,6 +14,7 @@ import { capReachedMessage, getVoiceUsageSummary, hasReachedCap } from '../utils
 import { isPremiumUser } from '../utils/membership';
 import { track, Events } from '../utils/analytics';
 import { showToast } from '../utils/events';
+import { markActivityToday } from '../utils/streak';
 
 const VOICE_ONBOARDING_KEY = 'sous_voice_onboarding_seen';
 
@@ -125,12 +126,18 @@ export function useCookingChatSession({
     test,
   }), [voice.voiceState, voice.transcript, voice.currentChefText, voice.voiceError, voice.silenceSeconds, wakeUp, test]);
 
+  // Escribirle a Sous cuenta para la racha diaria.
+  const sendWithActivity: typeof sendMessage = useCallback((...args: Parameters<typeof sendMessage>) => {
+    markActivityToday();
+    return sendMessage(...args);
+  }, [sendMessage]);
+
   return {
     messages,
     isLoading,
     /** `messages.length > 0`: hay conversación, nueva o restaurada. */
     started,
-    send: sendMessage,
+    send: sendWithActivity,
     /** Empieza una conversación nueva con `firstMessage`, borrando la anterior. */
     start: startConversation,
     end,

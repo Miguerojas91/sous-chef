@@ -297,7 +297,7 @@ export const AuthScreen = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full min-h-12 !mt-8 flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="btn-3d-primary w-full !mt-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-500 disabled:cursor-not-allowed"
               >
                 {isLoading
                   ? <><Spinner /> {isLogin ? 'Entrando…' : 'Continuando…'}</>
@@ -363,7 +363,7 @@ export const AuthScreen = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex-1 min-h-12 flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-neutral-900 hover:bg-black transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="btn-3d-primary flex-1 disabled:cursor-not-allowed"
                 >
                   {isLoading ? <><Spinner /> Creando…</> : <><Check size={18} aria-hidden /> Crear cuenta</>}
                 </button>

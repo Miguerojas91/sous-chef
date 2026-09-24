@@ -4,6 +4,7 @@
  * Las clases premium llevan a /membresia si el usuario no tiene Premium.
  */
 
+import { markActivityToday } from '../utils/streak';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isPremiumUser } from '../utils/membership';
@@ -51,7 +52,7 @@ const LessonCard = ({ lesson, level, access, isCompleted, onOpen }: {
                             <EditableText elementKey={`acad_lesson_${key}_title`} defaultText={lesson.title} as="span" />
                         </span>
                         {lesson.isPremium && (
-                            <span className="inline-flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                            <span className="inline-flex items-center gap-1 bg-yellow-400 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
                                 <Star size={9} fill="currentColor" aria-hidden /> PREMIUM
                             </span>
                         )}
@@ -92,8 +93,8 @@ const LessonCard = ({ lesson, level, access, isCompleted, onOpen }: {
                         onClick={onOpen}
                         className={`mt-4 w-full min-h-11 flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-bold text-sm text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700 focus-visible:ring-offset-2 ${
                             lesson.isPremium
-                                ? 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600'
-                                : 'bg-orange-500 hover:bg-orange-600'
+                                ? 'bg-yellow-400 hover:from-yellow-500 hover:to-orange-600'
+                                : 'bg-orange-600 hover:bg-orange-700'
                         }`}
                     >
                         {access === 'premium' ? <Lock size={16} aria-hidden /> : <PlayCircle size={16} aria-hidden />}
@@ -117,6 +118,7 @@ export const AcademyModule = () => {
             const next = new Set(prev);
             next.add(id);
             saveCompletedLessons(next);
+            markActivityToday();
             return next;
         });
     };
@@ -167,7 +169,7 @@ export const AcademyModule = () => {
                         aria-valuemax={TOTAL_LESSONS}
                         aria-valuenow={completedTotal}
                     >
-                        <div className="h-full bg-orange-500 rounded-full transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${(completedTotal / TOTAL_LESSONS) * 100}%` }} />
+                        <div className="h-full bg-orange-600 rounded-full transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${(completedTotal / TOTAL_LESSONS) * 100}%` }} />
                     </div>
                 </div>
             </div>

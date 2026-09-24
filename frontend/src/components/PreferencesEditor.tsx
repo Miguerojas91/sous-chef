@@ -96,7 +96,7 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
                   active
                     ? isDiet
                       ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-200'
-                      : 'bg-orange-500 text-white border-orange-500 shadow-sm shadow-orange-200'
+                      : 'bg-orange-600 text-white border-orange-500 shadow-sm shadow-orange-200'
                     : 'bg-white text-neutral-700 border-neutral-200 hover:border-orange-300'
                 }`}
               >
@@ -151,7 +151,7 @@ export const PreferencesEditor: React.FC<PreferencesEditorProps> = ({
             <button
               type="button"
               onClick={() => onSave?.({ filterIds, allergies, dislikes })}
-              className="flex-1 min-h-11 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors"
+              className="flex-1 min-h-11 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-orange-600 hover:bg-orange-700 transition-colors"
             >
               Guardar <ChevronRight size={16} aria-hidden />
             </button>

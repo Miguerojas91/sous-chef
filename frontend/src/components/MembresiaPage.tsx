@@ -79,7 +79,7 @@ export const MembresiaPage = () => {
   if (alreadyPremium) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-xl" aria-hidden>
+        <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center shadow-xl" aria-hidden>
           <Crown className="w-10 h-10 text-white" />
         </div>
         <div>
@@ -89,7 +89,7 @@ export const MembresiaPage = () => {
         <button
           type="button"
           onClick={() => navigate('/mapa')}
-          className="flex items-center gap-2 min-h-11 px-6 py-3 bg-gradient-to-r from-orange-500 to-rose-500 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
+          className="flex items-center gap-2 min-h-11 px-6 py-3 bg-orange-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
         >
           <ArrowRight size={18} aria-hidden /> Ir al mapa
         </button>
@@ -99,7 +99,7 @@ export const MembresiaPage = () => {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 text-white px-6 pt-4 pb-10 text-center relative overflow-hidden">
+      <div className="bg-neutral-900 text-white px-6 pt-4 pb-10 text-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_50%,#f97316,transparent_60%),radial-gradient(circle_at_70%_50%,#f43f5e,transparent_60%)]" aria-hidden />
         <div className="relative z-10">
           <div className="flex justify-start -ml-3 mb-2">
@@ -112,7 +112,7 @@ export const MembresiaPage = () => {
               <ArrowLeft size={18} aria-hidden />
             </button>
           </div>
-          <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-orange-500/30" aria-hidden>
+          <div className="w-16 h-16 bg-yellow-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-orange-500/30" aria-hidden>
             <Crown className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-black tracking-tight">Sous Chef <span className="text-orange-400">Premium</span></h1>
@@ -133,7 +133,7 @@ export const MembresiaPage = () => {
           href={HOTMART_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-3 w-full min-h-12 py-4 px-6 bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-black text-lg rounded-2xl shadow-xl shadow-orange-500/30 transition-all active:scale-[0.98]"
+          className="btn-3d-primary w-full text-lg"
         >
           <Crown size={22} aria-hidden />
           Suscribirme
@@ -219,7 +219,7 @@ export const MembresiaPage = () => {
                   <button
                     type="button"
                     onClick={() => navigate('/mapa')}
-                    className="mt-2 flex items-center gap-2 min-h-11 px-4 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-sm font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
+                    className="mt-2 flex items-center gap-2 min-h-11 px-4 bg-orange-600 text-white text-sm font-bold rounded-xl shadow-md hover:shadow-lg transition-all"
                   >
                     <ArrowRight size={16} aria-hidden /> Ir al mapa
                   </button>

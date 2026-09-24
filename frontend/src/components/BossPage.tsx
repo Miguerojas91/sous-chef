@@ -202,7 +202,7 @@ export const BossPage = ({ level, content }: { level: PlacedLevel; content: Boss
             caption={<><Shield size={10} aria-hidden /> Vida del jefe: {completedChallenges.size} de {challenges.length} retos superados</>}
             percent={hpPercent}
             heightClassName="h-3"
-            fillClassName="bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400"
+            fillClassName="bg-red-400"
             segments={challenges.length}
           />
         </LevelHeader>

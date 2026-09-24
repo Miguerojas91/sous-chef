@@ -45,7 +45,7 @@ export const ChatMessage = ({ text, isChef }: ChatMessageProps) => {
   }
 
   if (!isChef) {
-    return <span className="text-sm leading-relaxed whitespace-pre-wrap">{text}</span>;
+    return <span className="text-[15px] leading-relaxed whitespace-pre-wrap">{text}</span>;
   }
 
   const lines = text.split('\n');
@@ -76,7 +76,7 @@ export const ChatMessage = ({ text, isChef }: ChatMessageProps) => {
         if (!TABLE_SEPARATOR.test(row)) {
           const cells = row.slice(1, -1).split('|').map(c => c.trim()).filter(Boolean);
           rows.push(
-            <li key={i} className="text-sm leading-relaxed">
+            <li key={i} className="text-[15px] leading-relaxed">
               {cells.map((c, ci) => (
                 <React.Fragment key={ci}>
                   {ci > 0 && <span className="text-orange-400" aria-hidden> · </span>}
@@ -118,7 +118,7 @@ export const ChatMessage = ({ text, isChef }: ChatMessageProps) => {
       while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
         const content = lines[i].trim().replace(/^\d+\.\s*/, '');
         listItems.push(
-          <li key={i} className="flex gap-2 text-sm leading-relaxed">
+          <li key={i} className="flex gap-2 text-[15px] leading-relaxed">
             <span className="text-orange-500 font-bold flex-shrink-0 min-w-[1rem]" aria-hidden>{num}.</span>
             <span className="min-w-0 flex-1">{parseInline(content)}</span>
           </li>,
@@ -135,7 +135,7 @@ export const ChatMessage = ({ text, isChef }: ChatMessageProps) => {
       while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('• '))) {
         const content = lines[i].trim().slice(2);
         listItems.push(
-          <li key={i} className="flex gap-2 text-sm leading-relaxed">
+          <li key={i} className="flex gap-2 text-[15px] leading-relaxed">
             <span className="text-orange-400 flex-shrink-0 mt-0.5" aria-hidden>•</span>
             <span className="min-w-0 flex-1">{parseInline(content)}</span>
           </li>,
@@ -147,7 +147,7 @@ export const ChatMessage = ({ text, isChef }: ChatMessageProps) => {
     }
 
     nodes.push(
-      <p key={i} className="text-sm leading-relaxed">
+      <p key={i} className="text-[15px] leading-relaxed">
         {parseInline(line)}
       </p>,
     );
@@ -169,10 +169,10 @@ interface ChatBubbleProps {
 export const ChatBubble = ({ isChef, children }: ChatBubbleProps) => (
   <div className={`flex ${isChef ? 'justify-start' : 'justify-end'}`}>
     <div
-      className={`max-w-[85%] min-w-0 px-3 py-2.5 rounded-2xl shadow-sm [overflow-wrap:anywhere] ${
+      className={`max-w-[85%] min-w-0 px-3.5 py-3 [overflow-wrap:anywhere] ${
         isChef
-          ? 'bg-white border border-neutral-100 text-neutral-800 rounded-tl-none'
-          : 'bg-orange-500 text-white rounded-tr-none'
+          ? 'bg-white border-2 border-neutral-200 text-ink rounded-[20px_20px_20px_6px] shadow-[0_3px_0_theme(colors.neutral.200)] font-semibold'
+          : 'bg-orange-600 text-white rounded-[20px_20px_6px_20px] shadow-[0_3px_0_theme(colors.orange.800)] font-bold'
       }`}
     >
       {isChef ? null : <span className="sr-only">Tú: </span>}

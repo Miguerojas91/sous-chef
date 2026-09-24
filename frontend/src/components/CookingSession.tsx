@@ -12,7 +12,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Settings2, Sparkles, Utensils } from 'lucide-react';
+import { ArrowLeft, ChefHat, ChevronRight, Clock, Settings2, ShoppingBasket, Sparkles, Target } from 'lucide-react';
 import { useCookingChatSession } from '../hooks/useCookingChatSession';
 import { buildCookingSystemPrompt } from '../services/gemini';
 import type { CookingIntent } from '../services/gemini';
@@ -36,11 +36,11 @@ import { track, Events } from '../utils/analytics';
 type Phase = 'landing' | 'discover-sub' | 'time-picker' | 'chatting';
 
 const TIME_OPTIONS = [
-  { label: '15 minutos', value: '15 minutos', emoji: '⚡' },
-  { label: '30 minutos', value: '30 minutos', emoji: '🕐' },
-  { label: '45 minutos', value: '45 minutos', emoji: '🕑' },
-  { label: '1 hora', value: '1 hora', emoji: '🕒' },
-  { label: 'Sin prisa', value: 'más de 1 hora (sin prisa)', emoji: '☕' },
+  { label: '15 minutos', value: '15 minutos' },
+  { label: '30 minutos', value: '30 minutos' },
+  { label: '45 minutos', value: '45 minutos' },
+  { label: '1 hora', value: '1 hora' },
+  { label: 'Sin prisa', value: 'más de 1 hora (sin prisa)' },
 ];
 
 const INTENT_LABEL: Record<CookingIntent, string> = {
@@ -51,46 +51,48 @@ const INTENT_LABEL: Record<CookingIntent, string> = {
 
 /** Encabezado de los pasos previos al chat: volver + título. */
 const StepHeader = ({ title, onBack }: { title: string; onBack: () => void }) => (
-  <header className="flex items-center pl-1 pr-4 min-h-12 border-b border-orange-100 bg-white/60 flex-shrink-0">
+  <header className="flex items-center gap-2 px-4 min-h-16 flex-shrink-0">
     <button
       type="button"
       onClick={onBack}
       aria-label="Volver"
-      className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-orange-100 transition-colors mr-1"
+      className="w-11 h-11 flex items-center justify-center rounded-[14px] bg-white border-2 border-neutral-200 hover:bg-neutral-100 transition-colors"
     >
-      <ArrowLeft className="w-4 h-4 text-orange-600" aria-hidden />
+      <ArrowLeft className="w-5 h-5 text-ink" strokeWidth={2.4} aria-hidden />
     </button>
-    <h1 className="text-sm font-bold text-neutral-700">{title}</h1>
+    <h1 className="text-xl font-extrabold text-ink">{title}</h1>
   </header>
 );
 
-/** Tarjeta con degradado de las opciones de inicio. */
-const GradientOption = ({ gradient, icon, title, desc, onClick, hoverGrow = false }: {
-  gradient: string; icon: ReactNode; title: string; desc: string; onClick: () => void; hoverGrow?: boolean;
+/** Tarjeta táctil de las opciones de inicio. */
+const OptionCard = ({ tone, icon, title, desc, onClick }: {
+  tone: string; icon: ReactNode; title: string; desc: string; onClick: () => void;
 }) => (
   <button
     type="button"
     onClick={onClick}
-    className={`w-full max-w-sm bg-gradient-to-br ${gradient} rounded-2xl p-4 text-left active:scale-[0.98] ${
-      hoverGrow ? 'shadow-md hover:shadow-xl hover:scale-[1.02] transition-all' : 'shadow-lg transition-transform'
-    }`}
+    className="card-tactile w-full max-w-md p-4 text-left flex items-center gap-3.5 hover:border-neutral-300 active:translate-y-[2px] transition-transform"
   >
-    <span className="flex items-center gap-3">
-      {icon}
-      <span className="min-w-0">
-        <span className="block text-sm font-extrabold text-white leading-tight">{title}</span>
-        <span className="block text-xs text-white/75 mt-0.5">{desc}</span>
-      </span>
+    <span className={`w-[52px] h-[52px] rounded-2xl flex items-center justify-center flex-shrink-0 ${tone}`} aria-hidden>{icon}</span>
+    <span className="flex-1 min-w-0">
+      <span className="block text-lg font-black text-ink leading-tight">{title}</span>
+      <span className="block text-sm font-bold text-neutral-500 mt-0.5 leading-snug">{desc}</span>
     </span>
+    <ChevronRight className="w-6 h-6 text-neutral-500 flex-shrink-0" strokeWidth={2.6} aria-hidden />
   </button>
 );
 
-const IconSquare = ({ children }: { children: ReactNode }) => (
-  <span className="bg-white/20 rounded-xl p-2 flex-shrink-0" aria-hidden>{children}</span>
-);
-
-const EmojiIcon = ({ children }: { children: string }) => (
-  <span className="text-2xl flex-shrink-0" aria-hidden>{children}</span>
+/** Sous "hablando": avatar y globo con el título de la pantalla. */
+const SousPrompt = ({ title, sub }: { title: string; sub: string }) => (
+  <div className="flex items-end gap-3 w-full max-w-md">
+    <span className="w-14 h-14 rounded-full bg-orange-600 flex items-center justify-center flex-shrink-0 shadow-[0_3px_0_theme(colors.orange.800)]" aria-hidden>
+      <ChefHat className="w-8 h-8 text-white" strokeWidth={2.3} />
+    </span>
+    <div className="card-tactile rounded-[20px_20px_20px_6px] px-4 py-3.5 flex-1">
+      <h1 className="text-2xl font-extrabold text-ink leading-tight">{title}</h1>
+      <p className="text-[15px] font-bold text-neutral-500 mt-1">{sub}</p>
+    </div>
+  </div>
 );
 
 const CookingChat: React.FC<{
@@ -191,45 +193,42 @@ export const CookingSession: React.FC = () => {
 
   if (phase === 'time-picker') {
     return (
-      <div className="flex flex-col h-full bg-gradient-to-br from-orange-50 to-amber-50">
+      <div className="flex flex-col h-full bg-neutral-50">
         <StepHeader
           title="¿Cuánto tiempo tienes?"
           onBack={() => setPhase(pendingIntentRef.current === 'cook-ingredients' ? 'landing' : 'discover-sub')}
         />
 
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="min-h-full flex flex-col items-center justify-center px-5 py-5 gap-4">
+          <div className="min-h-full flex flex-col items-center px-4 py-4 gap-4">
             <button
               type="button"
               onClick={() => setShowPrefEditor(true)}
-              className="w-full max-w-sm flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-orange-200 bg-white/80 hover:bg-white hover:border-orange-300 transition-all text-left"
+              className="card-tactile w-full max-w-md flex items-center justify-between gap-3 px-4 py-3.5 hover:border-neutral-300 transition-colors text-left"
             >
               <span className="flex-1 min-w-0">
-                <span className={`block text-xs font-bold ${prefsSummary.length === 0 ? 'text-neutral-400' : 'text-orange-500'}`}>
+                <span className={`block text-sm font-black ${prefsSummary.length === 0 ? 'text-ink' : 'text-orange-600'}`}>
                   Tus preferencias
                 </span>
-                <span className="block text-sm text-neutral-700 truncate">
+                <span className="block text-sm font-bold text-neutral-500 truncate">
                   {prefsSummary.length === 0 ? 'Sin configurar. Toca para elegir.' : prefsSummary.join(' · ')}
                 </span>
               </span>
-              <Settings2 className="w-4 h-4 text-orange-500 flex-shrink-0" aria-hidden />
+              <Settings2 className="w-5 h-5 text-orange-600 flex-shrink-0" aria-hidden />
             </button>
 
-            <div className="text-center mb-1">
-              <Clock className="w-7 h-7 text-orange-400 mx-auto mb-2" aria-hidden />
-              <p className="text-xs text-neutral-500">Sous arma la receta según el tiempo que tengas.</p>
-            </div>
+            <p className="w-full max-w-md text-[15px] font-bold text-neutral-500">Sous arma la receta según el tiempo que tengas.</p>
 
-            <ul className="flex flex-col gap-2 w-full max-w-sm">
+            <ul className="grid grid-cols-2 gap-3 w-full max-w-md">
               {TIME_OPTIONS.map(opt => (
                 <li key={opt.value}>
                   <button
                     type="button"
                     onClick={() => selectTime(opt.value)}
-                    className="w-full min-h-12 flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm border border-orange-100 hover:border-orange-300 hover:shadow-md transition-all text-left active:scale-[0.98]"
+                    className="card-tactile w-full min-h-[64px] flex items-center gap-2.5 px-4 py-3 hover:border-orange-300 hover:bg-orange-50 transition-colors text-left active:translate-y-[2px]"
                   >
-                    <span className="text-xl" aria-hidden>{opt.emoji}</span>
-                    <span className="text-sm font-semibold text-neutral-800">{opt.label}</span>
+                    <Clock className="w-5 h-5 text-orange-600 flex-shrink-0" strokeWidth={2.4} aria-hidden />
+                    <span className="text-base font-black text-ink">{opt.label}</span>
                   </button>
                 </li>
               ))}
@@ -259,25 +258,20 @@ export const CookingSession: React.FC = () => {
 
   if (phase === 'discover-sub') {
     return (
-      <div className="flex flex-col h-full bg-gradient-to-br from-orange-50 to-rose-50">
+      <div className="flex flex-col h-full bg-neutral-50">
         <StepHeader title="¿Qué quieres comer?" onBack={() => setPhase('landing')} />
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="min-h-full flex flex-col items-center justify-center px-5 py-5 gap-3">
-            <div className="text-center mb-1">
-              <span className="text-3xl" aria-hidden>🍽️</span>
-            </div>
-            <GradientOption
-              hoverGrow
-              gradient="from-orange-400 to-red-500"
-              icon={<EmojiIcon>💡</EmojiIcon>}
+          <div className="min-h-full flex flex-col items-center px-4 py-4 gap-3">
+            <OptionCard
+              tone="bg-orange-100 text-orange-600"
+              icon={<Target className="w-7 h-7" strokeWidth={2.3} />}
               title="Ya sé qué quiero"
               desc="Tengo algo en mente, ayúdame a prepararlo."
               onClick={() => selectIntent('discover-known')}
             />
-            <GradientOption
-              hoverGrow
-              gradient="from-amber-400 to-orange-500"
-              icon={<EmojiIcon>✨</EmojiIcon>}
+            <OptionCard
+              tone="bg-amber-100 text-amber-600"
+              icon={<Sparkles className="w-7 h-7" strokeWidth={2.3} />}
               title="Decidamos juntos"
               desc="No sé qué cocinar."
               onClick={() => selectIntent('discover-together')}
@@ -289,25 +283,21 @@ export const CookingSession: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-orange-50 via-amber-50 to-rose-50 overflow-y-auto">
-      <div className="flex-1 flex flex-col items-center justify-evenly gap-6 px-5 py-4 min-h-full">
-        <div className="text-center">
-          <span className="text-3xl" aria-hidden>👨‍🍳</span>
-          <h1 className="text-lg font-extrabold text-neutral-800 mt-1 tracking-tight">¿Qué cocinamos hoy?</h1>
-          <p className="text-xs text-neutral-500 mt-0.5">Elige cómo quieres empezar.</p>
-        </div>
+    <div className="flex flex-col h-full bg-neutral-50 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center gap-6 px-4 pt-2 pb-6 md:pt-6">
+        <SousPrompt title="¿Qué cocinamos hoy?" sub="Elige cómo quieres empezar." />
 
-        <div className="flex flex-col items-center gap-3 w-full max-w-sm">
-          <GradientOption
-            gradient="from-orange-400 to-rose-500"
-            icon={<IconSquare><Sparkles className="w-5 h-5 text-white" /></IconSquare>}
+        <div className="flex flex-col items-center gap-3 w-full max-w-md">
+          <OptionCard
+            tone="bg-orange-100 text-orange-600"
+            icon={<Sparkles className="w-7 h-7" strokeWidth={2.3} />}
             title="Quiero descubrir qué comer"
             desc="No sé bien qué me provoca."
             onClick={() => setPhase('discover-sub')}
           />
-          <GradientOption
-            gradient="from-emerald-400 to-teal-500"
-            icon={<IconSquare><Utensils className="w-5 h-5 text-white" /></IconSquare>}
+          <OptionCard
+            tone="bg-emerald-100 text-emerald-600"
+            icon={<ShoppingBasket className="w-7 h-7" strokeWidth={2.3} />}
             title="Voy a cocinar con lo que tengo"
             desc="Tengo cosas en casa y no quiero salir a comprar."
             onClick={() => selectIntent('cook-ingredients')}

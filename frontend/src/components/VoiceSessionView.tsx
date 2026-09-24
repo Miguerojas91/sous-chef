@@ -54,7 +54,7 @@ export const VoiceSessionView = (props: VoiceSessionViewProps) => {
       tabIndex={-1}
       className={`fixed inset-0 z-[80] h-dvh outline-none ${
         capReached
-          ? 'bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-6 overflow-y-auto'
+          ? 'bg-amber-50 flex items-center justify-center p-6 overflow-y-auto'
           : 'flex flex-col bg-neutral-950 text-white overflow-hidden'
       }`}
     >
@@ -70,7 +70,7 @@ const CapReachedCard = ({ titleId, onExitVoice }: { titleId: string; onExitVoice
   const copy = capReachedMessage(premium);
   return (
     <div className="bg-white rounded-3xl shadow-xl border border-orange-100 max-w-sm w-full p-6 text-center">
-      <div className="bg-gradient-to-br from-amber-400 to-orange-500 w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+      <div className="bg-amber-400 w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center">
         <Crown className="w-8 h-8 text-white" aria-hidden />
       </div>
       <h2 id={titleId} className="text-xl font-black text-neutral-900 mb-2">{copy.title}</h2>
@@ -79,7 +79,7 @@ const CapReachedCard = ({ titleId, onExitVoice }: { titleId: string; onExitVoice
         <button
           type="button"
           onClick={onExitVoice}
-          className="w-full min-h-11 py-3 px-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm transition-colors"
+          className="w-full min-h-11 py-3 px-4 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm transition-colors"
         >
           Seguir por texto
         </button>
@@ -87,7 +87,7 @@ const CapReachedCard = ({ titleId, onExitVoice }: { titleId: string; onExitVoice
           <Link
             to="/membresia"
             onClick={onExitVoice}
-            className="w-full min-h-11 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2"
+            className="w-full min-h-11 py-3 px-4 rounded-xl bg-amber-400 hover:from-amber-500 hover:to-orange-600 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2"
           >
             <Crown size={16} aria-hidden /> Ver Premium · $9.99 al mes
           </Link>

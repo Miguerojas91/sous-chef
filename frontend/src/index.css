@@ -5,7 +5,12 @@
 @layer base {
   body {
     @apply bg-neutral-50 text-neutral-900 antialiased;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Títulos con la fuente de display del rediseño. */
+  h1, h2, h3 {
+    font-family: theme('fontFamily.display');
+    letter-spacing: -0.02em;
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -38,5 +43,41 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+}
+
+/* Piezas del rediseño 2026-09: tarjetas y botones "táctiles" con un borde
+   inferior sólido que les da relieve. */
+@layer components {
+  .card-tactile {
+    @apply bg-white border-2 border-neutral-200 rounded-[20px];
+    box-shadow: 0 3px 0 theme('colors.neutral.200');
+  }
+  .btn-3d {
+    @apply inline-flex items-center justify-center gap-2 min-h-[52px] px-5 rounded-2xl font-black text-base text-white
+      transition-transform duration-100 active:translate-y-[3px] disabled:opacity-50 disabled:active:translate-y-0;
+    box-shadow: 0 4px 0 var(--btn-shadow, theme('colors.orange.800'));
+  }
+  .btn-3d:active { box-shadow: 0 1px 0 var(--btn-shadow, theme('colors.orange.800')); }
+  .btn-3d-primary { @apply btn-3d bg-orange-600; --btn-shadow: theme('colors.orange.800'); }
+  .btn-3d-green { @apply btn-3d bg-emerald-600; --btn-shadow: theme('colors.emerald.800'); }
+  .btn-3d-blue { @apply btn-3d bg-blue-500; --btn-shadow: theme('colors.blue.700'); }
+  .btn-3d-violet { @apply btn-3d bg-violet-500; --btn-shadow: theme('colors.violet.700'); }
+  .btn-3d-gold { @apply btn-3d bg-amber-500 text-ink; --btn-shadow: theme('colors.amber.600'); }
+  .btn-3d-white {
+    @apply btn-3d bg-white text-ink border-2 border-neutral-200;
+    --btn-shadow: theme('colors.neutral.200');
+  }
+  .pill-stat {
+    @apply flex items-center gap-1.5 h-9 px-3 rounded-full bg-white border-2 border-neutral-200 font-extrabold text-sm text-ink;
+  }
+  .xp-coin {
+    @apply inline-flex items-center justify-center w-[22px] h-[22px] rounded-full bg-amber-500 text-ink text-[9px] font-black flex-shrink-0;
+    box-shadow: inset 0 -2px 0 theme('colors.amber.600');
+  }
+  .bar-track { @apply h-3.5 rounded-full bg-neutral-100 overflow-hidden; }
+  .bar-fill {
+    @apply block h-full rounded-full transition-all duration-700;
+    box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.14);
   }
 }

@@ -5,6 +5,7 @@
  */
 
 import { emitUserStateChange } from './events';
+import { markActivityToday } from './streak';
 
 const STARS_KEY = 'sous_level_stars';
 
@@ -43,5 +44,6 @@ export function recordLevelResult(levelPath: string, stars: number, xp: number):
     try { localStorage.setItem(STARS_KEY, JSON.stringify(data)); } catch { /* storage lleno */ }
   }
   if (firstCompletion) addXP(xp);
+  markActivityToday();
   return { firstCompletion };
 }

@@ -112,6 +112,8 @@ export interface VoiceTranscriptEntry {
 /** Envuelve el WebSocket con la forma de la sesión del SDK de Gemini. */
 interface ProxySession {
   sendRealtimeInput(input: { audio?: { data: string; mimeType: string } }): void;
+  /** Marca el principio y el fin de una intervención hablada. */
+  sendActivity(edge: 'start' | 'end'): void;
   sendClientContent(params: { turns: Array<{ role: string; parts: Array<{ text: string }> }>; turnComplete: boolean }): void;
   close(): void;
 }
@@ -195,6 +197,8 @@ export function useGeminiLive(systemPrompt: string) {
   const sessionStartRef     = useRef(0);
   /** Momento del último `open`, para saber cuánto vivió la sesión que se cerró. */
   const sessionOpenedAtRef  = useRef(0);
+  /** Hay una intervención hablada abierta ante Gemini (activityStart sin su end). */
+  const isTalkingRef        = useRef(false);
   /** Sesiones seguidas que murieron nada más abrir. */
   const failedReconnectsRef = useRef(0);
   /** Rompe la dependencia circular entre reconnectSession y handleProxyMsg. */
@@ -346,6 +350,7 @@ export function useGeminiLive(systemPrompt: string) {
       sessionRef.current    = null;
       isSpeakingRef.current = false;
       isReconnectingRef.current = false;
+      isTalkingRef.current  = false;
       if (currentModelTextRef.current.trim()) {
         updateTranscript(prev => [...prev, { agent: 'chef', text: currentModelTextRef.current.trim() }]);
         currentModelTextRef.current = '';
@@ -426,6 +431,11 @@ export function useGeminiLive(systemPrompt: string) {
           ws.send(JSON.stringify({ type: 'audio', data: audio.data, mimeType: audio.mimeType }));
         }
       },
+      sendActivity(edge) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: edge === 'start' ? 'activityStart' : 'activityEnd' }));
+        }
+      },
       sendClientContent({ turns, turnComplete }) {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'clientContent', turns, turnComplete }));
@@ -456,6 +466,7 @@ export function useGeminiLive(systemPrompt: string) {
         () => {
           isReconnectingRef.current = false;
           voiceTailUntilRef.current = 0;
+          isTalkingRef.current = false;
           sessionOpenedAtRef.current = Date.now();
           sessionMonthKeyRef.current = getMonthKey();
           setVoiceStateSync('listening');
@@ -560,6 +571,7 @@ export function useGeminiLive(systemPrompt: string) {
         () => {
           sessionStartRef.current   = Date.now();
           sessionOpenedAtRef.current = Date.now();
+          isTalkingRef.current = false;
           sessionMonthKeyRef.current = getMonthKey();
           voiceTailUntilRef.current = 0;
           setVoiceStateSync('listening');
@@ -636,7 +648,20 @@ export function useGeminiLive(systemPrompt: string) {
         }
 
         // Solo se envía audio con voz o en la cola posterior: el silencio también se factura.
-        if (now > voiceTailUntilRef.current) return;
+        if (now > voiceTailUntilRef.current) {
+          // Fin de la intervención: sin este aviso el modelo se queda esperando
+          // un silencio que nunca le llega y no contesta nada.
+          if (isTalkingRef.current) {
+            isTalkingRef.current = false;
+            sessionRef.current.sendActivity('end');
+          }
+          return;
+        }
+
+        if (!isTalkingRef.current) {
+          isTalkingRef.current = true;
+          sessionRef.current.sendActivity('start');
+        }
 
         // downsample no muta `raw`.
         const resampled = downsample(raw, nativeRateRef.current, INPUT_SAMPLE_RATE);

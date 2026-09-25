@@ -462,7 +462,11 @@ const wss = new WebSocketServer({
 });
 
 interface GeminiLiveSession {
-  sendRealtimeInput(input: { audio?: { data: string; mimeType: string } }): void;
+  sendRealtimeInput(input: {
+    audio?: { data: string; mimeType: string };
+    activityStart?: Record<string, never>;
+    activityEnd?: Record<string, never>;
+  }): void;
   sendClientContent(params: {
     turns: Array<{ role: string; parts: [{ text: string }] }>;
     turnComplete: boolean;
@@ -473,6 +477,10 @@ interface GeminiLiveSession {
 type BrowserMessage =
   | { type: 'start'; systemPrompt: string; history?: Array<{ role: string; parts: [{ text: string }] }> }
   | { type: 'audio'; data: string; mimeType?: string }
+  // Principio y fin de cada intervención: el navegador ya trae su propio
+  // detector de voz, así que es él quien marca los turnos.
+  | { type: 'activityStart' }
+  | { type: 'activityEnd' }
   | { type: 'clientContent'; turns: Array<{ role: string; parts: [{ text: string }] }>; turnComplete: boolean };
 
 wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
@@ -510,6 +518,11 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
             systemInstruction: systemPrompt,
             responseModalities: ['AUDIO' as unknown as import('@google/genai').Modality],
             inputAudioTranscription: {},
+            // El navegador manda solo los tramos con voz, sin los silencios que
+            // el detector de Gemini necesita para saber cuándo termina el turno.
+            // Con la detección automática, el modelo no contesta nunca: los
+            // turnos los marca el navegador con activityStart/activityEnd.
+            realtimeInputConfig: { automaticActivityDetection: { disabled: true } },
             speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
           },
           callbacks: {
@@ -565,6 +578,12 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       geminiSession.sendRealtimeInput({
         audio: { data: msg.data, mimeType: msg.mimeType ?? 'audio/pcm;rate=16000' },
       });
+
+    } else if (msg.type === 'activityStart' && geminiSession) {
+      geminiSession.sendRealtimeInput({ activityStart: {} });
+
+    } else if (msg.type === 'activityEnd' && geminiSession) {
+      geminiSession.sendRealtimeInput({ activityEnd: {} });
 
     } else if (msg.type === 'clientContent' && geminiSession) {
       geminiSession.sendClientContent({

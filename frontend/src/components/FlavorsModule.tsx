@@ -18,7 +18,7 @@ import { ServingsStepper } from './ServingsStepper';
 import { ConfirmDialog } from './ui/Dialog';
 import { useCookingChatSession } from '../hooks/useCookingChatSession';
 import {
-  describeMarketChanges, marketChanges, useMarketList, type MarketItem, type MarketSummary,
+  describeMarketChanges, formatQuantity, marketChanges, useMarketList, type MarketItem, type MarketSummary,
 } from '../hooks/useMarketList';
 import { REGIONS, type Country, type Difficulty, type Recipe, type Region, type RegionName } from '../data/flavorsRecipes';
 import { categorizeIngredient } from '../data/groceryCategories';
@@ -45,7 +45,8 @@ const STEP_LABEL: Record<FlowStep, string> = {
   chat: 'Paso 3 de 3: cocinar',
 };
 
-const names = (items: MarketItem[]) => items.map(i => i.name);
+/** Para el prompt: con cantidad, que es lo que Sous necesita para guiar. */
+const names = (items: MarketItem[]) => items.map(i => i.label);
 
 function buildTextPrompt(recipe: Recipe, countryName: string, personas: string, summary: MarketSummary): string {
   const list = (items: string[], empty: string) => (items.length > 0 ? items.join(', ') : empty);
@@ -103,9 +104,20 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
   const [chatOpen, setChatOpen] = useState(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
 
+  // Las cantidades del catálogo son por porción: aquí se multiplican. El `id`
+  // es solo el nombre, así que las marcas sobreviven al cambiar las porciones.
   const items = useMemo<MarketItem[]>(
-    () => recipe.ingredients.map(name => ({ id: name, name, label: name, category: categorizeIngredient(name) })),
-    [recipe],
+    () => recipe.ingredients.map(ing => {
+      const quantity = formatQuantity(ing.amount * servings, ing.unit);
+      return {
+        id: ing.name,
+        name: ing.name,
+        quantity,
+        label: `${quantity} de ${ing.name}`,
+        category: categorizeIngredient(ing.name),
+      };
+    }),
+    [recipe, servings],
   );
   const market = useMarketList(items);
   const { summary } = market;
@@ -245,8 +257,10 @@ const RecipeFlow = ({ recipe, countryName, countryFlag, onBack }: RecipeFlowProp
           <section className="bg-orange-50 rounded-xl p-4">
             <h2 className="text-xs font-bold uppercase tracking-wider text-orange-600 mb-2">Ingredientes</h2>
             <ul className="flex flex-wrap gap-1.5">
-              {recipe.ingredients.map(ing => (
-                <li key={ing} className="text-xs bg-white border border-orange-100 text-neutral-600 px-2.5 py-1 rounded-full">{ing}</li>
+              {items.map(ing => (
+                <li key={ing.id} className="text-xs bg-white border border-orange-100 text-neutral-600 px-2.5 py-1 rounded-full">
+                  <span className="font-bold text-neutral-800">{ing.quantity}</span> de {ing.name}
+                </li>
               ))}
             </ul>
           </section>

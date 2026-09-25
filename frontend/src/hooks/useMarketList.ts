@@ -20,6 +20,19 @@ export interface MarketItem {
   category: GroceryCategory;
 }
 
+/** Unidades que no se pluralizan: se escriben igual para 1 que para 300. */
+const UNIDADES_INVARIABLES = new Set(['g', 'ml', 'ud', 'kg', 'l']);
+
+/**
+ * Cantidad lista para mostrar: "300 g", "2 dientes", "1 mazorca".
+ * Redondea a dos decimales para que no asome el resto de la coma flotante.
+ */
+export function formatQuantity(amount: number, unit: string): string {
+  const n = Math.round(amount * 100) / 100;
+  const u = UNIDADES_INVARIABLES.has(unit) || n === 1 ? unit : `${unit}s`;
+  return `${n} ${u}`;
+}
+
 /** Marcas del usuario, en la forma en que se guardan en localStorage. */
 export interface MarketMarks {
   checked: string[];

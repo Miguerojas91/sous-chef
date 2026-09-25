@@ -24,7 +24,7 @@ import { MAX_SERVINGS, MIN_SERVINGS, ServingsStepper } from './ServingsStepper';
 import { Dialog } from './ui/Dialog';
 import { useCookingChatSession } from '../hooks/useCookingChatSession';
 import {
-  marketChanges, parseMarketMarks, useMarketList, type MarketItem, type MarketMarks,
+  formatQuantity, marketChanges, parseMarketMarks, useMarketList, type MarketItem, type MarketMarks,
 } from '../hooks/useMarketList';
 import {
   buildMilprepFirstMessage, buildMilprepTextPrompt, buildMilprepVoicePrompt, plural,
@@ -78,9 +78,6 @@ function clearMilprepSession() {
   localStorage.removeItem(MILPREP_CHAT_KEY);
 }
 
-// Redondeo a 2 decimales para no mostrar restos de coma flotante.
-const formatAmount = (n: number) => String(Math.round(n * 100) / 100);
-
 type GroceryTotal = { name: string; unit: string; category: MarketItem['category']; amount: number };
 
 /**
@@ -101,7 +98,7 @@ function getGroceryList(recipes: Recipe[], people: number): MarketItem[] {
   }, new Map<string, GroceryTotal>());
 
   return Array.from(totals, ([id, t]) => {
-    const quantity = `${formatAmount(t.amount)} ${t.unit}`;
+    const quantity = formatQuantity(t.amount, t.unit);
     return { id, name: t.name, category: t.category, quantity, label: `${quantity} de ${t.name}` };
   });
 }

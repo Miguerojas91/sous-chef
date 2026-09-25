@@ -68,7 +68,9 @@ validateEnv();
 
 const TEXT_MODEL  = 'gemini-2.5-flash';
 // Modelo de Gemini Live (audio bidireccional).
-const VOICE_MODEL = process.env.VOICE_MODEL ?? 'gemini-2.0-flash-live-preview-04-09';
+// Google retira los modelos `-preview-` con fecha: cuando eso pasa, la sesión
+// abre y Gemini la cierra en el acto. Usar el nombre estable.
+const VOICE_MODEL = process.env.VOICE_MODEL ?? 'gemini-3.8-live';
 
 function getAI(): GoogleGenAI {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY no configurada en el servidor.');
@@ -541,9 +543,14 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
               console.error('[live] Gemini error:', (e as Error)?.message ?? e);
               safeSend({ type: 'error', message: 'Error de conexión de voz' });
             },
-            onclose: () => {
+            // La razón del cierre es la única pista cuando Gemini rechaza la
+            // sesión (modelo retirado, cuota, clave sin permisos): se registra
+            // y viaja al navegador en vez de perderse.
+            onclose: (e: unknown) => {
               geminiSession = null;
-              safeSend({ type: 'close' });
+              const reason = (e as { reason?: string } | undefined)?.reason;
+              if (reason) console.error('[live] Gemini cerró la sesión:', reason);
+              safeSend({ type: 'close', reason });
             },
           },
         });

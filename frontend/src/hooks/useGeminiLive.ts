@@ -123,7 +123,7 @@ type ProxyMsg =
   | { type: 'modelText'; text: string }
   | { type: 'turnComplete' }
   | { type: 'inputTranscription'; text: string } // llega en fragmentos
-  | { type: 'close' }
+  | { type: 'close'; reason?: string }            // `reason` solo si Gemini la dio
   | { type: 'error'; message: string };
 
 const VOICE_RMS_THRESHOLD = 0.05;
@@ -137,6 +137,14 @@ const INPUT_SAMPLE_RATE       = 16000;
 const OUTPUT_SAMPLE_RATE      = 24000;
 const BUFFER_SIZE             = 4096;
 const RECONNECT_CONTEXT_TURNS = 8;
+
+/**
+ * Una sesión que muere apenas abre no es un corte de red: es Gemini
+ * rechazándola (modelo retirado, cuota, clave sin permisos). Reintentar sin
+ * fin deja la voz en un bucle mudo, así que tras varios intentos se avisa.
+ */
+const SESSION_TOO_SHORT_MS   = 3_000;
+const MAX_FAILED_RECONNECTS  = 3;
 
 const MAX_SESSION_MS = 20 * 60_000;
 /** Se sigue enviando audio un poco después de que baja el RMS para no cortar las últimas sílabas. */
@@ -185,6 +193,10 @@ export function useGeminiLive(systemPrompt: string) {
   const silenceIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const voiceTailUntilRef   = useRef(0);
   const sessionStartRef     = useRef(0);
+  /** Momento del último `open`, para saber cuánto vivió la sesión que se cerró. */
+  const sessionOpenedAtRef  = useRef(0);
+  /** Sesiones seguidas que murieron nada más abrir. */
+  const failedReconnectsRef = useRef(0);
   /** Rompe la dependencia circular entre reconnectSession y handleProxyMsg. */
   const reconnectSessionRef = useRef<() => void>(() => {});
   /** Último reporte de uso a utils/voiceUsage.ts. 0 = sin sesión activa (sleeping no cuenta). */
@@ -339,12 +351,29 @@ export function useGeminiLive(systemPrompt: string) {
         currentModelTextRef.current = '';
       }
       setCurrentChefText('');
+
+      // Una sesión que duró lo normal y se cortó es un corte: se reconecta.
+      // Una que murió al instante ya falló antes: a la tercera, se avisa.
+      const lived = sessionOpenedAtRef.current ? Date.now() - sessionOpenedAtRef.current : 0;
+      failedReconnectsRef.current = lived > 0 && lived < SESSION_TOO_SHORT_MS
+        ? failedReconnectsRef.current + 1
+        : 0;
+      sessionOpenedAtRef.current = 0;
+
       if (wantsVoiceRef.current && voiceStateRef.current !== 'sleeping') {
-        setTimeout(() => reconnectSessionRef.current(), 500);
+        if (failedReconnectsRef.current >= MAX_FAILED_RECONNECTS) {
+          if (msg.reason) console.error('[Proxy] Gemini cerró la voz:', msg.reason);
+          wantsVoiceRef.current = false;
+          setVoiceError('No pudimos conectar la voz. Sigue por escrito y vuelve a intentarlo en un rato.');
+          setVoiceStateSync('idle');
+        } else {
+          setTimeout(() => reconnectSessionRef.current(), 500);
+        }
       }
 
     } else if (msg.type === 'error') {
       console.error('[Proxy] error de voz:', msg.message);
+      setVoiceError('No pudimos conectar la voz. Sigue por escrito y vuelve a intentarlo en un rato.');
     }
   }, [playAudioChunk, setVoiceStateSync, updateTranscript]);
 
@@ -427,6 +456,7 @@ export function useGeminiLive(systemPrompt: string) {
         () => {
           isReconnectingRef.current = false;
           voiceTailUntilRef.current = 0;
+          sessionOpenedAtRef.current = Date.now();
           sessionMonthKeyRef.current = getMonthKey();
           setVoiceStateSync('listening');
           startSilenceCountdown();
@@ -495,6 +525,8 @@ export function useGeminiLive(systemPrompt: string) {
     // un chat abierto hace más de 15 s (o una sesión vieja) dormía la voz al instante.
     lastVoiceTimeRef.current = Date.now();
     sessionStartRef.current = 0;
+    // Intento nuevo del usuario: la cuenta de fallos vuelve a cero.
+    failedReconnectsRef.current = 0;
     setVoiceStateSync('connecting');
     setCurrentChefText(''); setVoiceError(null);
     currentModelTextRef.current = '';
@@ -527,6 +559,7 @@ export function useGeminiLive(systemPrompt: string) {
         [],
         () => {
           sessionStartRef.current   = Date.now();
+          sessionOpenedAtRef.current = Date.now();
           sessionMonthKeyRef.current = getMonthKey();
           voiceTailUntilRef.current = 0;
           setVoiceStateSync('listening');

@@ -518,6 +518,10 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
             systemInstruction: systemPrompt,
             responseModalities: ['AUDIO' as unknown as import('@google/genai').Modality],
             inputAudioTranscription: {},
+            // Sin esto, lo que dice el chef no existe como texto: no se ve en
+            // pantalla y, al reconectar, el historial va cojo y Sous vuelve a
+            // preguntar qué se estaba cocinando.
+            outputAudioTranscription: {},
             // El navegador manda solo los tramos con voz, sin los silencios que
             // el detector de Gemini necesita para saber cuándo termina el turno.
             // Con la detección automática, el modelo no contesta nunca: los
@@ -527,15 +531,9 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
           },
           callbacks: {
             onopen: () => {
-              if (history.length > 0) {
-                try {
-                  geminiSession!.sendClientContent({ turns: history, turnComplete: false });
-                  geminiSession!.sendClientContent({
-                    turns: [{ role: 'user', parts: [{ text: '(reconexión — estamos cocinando, continúa desde donde estábamos sin repetir lo ya dicho)' }] }],
-                    turnComplete: true,
-                  });
-                } catch { /* no crítico */ }
-              }
+              // El historial NO se manda aquí: `geminiSession` todavía no está
+              // asignada (esto corre dentro del connect), y el intento fallaba
+              // en silencio. Va justo después del connect.
               safeSend({ type: 'open' });
             },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -551,6 +549,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
               }
               if (sc.turnComplete)               safeSend({ type: 'turnComplete' });
               if (sc.inputTranscription?.text)   safeSend({ type: 'inputTranscription', text: sc.inputTranscription.text });
+              if (sc.outputTranscription?.text)  safeSend({ type: 'modelText', text: sc.outputTranscription.text });
             },
             onerror: (e: unknown) => {
               console.error('[live] Gemini error:', (e as Error)?.message ?? e);
@@ -569,6 +568,20 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
         });
 
         geminiSession = session as GeminiLiveSession;
+
+        // Reconexión: se le devuelve lo hablado hasta ahora para que retome la
+        // receta donde iba en vez de volver a preguntar qué se está cocinando.
+        if (history.length > 0) {
+          try {
+            geminiSession.sendClientContent({ turns: history, turnComplete: false });
+            geminiSession.sendClientContent({
+              turns: [{ role: 'user', parts: [{ text: '(reconexión — estamos cocinando, continúa desde donde estábamos sin repetir lo ya dicho)' }] }],
+              turnComplete: true,
+            });
+          } catch (e) {
+            console.error('[live] no se pudo reenviar el historial:', (e as Error)?.message ?? e);
+          }
+        }
 
       } catch (err) {
         safeSend({ type: 'error', message: err instanceof Error ? err.message : String(err) });

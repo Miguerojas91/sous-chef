@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGeminiChat } from './useGeminiChat';
 import { useGeminiLive } from './useGeminiLive';
+import type { VoiceHistory } from './useGeminiLive';
 import { acquireNoSleepInGesture, useWakeLock } from './useWakeLock';
 import { capReachedMessage, getVoiceUsageSummary, hasReachedCap } from '../utils/voiceUsage';
 import { isPremiumUser } from '../utils/membership';
@@ -17,6 +18,13 @@ import { showToast } from '../utils/events';
 import { markActivityToday } from '../utils/streak';
 
 const VOICE_ONBOARDING_KEY = 'sous_voice_onboarding_seen';
+
+/**
+ * Turnos del chat escrito que se le entregan a la voz al entrar en manos
+ * libres. Son los últimos: si se manda la conversación entera, una sesión
+ * larga no cabe y además diluye por dónde iba la receta.
+ */
+const VOICE_HANDOVER_TURNS = 12;
 
 interface UseCookingChatSessionOptions {
   storageKey: string;
@@ -55,6 +63,9 @@ export function useCookingChatSession({
     analyticsMode,
   });
   const voice = useGeminiLive(voicePrompt);
+  /** Los mensajes al día sin que `startVoice` se recree con cada uno. */
+  const messagesRef = useRef(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
   const [voiceMode, setVoiceMode] = useState(false);
   const started = messages.length > 0;
   // Referencia a NoSleep tomada dentro del gesto de "hablar".
@@ -99,7 +110,15 @@ export function useCookingChatSession({
     track(Events.VoiceStarted, { is_premium: premium });
     showVoiceOnboardingOnce();
     setVoiceMode(true);
-    await startListening();
+
+    // La voz hereda lo hablado por escrito: si no, sabe la receta (va en el
+    // prompt) pero no en qué paso quedó la cocción.
+    const handover: VoiceHistory = messagesRef.current
+      .slice(-VOICE_HANDOVER_TURNS * 2)
+      .filter(m => m.text.trim())
+      .map(m => ({ role: m.agent === 'user' ? 'user' : 'model', parts: [{ text: m.text }] as [{ text: string }] }));
+
+    await startListening(handover);
   }, [startListening]);
 
   const exitVoice = useCallback(() => {

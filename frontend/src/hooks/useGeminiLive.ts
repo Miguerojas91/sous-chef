@@ -110,6 +110,9 @@ export interface VoiceTranscriptEntry {
 }
 
 /** Envuelve el WebSocket con la forma de la sesión del SDK de Gemini. */
+/** Turnos previos que se le entregan a Gemini al abrir una sesión de voz. */
+export type VoiceHistory = Array<{ role: string; parts: [{ text: string }] }>;
+
 interface ProxySession {
   sendRealtimeInput(input: { audio?: { data: string; mimeType: string } }): void;
   /** Marca el principio y el fin de una intervención hablada. */
@@ -513,7 +516,12 @@ export function useGeminiLive(systemPrompt: string) {
    * Debe llamarse desde un gesto del usuario (getUserMedia y AudioContext lo exigen).
    * Desde `sleeping` con el micrófono vivo solo reconecta el WebSocket.
    */
-  const startListening = useCallback(async () => {
+  /**
+   * `initialHistory` es la conversación que ya existe (normalmente la del chat
+   * escrito). Sin ella la voz arranca en blanco: sabe la receta, que viene en
+   * el prompt, pero no por qué paso iba la cocción.
+   */
+  const startListening = useCallback(async (initialHistory: VoiceHistory = []) => {
     if (voiceStateRef.current !== 'idle' && voiceStateRef.current !== 'needs-tap' && voiceStateRef.current !== 'sleeping') return;
 
     // Sin minutos de voz no se abre sesión. Ver utils/voiceUsage.ts.
@@ -567,7 +575,7 @@ export function useGeminiLive(systemPrompt: string) {
 
       const session = createProxySession(
         systemPrompt,
-        [],
+        initialHistory,
         () => {
           sessionStartRef.current   = Date.now();
           sessionOpenedAtRef.current = Date.now();

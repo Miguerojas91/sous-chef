@@ -508,6 +508,7 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
       if (geminiSession) { try { geminiSession.close(); } catch { /* ok */ } geminiSession = null; }
 
       const { systemPrompt, history = [] } = msg;
+      console.log(`[live] sesión nueva: ${history.length} turnos de contexto, prompt de ${systemPrompt.length}c`);
 
       try {
         const ai = getAI();

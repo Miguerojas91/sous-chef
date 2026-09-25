@@ -155,6 +155,23 @@ const SESSION_TOO_SHORT_MS   = 3_000;
  * una interrupción: corta la frase a medias y vuelve a empezar.
  */
 const ECHO_GUARD_MS          = 350;
+
+/**
+ * Interrumpir a Sous hablando encima. El problema es separar la voz del usuario
+ * del eco del propio altavoz, que llega por el micrófono y suena igual de
+ * "voz". En lugar de un umbral fijo —que depende del volumen y del teléfono— se
+ * mide cuánto eco vuelve al empezar cada respuesta y se exige bastante más que
+ * eso, sostenido. Con auriculares el eco es casi nulo y basta hablar normal.
+ */
+const ECHO_SAMPLE_MS         = 600;   // se escucha el eco antes de permitir cortar
+const BARGE_ECHO_FACTOR      = 1.8;   // cuánto más fuerte que el eco medido
+const BARGE_RMS_FLOOR        = 0.09;  // mínimo absoluto, por si no hay eco
+// Techo: con el altavoz a tope el eco es alto y sin este límite haría falta
+// gritar para cortarlo. Prefiero que alguna vez se corte solo a que no se pueda.
+const BARGE_RMS_CEILING      = 0.18;
+const BARGE_FRAMES_NEEDED    = 3;     // ~0,3 s seguidos: un golpe suelto no cuenta
+/** Tras cortarle, el turno es del usuario: el audio que venía en camino se tira. */
+const USER_FLOOR_MS          = 1_500;
 const MAX_FAILED_RECONNECTS  = 3;
 
 const MAX_SESSION_MS = 20 * 60_000;
@@ -210,6 +227,16 @@ export function useGeminiLive(systemPrompt: string) {
   const isTalkingRef        = useRef(false);
   /** Hasta cuándo se ignora el micrófono por ser eco del altavoz. */
   const echoGuardUntilRef   = useRef(0);
+  /** Cuándo empezó a hablar Sous (0 = callado), para medir su eco. */
+  const speakStartedAtRef   = useRef(0);
+  /** Nivel de eco medido en este teléfono mientras Sous habla. */
+  const echoFloorRef        = useRef(0);
+  /** Frames seguidos por encima del umbral de interrupción. */
+  const bargeFrameCountRef  = useRef(0);
+  /** Esos mismos frames, guardados: son el principio de la frase del usuario. */
+  const bargePrerollRef     = useRef<string[]>([]);
+  /** Hasta cuándo manda el usuario: se descarta el audio de Sous que llegue tarde. */
+  const userFloorUntilRef   = useRef(0);
   /** La sesión llegó a recibir algo de Gemini: no fue un fallo de conexión. */
   const sessionGotDataRef   = useRef(false);
   /** Sesiones seguidas que murieron nada más abrir. */
@@ -309,6 +336,17 @@ export function useGeminiLive(systemPrompt: string) {
     setVoiceStateSync('sleeping');
   }, [setVoiceStateSync, stopSilenceCountdown]);
 
+  /** Calla a Sous en el acto: descarta lo que ya estaba programado para sonar. */
+  const stopPlayback = useCallback(() => {
+    playbackQueueRef.current.forEach(n => { try { n.stop(); } catch { /* ya terminó */ } });
+    playbackQueueRef.current = [];
+    nextPlayTimeRef.current  = 0;
+    isSpeakingRef.current    = false;
+    currentModelTextRef.current = '';
+    setCurrentChefText('');
+    setVoiceStateSync(prev => prev === 'speaking' ? 'listening' : prev);
+  }, [setVoiceStateSync]);
+
   /** Encadena los chunks con `nextPlayTimeRef` para que suenen sin huecos. */
   const playAudioChunk = useCallback((b64: string) => {
     if (!outputAudioCtxRef.current) return;
@@ -333,6 +371,10 @@ export function useGeminiLive(systemPrompt: string) {
 
   const handleProxyMsg = useCallback((msg: ProxyMsg) => {
     if (msg.type !== 'close' && msg.type !== 'open') sessionGotDataRef.current = true;
+
+    // Audio que Gemini ya había enviado cuando el usuario lo cortó: si sonara,
+    // volvería a hablar encima y el eco reabriría el problema.
+    if (msg.type === 'audio' && Date.now() < userFloorUntilRef.current) return;
 
     if (msg.type === 'audio') {
       isSpeakingRef.current = true;
@@ -669,18 +711,67 @@ export function useGeminiLive(systemPrompt: string) {
           }
         }
 
-        // Mientras Sous habla —y un momento después— el micrófono solo devuelve
-        // su propia voz: no se le manda nada ni se le marca turno.
-        if (isSpeakingRef.current || playbackQueueRef.current.length > 0) {
-          echoGuardUntilRef.current = now + ECHO_GUARD_MS;
-        }
-        if (now < echoGuardUntilRef.current) {
-          if (isTalkingRef.current) {
-            isTalkingRef.current = false;
-            sessionRef.current.sendActivity('end');
+        const sousHablando = isSpeakingRef.current || playbackQueueRef.current.length > 0;
+
+        if (sousHablando) {
+          if (speakStartedAtRef.current === 0) {
+            speakStartedAtRef.current = now;
+            echoFloorRef.current      = 0;
+            bargeFrameCountRef.current = 0;
           }
-          voiceTailUntilRef.current = 0;
-          return;
+
+          const cortarPermitido = now - speakStartedAtRef.current >= ECHO_SAMPLE_MS;
+          if (!cortarPermitido) {
+            // Primeros milisegundos: lo que entra es su eco. Se mide.
+            echoFloorRef.current = Math.max(echoFloorRef.current, rms);
+          } else {
+            const umbral = Math.min(
+              BARGE_RMS_CEILING,
+              Math.max(BARGE_RMS_FLOOR, echoFloorRef.current * BARGE_ECHO_FACTOR),
+            );
+            if (rms > umbral) {
+              bargeFrameCountRef.current++;
+              // Se guardan: si resulta ser una interrupción, son las primeras
+              // sílabas y sin ellas Gemini oiría la frase empezada a medias.
+              bargePrerollRef.current.push(float32ToPCM16Base64(downsample(raw, nativeRateRef.current, INPUT_SAMPLE_RATE)));
+              if (bargePrerollRef.current.length > BARGE_FRAMES_NEEDED) bargePrerollRef.current.shift();
+            } else {
+              bargeFrameCountRef.current = 0;
+              bargePrerollRef.current    = [];
+            }
+          }
+
+          if (bargeFrameCountRef.current < BARGE_FRAMES_NEEDED) {
+            // Todavía no es una interrupción: el micrófono no se le pasa a Gemini.
+            echoGuardUntilRef.current = now + ECHO_GUARD_MS;
+            if (isTalkingRef.current) {
+              isTalkingRef.current = false;
+              sessionRef.current.sendActivity('end');
+            }
+            voiceTailUntilRef.current = 0;
+            return;
+          }
+
+          // Interrupción de verdad: se calla a Sous y se le cede el turno.
+          stopPlayback();
+          userFloorUntilRef.current  = now + USER_FLOOR_MS;
+          bargeFrameCountRef.current = 0;
+          speakStartedAtRef.current  = 0;
+          echoGuardUntilRef.current  = 0;
+          voiceTailUntilRef.current  = now + VOICE_TAIL_MS;
+        } else {
+          speakStartedAtRef.current  = 0;
+          bargeFrameCountRef.current = 0;
+          bargePrerollRef.current    = [];
+
+          if (now < echoGuardUntilRef.current) {
+            if (isTalkingRef.current) {
+              isTalkingRef.current = false;
+              sessionRef.current.sendActivity('end');
+            }
+            voiceTailUntilRef.current = 0;
+            return;
+          }
         }
 
         // Solo se envía audio con voz o en la cola posterior: el silencio también se factura.
@@ -699,6 +790,13 @@ export function useGeminiLive(systemPrompt: string) {
           sessionRef.current.sendActivity('start');
         }
 
+        if (bargePrerollRef.current.length > 0) {
+          for (const frame of bargePrerollRef.current) {
+            sessionRef.current.sendRealtimeInput({ audio: { data: frame, mimeType: 'audio/pcm;rate=16000' } });
+          }
+          bargePrerollRef.current = [];
+        }
+
         // downsample no muta `raw`.
         const resampled = downsample(raw, nativeRateRef.current, INPUT_SAMPLE_RATE);
         sessionRef.current.sendRealtimeInput({ audio: { data: float32ToPCM16Base64(resampled), mimeType: 'audio/pcm;rate=16000' } });
@@ -714,7 +812,7 @@ export function useGeminiLive(systemPrompt: string) {
       setVoiceStateSync('idle');
     }
   }, [systemPrompt, cleanup, stopSilentLoop, createProxySession, setVoiceStateSync,
-      startSilentLoop, startSilenceCountdown, goToSleep]);
+      startSilentLoop, startSilenceCountdown, goToSleep, stopPlayback]);
 
   /** Despertar con botón en vez de con la voz. */
   const wakeUp = useCallback(() => {

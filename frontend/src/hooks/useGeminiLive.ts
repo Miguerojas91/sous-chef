@@ -149,6 +149,12 @@ const RECONNECT_CONTEXT_TURNS = 8;
  * fin deja la voz en un bucle mudo, así que tras varios intentos se avisa.
  */
 const SESSION_TOO_SHORT_MS   = 3_000;
+/**
+ * Margen tras la última palabra de Sous antes de volver a escuchar. Sin él, el
+ * micrófono capta la cola de su propia voz por el altavoz y Gemini la toma por
+ * una interrupción: corta la frase a medias y vuelve a empezar.
+ */
+const ECHO_GUARD_MS          = 350;
 const MAX_FAILED_RECONNECTS  = 3;
 
 const MAX_SESSION_MS = 20 * 60_000;
@@ -202,6 +208,10 @@ export function useGeminiLive(systemPrompt: string) {
   const sessionOpenedAtRef  = useRef(0);
   /** Hay una intervención hablada abierta ante Gemini (activityStart sin su end). */
   const isTalkingRef        = useRef(false);
+  /** Hasta cuándo se ignora el micrófono por ser eco del altavoz. */
+  const echoGuardUntilRef   = useRef(0);
+  /** La sesión llegó a recibir algo de Gemini: no fue un fallo de conexión. */
+  const sessionGotDataRef   = useRef(false);
   /** Sesiones seguidas que murieron nada más abrir. */
   const failedReconnectsRef = useRef(0);
   /** Rompe la dependencia circular entre reconnectSession y handleProxyMsg. */
@@ -322,6 +332,8 @@ export function useGeminiLive(systemPrompt: string) {
   }, [setVoiceStateSync]);
 
   const handleProxyMsg = useCallback((msg: ProxyMsg) => {
+    if (msg.type !== 'close' && msg.type !== 'open') sessionGotDataRef.current = true;
+
     if (msg.type === 'audio') {
       isSpeakingRef.current = true;
       setVoiceStateSync('speaking');
@@ -360,13 +372,15 @@ export function useGeminiLive(systemPrompt: string) {
       }
       setCurrentChefText('');
 
-      // Una sesión que duró lo normal y se cortó es un corte: se reconecta.
-      // Una que murió al instante ya falló antes: a la tercera, se avisa.
-      const lived = sessionOpenedAtRef.current ? Date.now() - sessionOpenedAtRef.current : 0;
-      failedReconnectsRef.current = lived > 0 && lived < SESSION_TOO_SHORT_MS
-        ? failedReconnectsRef.current + 1
-        : 0;
+      // Solo cuenta como fallo la sesión que murió enseguida SIN haber dicho
+      // nada. Dormirse es un cierre buscado, y una sesión que alcanzó a
+      // responder funcionaba: ninguna de las dos debe gastar intentos.
+      const dormida = voiceStateRef.current === 'sleeping';
+      const lived   = sessionOpenedAtRef.current ? Date.now() - sessionOpenedAtRef.current : 0;
+      const falló   = !dormida && !sessionGotDataRef.current && lived > 0 && lived < SESSION_TOO_SHORT_MS;
+      failedReconnectsRef.current = falló ? failedReconnectsRef.current + 1 : 0;
       sessionOpenedAtRef.current = 0;
+      sessionGotDataRef.current  = false;
 
       if (wantsVoiceRef.current && voiceStateRef.current !== 'sleeping') {
         if (failedReconnectsRef.current >= MAX_FAILED_RECONNECTS) {
@@ -653,6 +667,20 @@ export function useGeminiLive(systemPrompt: string) {
               return;
             }
           }
+        }
+
+        // Mientras Sous habla —y un momento después— el micrófono solo devuelve
+        // su propia voz: no se le manda nada ni se le marca turno.
+        if (isSpeakingRef.current || playbackQueueRef.current.length > 0) {
+          echoGuardUntilRef.current = now + ECHO_GUARD_MS;
+        }
+        if (now < echoGuardUntilRef.current) {
+          if (isTalkingRef.current) {
+            isTalkingRef.current = false;
+            sessionRef.current.sendActivity('end');
+          }
+          voiceTailUntilRef.current = 0;
+          return;
         }
 
         // Solo se envía audio con voz o en la cola posterior: el silencio también se factura.

@@ -574,10 +574,16 @@ wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
         // receta donde iba en vez de volver a preguntar qué se está cocinando.
         if (history.length > 0) {
           try {
-            geminiSession.sendClientContent({ turns: history, turnComplete: false });
+            // `turnComplete: false` a propósito: el contexto entra, pero Sous no
+            // contesta hasta que el usuario hable. Con `true` se arrancaba a
+            // hablar solo al conectar, en contra de su propio prompt, y el
+            // micrófono captaba ese saludo por el altavoz.
             geminiSession.sendClientContent({
-              turns: [{ role: 'user', parts: [{ text: '(reconexión — estamos cocinando, continúa desde donde estábamos sin repetir lo ya dicho)' }] }],
-              turnComplete: true,
+              turns: [
+                ...history,
+                { role: 'user', parts: [{ text: '(retomamos la sesión: sigue donde quedamos, sin repetir pasos ni volver a presentarte)' }] },
+              ],
+              turnComplete: false,
             });
           } catch (e) {
             console.error('[live] no se pudo reenviar el historial:', (e as Error)?.message ?? e);

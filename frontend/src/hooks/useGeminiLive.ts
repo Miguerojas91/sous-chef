@@ -215,6 +215,8 @@ export function useGeminiLive(systemPrompt: string) {
   const isReconnectingRef   = useRef(false);
   /** Copia para leer el transcript desde closures. */
   const transcriptRef       = useRef<VoiceTranscriptEntry[]>([]);
+  /** Lo hablado antes de esta sesión de voz (viene del chat escrito). */
+  const baseHistoryRef      = useRef<VoiceHistory>([]);
   const lastVoiceTimeRef    = useRef(0);
   const wakeFrameCountRef   = useRef(0);
   const nativeRateRef       = useRef(44100);
@@ -446,10 +448,13 @@ export function useGeminiLive(systemPrompt: string) {
   useEffect(() => { handleProxyMsgRef.current = handleProxyMsg; }, [handleProxyMsg]);
 
   /** Últimos turnos para reinyectar como contexto al reconectar. */
-  const buildReconnectHistory = useCallback((): Array<{ role: string; parts: [{ text: string }] }> => {
-    const recent = transcriptRef.current.slice(-(RECONNECT_CONTEXT_TURNS * 2));
-    if (recent.length === 0) return [];
-    return recent.map(e => ({ role: e.agent === 'user' ? 'user' : 'model', parts: [{ text: e.text }] as [{ text: string }] }));
+  const buildReconnectHistory = useCallback((): VoiceHistory => {
+    // Lo de antes de la voz y lo hablado en ella son la misma conversación.
+    const hablado: VoiceHistory = transcriptRef.current.map(e => ({
+      role: e.agent === 'user' ? 'user' : 'model',
+      parts: [{ text: e.text }] as [{ text: string }],
+    }));
+    return [...baseHistoryRef.current, ...hablado].slice(-(RECONNECT_CONTEXT_TURNS * 2));
   }, []);
 
   /** `onOpen` se llama cuando Gemini Live confirma la sesión, no al abrir el socket. */
@@ -577,6 +582,13 @@ export function useGeminiLive(systemPrompt: string) {
    * escrito). Sin ella la voz arranca en blanco: sabe la receta, que viene en
    * el prompt, pero no por qué paso iba la cocción.
    */
+  /** Vacía lo hablado. Solo al terminar la sesión: si no, reaparece de contexto. */
+  const resetTranscript = useCallback(() => {
+    transcriptRef.current  = [];
+    baseHistoryRef.current = [];
+    setTranscript([]);
+  }, []);
+
   const startListening = useCallback(async (initialHistory: VoiceHistory = []) => {
     if (voiceStateRef.current !== 'idle' && voiceStateRef.current !== 'needs-tap' && voiceStateRef.current !== 'sleeping') return;
 
@@ -602,6 +614,7 @@ export function useGeminiLive(systemPrompt: string) {
     sessionStartRef.current = 0;
     // Intento nuevo del usuario: la cuenta de fallos vuelve a cero.
     failedReconnectsRef.current = 0;
+    baseHistoryRef.current = initialHistory;
     setVoiceStateSync('connecting');
     setCurrentChefText(''); setVoiceError(null);
     currentModelTextRef.current = '';
@@ -826,5 +839,5 @@ export function useGeminiLive(systemPrompt: string) {
     catch (e) { console.error('[Proxy] sendText error:', e); }
   }, []);
 
-  return { voiceState, transcript, currentChefText, voiceError, silenceSeconds, startListening, disconnect, sendTextToVoice, wakeUp };
+  return { voiceState, transcript, currentChefText, voiceError, silenceSeconds, startListening, disconnect, sendTextToVoice, wakeUp, resetTranscript };
 }

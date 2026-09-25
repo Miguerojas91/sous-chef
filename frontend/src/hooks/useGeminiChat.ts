@@ -224,6 +224,19 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
     submit([], trimmed);
   }, [key, submit]);
 
+  /**
+   * Añade turnos que ya ocurrieron —los de la sesión de voz— sin llamar a la
+   * IA. Así la conversación es una sola aunque se alterne voz y escritura.
+   */
+  const appendMessages = useCallback((nuevos: ChatMessage[]): void => {
+    if (nuevos.length === 0) return;
+    setMessages(prev => {
+      const next = [...prev, ...nuevos];
+      messagesRef.current = next;
+      return next;
+    });
+  }, []);
+
   const clearMessages = useCallback((): void => {
     abortRef.current?.abort('cleared');
     abortRef.current = null;
@@ -233,5 +246,5 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
     localStorage.removeItem(key);
   }, [key]);
 
-  return { isLoading, messages, sendMessage, startConversation, clearMessages };
+  return { isLoading, messages, sendMessage, startConversation, clearMessages, appendMessages };
 };

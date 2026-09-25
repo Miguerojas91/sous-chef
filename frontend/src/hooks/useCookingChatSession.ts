@@ -57,7 +57,7 @@ function showVoiceOnboardingOnce(): void {
 export function useCookingChatSession({
   storageKey, textPrompt, voicePrompt, analyticsMode, keepAwake = true,
 }: UseCookingChatSessionOptions) {
-  const { isLoading, messages, sendMessage, startConversation, clearMessages } = useGeminiChat({
+  const { isLoading, messages, sendMessage, startConversation, clearMessages, appendMessages } = useGeminiChat({
     storageKey,
     systemPrompt: textPrompt,
     analyticsMode,
@@ -91,7 +91,25 @@ export function useCookingChatSession({
     }
   }, [voice.voiceState]);
 
-  const { disconnect, startListening, sendTextToVoice, wakeUp } = voice;
+  const { disconnect, startListening, sendTextToVoice, wakeUp, resetTranscript } = voice;
+
+  /**
+   * Lo hablado por voz pasa a la conversación. Sin esto vive solo en la
+   * pantalla de voz: al salir se perdía, y al volver a entrar Sous no sabía
+   * nada de lo que se había hablado.
+   *
+   * Se deja fuera el último turno mientras la voz sigue activa: la
+   * transcripción de lo que dice el usuario llega por partes y ese renglón
+   * todavía puede cambiar.
+   */
+  const mergedVoiceRef = useRef(0);
+  useEffect(() => {
+    const estables = voiceMode ? voice.transcript.slice(0, -1) : voice.transcript;
+    const nuevos = estables.slice(mergedVoiceRef.current);
+    if (nuevos.length === 0) return;
+    mergedVoiceRef.current = estables.length;
+    appendMessages(nuevos.map(e => ({ agent: e.agent, text: e.text })));
+  }, [voice.transcript, voiceMode, appendMessages]);
 
   const startVoice = useCallback(async () => {
     const premium = isPremiumUser();
@@ -131,7 +149,10 @@ export function useCookingChatSession({
   const end = useCallback(() => {
     exitVoice();
     clearMessages();
-  }, [exitVoice, clearMessages]);
+    // Sin esto, lo hablado seguiría volviendo como contexto en la sesión siguiente.
+    resetTranscript();
+    mergedVoiceRef.current = 0;
+  }, [exitVoice, clearMessages, resetTranscript]);
 
   const test = useCallback(() => sendTextToVoice('Hola Sous, ¿me escuchas?'), [sendTextToVoice]);
 

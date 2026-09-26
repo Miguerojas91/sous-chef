@@ -37,6 +37,25 @@ function loadMessages(key: string): ChatMessage[] {
 
 /** Conserva los últimos 100 mensajes. Sin mensajes borra la clave: otras
  * pantallas usan su existencia para saber si hay una sesión en curso. */
+/**
+ * Lo que ve el usuario cuando algo falla. El detalle técnico va a la consola:
+ * en la cocina, "Failed to fetch" no le dice a nadie qué hacer.
+ */
+function mensajeDeFallo(error: unknown, isAbort: boolean): string {
+  if (isAbort) return 'Tardé demasiado en responder. Intenta de nuevo.';
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return 'Te quedaste sin internet. Vuelve a escribirme cuando tengas señal.';
+  }
+  const detalle = error instanceof Error ? error.message : String(error);
+  // El navegador no completó la petición: red caída o señal intermitente.
+  if (error instanceof TypeError || /failed to fetch|networkerror|load failed|network request failed/i.test(detalle)) {
+    return 'Se cortó la conexión. Revisa tu señal y vuelve a intentarlo.';
+  }
+  if (detalle.includes('HTTP 429')) return 'Vamos muy rápido. Espera unos segundos y sigue.';
+  if (/HTTP 5[0-9][0-9]/.test(detalle)) return 'No estoy disponible en este momento. Intenta en un minuto.';
+  return 'No pude responder. Intenta de nuevo.';
+}
+
 function saveMessages(key: string, msgs: ChatMessage[]): void {
   try {
     if (msgs.length === 0) localStorage.removeItem(key);
@@ -146,10 +165,8 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
       // Cancelado por clearMessages o startConversation: el mensaje ya no existe.
       if (controller.signal.reason === 'cleared') return;
       const isAbort = error instanceof DOMException && error.name === 'AbortError';
-      const errMsg = isAbort
-        ? 'Tardé demasiado en responder. Intenta de nuevo.'
-        : (error instanceof Error ? error.message : String(error));
-      console.error('[useGeminiChat] Error:', errMsg);
+      const errMsg = mensajeDeFallo(error, isAbort);
+      console.error('[useGeminiChat] Error:', error instanceof Error ? error.message : error);
       track(Events.ChatErrorFallback, { is_timeout: isAbort, has_partial_text: fullText.length > 0 });
 
       // Si llegó texto parcial se conserva y el error va al final.
@@ -159,7 +176,7 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
           agent: 'chef',
           text: fullText
             ? `${fullText}\n\n${errMsg}`
-            : `No pude responder. ${errMsg}`,
+            : errMsg,
         };
         return updated;
       });

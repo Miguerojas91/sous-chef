@@ -98,13 +98,16 @@ export function useCookingChatSession({
    * pantalla de voz: al salir se perdía, y al volver a entrar Sous no sabía
    * nada de lo que se había hablado.
    *
-   * Se deja fuera el último turno mientras la voz sigue activa: la
-   * transcripción de lo que dice el usuario llega por partes y ese renglón
-   * todavía puede cambiar.
+   * Solo espera el renglón del usuario cuando todavía no le han contestado: esa
+   * transcripción llega por partes y aún puede cambiar. Lo que dice Sous se
+   * guarda en cuanto termina su turno, porque ya no cambia — y porque esperar
+   * al turno siguiente lo perdía si la sesión se dormía o se cerraba antes.
    */
   const mergedVoiceRef = useRef(0);
   useEffect(() => {
-    const estables = voiceMode ? voice.transcript.slice(0, -1) : voice.transcript;
+    const todos = voice.transcript;
+    const ultimoSinResponder = voiceMode && todos[todos.length - 1]?.agent === 'user';
+    const estables = ultimoSinResponder ? todos.slice(0, -1) : todos;
     const nuevos = estables.slice(mergedVoiceRef.current);
     if (nuevos.length === 0) return;
     mergedVoiceRef.current = estables.length;

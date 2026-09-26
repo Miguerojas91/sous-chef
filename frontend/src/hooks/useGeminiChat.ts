@@ -11,6 +11,8 @@ export type ChatMessage = {
   agent: 'chef' | 'user';
   /** Vacío mientras la respuesta se está generando. */
   text: string;
+  /** El turno no llegó a responderse: la UI ofrece reintentarlo. */
+  failed?: true;
 };
 
 interface UseGeminiChatOptions {
@@ -177,7 +179,9 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
           text: fullText
             ? `${fullText}\n\n${errMsg}`
             : errMsg,
+          failed: true,
         };
+        messagesRef.current = updated;
         return updated;
       });
     } finally {
@@ -254,6 +258,20 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
     });
   }, []);
 
+  /**
+   * Vuelve a enviar el último mensaje del usuario cuando su turno falló. Se
+   * rehace el par (pregunta + respuesta) en vez de añadir uno nuevo: así no
+   * queda el aviso de error en medio de la conversación.
+   */
+  const retryLast = useCallback((): void => {
+    if (isLoading) return;
+    const msgs = messagesRef.current;
+    const ultimo = msgs[msgs.length - 1];
+    const pregunta = msgs[msgs.length - 2];
+    if (!ultimo?.failed || pregunta?.agent !== 'user') return;
+    submit(msgs.slice(0, -2), pregunta.text);
+  }, [isLoading, submit]);
+
   const clearMessages = useCallback((): void => {
     abortRef.current?.abort('cleared');
     abortRef.current = null;
@@ -263,5 +281,5 @@ export const useGeminiChat = ({ storageKey: key, systemPrompt, analyticsMode }: 
     localStorage.removeItem(key);
   }, [key]);
 
-  return { isLoading, messages, sendMessage, startConversation, clearMessages, appendMessages };
+  return { isLoading, messages, sendMessage, startConversation, clearMessages, appendMessages, retryLast };
 };

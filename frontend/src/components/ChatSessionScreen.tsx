@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ArrowLeft, ChefHat } from 'lucide-react';
+import { ArrowLeft, ChefHat, RotateCw } from 'lucide-react';
 import type { CookingChatSession } from '../hooks/useCookingChatSession';
 import { useVisualViewport } from '../hooks/useVisualViewport';
 import { ChatBubble, ChatMessage } from './ChatMessage';
@@ -151,9 +151,23 @@ export const ChatSessionScreen = ({
           </div>
         )}
         {messages.map((msg, idx) => (
-          <ChatBubble key={idx} isChef={msg.agent === 'chef'}>
-            <ChatMessage text={msg.text} isChef={msg.agent === 'chef'} />
-          </ChatBubble>
+          <div key={idx} className="space-y-1.5">
+            <ChatBubble isChef={msg.agent === 'chef'}>
+              <ChatMessage text={msg.text} isChef={msg.agent === 'chef'} />
+            </ChatBubble>
+            {/* Solo en el último: reintentar uno de en medio dejaría la
+                conversación descolocada. */}
+            {msg.failed && idx === messages.length - 1 && !isLoading && (
+              <button
+                type="button"
+                onClick={session.retry}
+                className="min-h-11 flex items-center gap-2 px-4 border-2 border-orange-200 bg-white hover:bg-orange-50 active:translate-y-[2px] text-orange-700 text-sm font-black rounded-full shadow-[0_3px_0_theme(colors.orange.200)] transition-colors"
+              >
+                <RotateCw className="w-4 h-4" strokeWidth={2.6} aria-hidden />
+                Reintentar
+              </button>
+            )}
+          </div>
         ))}
       </div>
 

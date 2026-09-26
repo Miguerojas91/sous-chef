@@ -57,7 +57,7 @@ function showVoiceOnboardingOnce(): void {
 export function useCookingChatSession({
   storageKey, textPrompt, voicePrompt, analyticsMode, keepAwake = true,
 }: UseCookingChatSessionOptions) {
-  const { isLoading, messages, sendMessage, startConversation, clearMessages, appendMessages } = useGeminiChat({
+  const { isLoading, messages, sendMessage, startConversation, clearMessages, appendMessages, retryLast } = useGeminiChat({
     storageKey,
     systemPrompt: textPrompt,
     analyticsMode,
@@ -181,6 +181,8 @@ export function useCookingChatSession({
     /** `messages.length > 0`: hay conversación, nueva o restaurada. */
     started,
     send: sendWithActivity,
+    /** Reenvía el último mensaje cuando su turno falló. */
+    retry: retryLast,
     /** Empieza una conversación nueva con `firstMessage`, borrando la anterior. */
     start: startConversation,
     end,

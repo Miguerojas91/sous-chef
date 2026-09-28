@@ -48,9 +48,17 @@ export class ErrorBoundary extends Component<Props, State> {
           <h1 className="text-xl md:text-2xl font-extrabold text-neutral-900 mb-2">
             Algo falló en la app
           </h1>
-          <p className="text-sm text-neutral-600 mb-6">
+          <p className="text-sm text-neutral-600 mb-3">
             Hubo un error inesperado. Recarga para seguir donde ibas.
           </p>
+
+          {/* El detalle técnico, a la vista: sin esto, reportar el fallo es
+              describir una pantalla que no dice nada. */}
+          {this.state.error?.message && (
+            <p className="text-xs text-neutral-500 font-mono [overflow-wrap:anywhere] bg-neutral-100 rounded-control px-3 py-2 mb-6">
+              {this.state.error.message}
+            </p>
+          )}
 
           <div className="flex flex-col gap-2">
             <button

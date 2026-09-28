@@ -38,9 +38,38 @@ import { getStreak } from './utils/streak';
 
 initAnalytics();
 
+/**
+ * Cada sección se carga aparte, y su archivo lleva el número de versión en el
+ * nombre. Al publicar una versión nueva, los archivos de la anterior dejan de
+ * existir: una pestaña que llevaba rato abierta pide uno que ya no está y la
+ * sección se cae al entrar. Cuando eso pasa se recarga la página una vez para
+ * tomar la versión nueva; a la segunda ya sería un error de verdad.
+ */
+const RELOAD_KEY = 'sous_chunk_reload';
+
+function conRecargaSiFaltaElArchivo<T>(loader: () => Promise<T>): () => Promise<T> {
+  return async () => {
+    try {
+      const mod = await loader();
+      try { sessionStorage.removeItem(RELOAD_KEY); } catch { /* sin almacenamiento */ }
+      return mod;
+    } catch (error) {
+      let yaRecargo = false;
+      try { yaRecargo = sessionStorage.getItem(RELOAD_KEY) === '1'; } catch { /* sin almacenamiento */ }
+      if (yaRecargo) throw error;
+      try { sessionStorage.setItem(RELOAD_KEY, '1'); } catch { /* sin almacenamiento */ }
+      console.warn('[app] no se pudo cargar la sección; recargando para tomar la versión nueva', error);
+      window.location.reload();
+      // La recarga tarda: se deja la promesa sin resolver para que mientras
+      // tanto se vea el "Cargando…" y no la pantalla de error.
+      return new Promise<T>(() => {});
+    }
+  };
+}
+
 // React.lazy espera un export `default` y los componentes exportan con nombre.
 function lazyNamed<K extends string, M extends Record<K, ComponentType>>(loader: () => Promise<M>, exportName: K) {
-  return lazy(async () => ({ default: (await loader())[exportName] }));
+  return lazy(conRecargaSiFaltaElArchivo(async () => ({ default: (await loader())[exportName] })));
 }
 
 const CookingSession = lazyNamed(() => import('./components/CookingSession'), 'CookingSession');
@@ -56,14 +85,14 @@ const CMSTestPage    = lazyNamed(() => import('./components/cms/CMSTestPage'),'C
 // pantalla base en paralelo, así cada nivel es un chunk propio. Se crean una
 // sola vez, fuera del render, para que React.lazy no recargue en cada pintado.
 function lazyAdventurePage(level: PlacedLevel) {
-  return lazy(async () => {
+  return lazy(conRecargaSiFaltaElArchivo(async () => {
     if (level.kind === 'boss') {
       const [content, { BossPage }] = await Promise.all([level.load(), import('./components/BossPage')]);
       return { default: () => <BossPage level={level} content={content} /> };
     }
     const [content, { LevelPage }] = await Promise.all([level.load(), import('./components/LevelPage')]);
     return { default: () => <LevelPage level={level} content={content} /> };
-  });
+  }));
 }
 
 const ADVENTURE_ROUTES = LEVELS.map(level => ({ level, Page: lazyAdventurePage(level) }));

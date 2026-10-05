@@ -47,3 +47,6 @@ PITCH_INVERSORES.md
 
 # Respaldos locales del diseño
 respaldo-diseno-original-*/
+
+# Credenciales que se generan en el equipo, nunca al repo
+*.local.txt

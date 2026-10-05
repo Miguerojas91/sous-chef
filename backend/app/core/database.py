@@ -49,12 +49,24 @@ async def set_rls_context(
     """
     if not is_postgres(db):
         return
+
+    if user_id is not None:
+        # Es la base la que decide si este usuario es admin, leyendo `users`.
+        # El cliente solo dice quién dice ser, y `is_admin` se ignora aquí:
+        # afirmarlo desde la app permitía escalar con una inyección de SQL.
+        await db.execute(
+            text("SELECT app_set_rls_context(:uid)"), {"uid": int(user_id)}
+        )
+        return
+
+    # Sin usuario: contexto vacío, o modo operador (scripts de administración,
+    # que se conectan con el rol dueño, el único que conserva este permiso).
     await db.execute(
         text(
-            "SELECT set_config('app.current_user_id', :uid, true), "
+            "SELECT set_config('app.current_user_id', '', true), "
             "set_config('app.is_admin', :adm, true)"
         ),
-        {"uid": "" if user_id is None else str(user_id), "adm": "true" if is_admin else "false"},
+        {"adm": "true" if is_admin else "false"},
     )
 
 

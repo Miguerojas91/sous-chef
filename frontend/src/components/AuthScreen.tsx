@@ -108,6 +108,35 @@ export const AuthScreen = () => {
     navigate('/');
   };
 
+  /**
+   * Sube al servidor una cuenta que solo existía en este navegador, usando la
+   * misma contraseña que acaba de escribir el usuario. Devuelve `true` si
+   * quedó migrada y ya se entró.
+   *
+   * Hace falta correo porque el registro del servidor lo exige. El XP local se
+   * conserva en el perfil del dispositivo: la cuenta nueva del servidor nace
+   * en cero y no hay forma de trasladarlo, así que se toma el mayor de los dos.
+   */
+  const migrarCuentaLocal = async (): Promise<boolean> => {
+    const local = findUser(formData.username, formData.password);
+    if (!local?.email) return false;
+    try {
+      const creada = await backendRegister({
+        username: local.username,
+        email: local.email,
+        password: formData.password.trim(),
+        allergies: local.allergies,
+        dislikes: local.dislikes,
+      });
+      await loginWithData({ ...local, ...creada, xp: Math.max(local.xp ?? 0, creada.xp) });
+      return true;
+    } catch {
+      // El nombre ya está tomado en el servidor por otra persona, o el correo
+      // no pasa la validación: el mensaje de error original sigue valiendo.
+      return false;
+    }
+  };
+
   const buildNewUser = (): LocalUser => ({
     username: formData.username.trim(),
     password: formData.password.trim(),
@@ -171,6 +200,13 @@ export const AuthScreen = () => {
             return;
           } catch (err) {
             if (!(err instanceof BackendUnavailableError)) {
+              // El servidor respondió que no conoce estas credenciales, y eso
+              // también le pasa a quien se registró antes de que el servidor
+              // existiera: su cuenta solo vive en este navegador. Si coincide
+              // en local, se sube con la misma clave y queda disponible desde
+              // cualquier dispositivo.
+              const migrada = await migrarCuentaLocal();
+              if (migrada) return;
               setError(err instanceof Error ? err.message : 'No pudimos iniciar sesión.');
               return;
             }

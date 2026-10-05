@@ -2,6 +2,8 @@
 Conexión SQLAlchemy async. Soporta tanto SQLite (dev) como Postgres (prod).
 RLS solo aplica en Postgres.
 """
+import hashlib
+import hmac
 import os
 from typing import Optional
 
@@ -38,6 +40,20 @@ def is_postgres(db: AsyncSession) -> bool:
     return db.get_bind().dialect.name == "postgresql"
 
 
+RLS_CONTEXT_SECRET = os.getenv("RLS_CONTEXT_SECRET", "")
+
+
+def firma_contexto(user_id: int) -> str:
+    """HMAC del id con el secreto que comparten la app y la base.
+
+    Sin `RLS_CONTEXT_SECRET` la firma sale vacía y Postgres rechaza el
+    contexto: preferible fallar a quedarse sin aislamiento sin avisar.
+    """
+    return hmac.new(
+        RLS_CONTEXT_SECRET.encode("utf-8"), str(user_id).encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+
+
 async def set_rls_context(
     db: AsyncSession, *, user_id: Optional[int] = None, is_admin: bool = False
 ) -> None:
@@ -51,11 +67,13 @@ async def set_rls_context(
         return
 
     if user_id is not None:
-        # Es la base la que decide si este usuario es admin, leyendo `users`.
-        # El cliente solo dice quién dice ser, y `is_admin` se ignora aquí:
-        # afirmarlo desde la app permitía escalar con una inyección de SQL.
+        # El id va firmado: la base rechaza un contexto sin firma válida, así
+        # que quien ejecute SQL suelto con las credenciales de la API no puede
+        # hacerse pasar por otro usuario. El admin lo resuelve la base leyendo
+        # `users`, por eso `is_admin` no se envía desde aquí.
         await db.execute(
-            text("SELECT app_set_rls_context(:uid)"), {"uid": int(user_id)}
+            text("SELECT app_set_rls_context(:uid, :sig)"),
+            {"uid": int(user_id), "sig": firma_contexto(int(user_id))},
         )
         return
 
